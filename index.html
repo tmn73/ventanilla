@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Ventanilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Barlow+Condensed:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="view"></canvas>
+      <div id="frame"></div>
+      <div id="hud">
+        <div class="readout">
+          <span id="distance">0</span><span class="unit">m</span>
+        </div>
+        <div class="gauge"><div id="speed-fill"></div></div>
+        <div id="trick"></div>
+      </div>
+      <div id="overlay">
+        <p class="kicker">Ventanilla</p>
+        <h1 id="overlay-title">Regarde par la fenetre</h1>
+        <p id="overlay-body">La voiture avance sans toi. Grind pour tenir le rythme.</p>
+        <p class="keys"><kbd>Espace</kbd> sauter &middot; <kbd>Bas</kbd> plonger &middot; ou touche l'ecran</p>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
