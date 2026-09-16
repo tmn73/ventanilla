@@ -2,10 +2,12 @@
   --interior: #08070d;
   --trim: #17141f;
   --trim-edge: #2a2435;
+  --door: #120f19;
+  --sill: #4a3f5c;
   --ink: #ffe9c4;
   --muted: #9b8fa8;
   --alarm: #e2564f;
-  --frame-radius: 12px 30px 20px 12px;
+  --gain: #9fe0a8;
 }
 
 * {
@@ -21,8 +23,7 @@ body {
 body {
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(120% 90% at 50% 0%, #15111d 0%, var(--interior) 70%);
+  background: radial-gradient(120% 90% at 50% 0%, #15111d 0%, var(--interior) 70%);
   color: var(--ink);
   font-family: 'Archivo', system-ui, sans-serif;
   overflow: hidden;
@@ -31,17 +32,33 @@ body {
   user-select: none;
 }
 
-#stage {
+/* The door card around the glass. This is what says "car" before anything moves. */
+#cabin {
   position: relative;
-  width: min(100vw - 24px, (100vh - 24px) * 16 / 9);
-  aspect-ratio: 16 / 9;
-  border-radius: var(--frame-radius);
+  width: min(100vw - 20px, (100vh - 20px) * 16 / 10);
+  aspect-ratio: 16 / 10;
+  border-radius: 18px 40px 14px 14px;
+  overflow: hidden;
+  background: linear-gradient(176deg, #1a1622 0%, var(--door) 46%, #0b0911 100%);
+  box-shadow:
+    0 0 0 2px #241f30,
+    0 40px 90px rgba(0, 0, 0, 0.7);
+}
+
+#stage {
+  position: absolute;
+  top: 3.4%;
+  left: 2.6%;
+  right: 2.6%;
+  height: 78%;
+  border-radius: 10px 30px 16px 10px;
   overflow: hidden;
   cursor: pointer;
+  /* Rubber seal, then the bright lip of the sill. */
   box-shadow:
-    0 0 0 10px var(--trim),
-    0 0 0 13px var(--trim-edge),
-    0 36px 80px rgba(0, 0, 0, 0.65);
+    0 0 0 7px #0b0912,
+    0 0 0 9px #2c2539,
+    0 6px 16px rgba(0, 0, 0, 0.8);
 }
 
 #view {
@@ -50,70 +67,93 @@ body {
   height: 100%;
 }
 
-/* The glass: a vignette plus one low reflection streak. */
-#frame {
+/* The B pillar, cutting the right edge of the window. */
+#pillar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7.5%;
+  height: 86%;
+  background: linear-gradient(97deg, #0a0810 0%, #1d1826 55%, #100d18 100%);
+  border-left: 1px solid rgba(255, 233, 196, 0.07);
+  pointer-events: none;
+}
+
+/* The door card below the glass, with the sill catching the last light. */
+#door {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 19%;
+  pointer-events: none;
+  background: linear-gradient(180deg, #221c2d 0%, var(--door) 34%, #0a0811 100%);
+  border-top: 2px solid var(--sill);
+  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.8);
+}
+
+#door::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 22%;
+  top: 44%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 233, 196, 0.16), transparent);
+}
+
+/* Glass: a vignette plus one low reflection streak. */
+#glass {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border-radius: var(--frame-radius);
   background:
-    linear-gradient(104deg, transparent 38%, rgba(255, 233, 196, 0.05) 42%, transparent 47%),
-    radial-gradient(130% 110% at 50% 45%, transparent 55%, rgba(4, 3, 10, 0.75) 100%);
+    linear-gradient(104deg, transparent 38%, rgba(255, 233, 196, 0.045) 42%, transparent 47%),
+    radial-gradient(130% 110% at 50% 45%, transparent 52%, rgba(4, 3, 10, 0.8) 100%);
+}
+
+/* The zone where the car is about to leave you behind. */
+#danger {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(226, 86, 79, 0.62), rgba(226, 86, 79, 0));
 }
 
 #hud {
   position: absolute;
-  top: 14px;
-  left: 18px;
+  top: 13px;
+  left: 17px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   pointer-events: none;
 }
 
 .readout {
   font-family: 'Barlow Condensed', 'Archivo Narrow', sans-serif;
   font-weight: 700;
-  font-size: clamp(30px, 5.2vw, 56px);
-  line-height: 0.88;
-  letter-spacing: 0.01em;
+  font-size: clamp(28px, 4.6vw, 50px);
+  line-height: 0.86;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
 }
 
 .readout .unit {
-  font-size: 0.42em;
+  font-size: 0.4em;
   margin-left: 0.18em;
   color: var(--muted);
 }
 
-.gauge {
-  width: clamp(90px, 15vw, 150px);
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(255, 233, 196, 0.16);
-  overflow: hidden;
-}
-
-#speed-fill {
-  height: 100%;
-  width: 100%;
-  transform-origin: left center;
-  transform: scaleX(0);
-  background: var(--ink);
-  transition: background-color 140ms linear;
-}
-
-#speed-fill[data-losing='true'] {
-  background: var(--alarm);
-}
-
 #trick {
   font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 600;
-  font-size: clamp(14px, 2.2vw, 22px);
+  font-weight: 700;
+  font-size: clamp(15px, 2.1vw, 24px);
   letter-spacing: 0.16em;
-  color: var(--ink);
   opacity: 0;
   transition: opacity 90ms linear;
 }
@@ -125,9 +165,9 @@ body {
   align-content: center;
   justify-items: center;
   gap: 6px;
-  padding: 24px;
+  padding: 22px;
   text-align: center;
-  background: rgba(8, 7, 13, 0.62);
+  background: rgba(8, 7, 13, 0.66);
   backdrop-filter: blur(3px);
   opacity: 0;
   visibility: hidden;
@@ -143,7 +183,7 @@ body {
 .kicker {
   margin: 0;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--muted);
@@ -153,7 +193,7 @@ body {
   margin: 0;
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 700;
-  font-size: clamp(30px, 6vw, 62px);
+  font-size: clamp(28px, 5.4vw, 58px);
   line-height: 1;
   text-wrap: balance;
   font-variant-numeric: tabular-nums;
@@ -161,13 +201,13 @@ body {
 
 #overlay-body {
   margin: 0;
-  max-width: 34ch;
-  font-size: clamp(13px, 1.7vw, 16px);
+  max-width: 36ch;
+  font-size: clamp(12px, 1.6vw, 16px);
   color: var(--muted);
 }
 
 .keys {
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   font-size: 12px;
   color: var(--muted);
 }
@@ -178,5 +218,10 @@ kbd {
   padding: 2px 7px;
   border-radius: 5px;
   border: 1px solid rgba(255, 233, 196, 0.24);
-  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #overlay {
+    transition: none;
+  }
 }

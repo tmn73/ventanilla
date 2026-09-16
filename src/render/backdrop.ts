@@ -7,8 +7,9 @@ import {
   PlaneGeometry,
   Scene,
 } from 'three'
-import { VIEW_WIDTH } from '../game/constants'
-import { RIDGE_FAR, RIDGE_NEAR, skyAt } from './palette'
+import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
+import { Color as ThreeColor, InstancedMesh, Object3D } from 'three'
+import { RIDGE_FAR, RIDGE_NEAR, TUFT, VERGE, skyAt } from './palette'
 
 const RIDGE_SPAN = 240
 const RIDGE_SAMPLES = 200
@@ -73,8 +74,14 @@ function ridgeLayer(scene: Scene, color: string, amplitude: number, baseline: nu
   return { near, far, parallax }
 }
 
+const MAX_TUFTS = 120
+const TUFT_SPACING = 1.15
+
 export class Backdrop {
   private sky: Mesh
+  private verge: Mesh
+  private tufts: InstancedMesh
+  private proxy = new Object3D()
   private layers: Layer[]
 
   constructor(scene: Scene) {
@@ -96,6 +103,19 @@ export class Backdrop {
     this.sky.frustumCulled = false
     scene.add(this.sky)
 
+    this.verge = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: VERGE }))
+    this.verge.position.z = -3
+    this.verge.frustumCulled = false
+    scene.add(this.verge)
+
+    this.tufts = new InstancedMesh(
+      new PlaneGeometry(1, 1),
+      new MeshBasicMaterial({ color: new ThreeColor(TUFT) }),
+      MAX_TUFTS,
+    )
+    this.tufts.frustumCulled = false
+    scene.add(this.tufts)
+
     this.layers = [
       ridgeLayer(scene, RIDGE_FAR, 7.5, 6.5, 0.21, 0.1, -50),
       ridgeLayer(scene, RIDGE_NEAR, 4.2, 2.4, 0.67, 0.26, -40),
@@ -104,6 +124,25 @@ export class Backdrop {
 
   update(camLeft: number, viewHeight: number): void {
     const top = viewHeight * 0.76
+
+    // The verge. Touching it ends the run, so it is drawn as a flat dead floor.
+    const depth = 40
+    this.verge.scale.set(VIEW_WIDTH * 1.1, depth, 1)
+    this.verge.position.set(camLeft + VIEW_WIDTH / 2, DEATH_Y - depth / 2, -3)
+
+    let planted = 0
+    const first = Math.ceil((camLeft - 1) / TUFT_SPACING) * TUFT_SPACING
+    for (let x = first; x < camLeft + VIEW_WIDTH + 1 && planted < MAX_TUFTS; x += TUFT_SPACING) {
+      // A position hash keeps every tuft in the same place from frame to frame.
+      const hash = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
+      const height = 0.2 + hash * 0.42
+      this.proxy.position.set(x, DEATH_Y + height / 2, -2.5)
+      this.proxy.scale.set(0.1, height, 1)
+      this.proxy.updateMatrix()
+      this.tufts.setMatrixAt(planted++, this.proxy.matrix)
+    }
+    this.tufts.count = planted
+    this.tufts.instanceMatrix.needsUpdate = true
     this.sky.scale.set(VIEW_WIDTH * 1.05, top, 1)
     this.sky.position.set(camLeft + VIEW_WIDTH / 2, top / 2, -60)
 

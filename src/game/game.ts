@@ -5,7 +5,7 @@ import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
 import type { Input } from '../input'
 
-export type Phase = 'ready' | 'running' | 'dead'
+export type Phase = 'ready' | 'running' | 'falling' | 'dead'
 
 export class Game {
   phase: Phase = 'ready'
@@ -17,6 +17,7 @@ export class Game {
   readonly skater = new Skater()
 
   private rng = mulberry32(0)
+  private startX = 0
 
   constructor(private seedLabel: string) {
     const draw = () => this.rng()
@@ -27,45 +28,34 @@ export class Game {
   start(): void {
     this.rng = mulberry32(seedFrom(this.seedLabel))
     this.car.reset()
-    this.road.reset()
+    this.road.reset(this.car.x)
     this.road.ensureAhead(this.car.x)
     this.skater.reset(this.car.x)
+    this.startX = this.car.x
     this.distance = 0
     this.phase = 'running'
   }
 
   step(dt: number, input: Input): void {
-    if (this.phase !== 'running') return
+    if (this.phase !== 'running' && this.phase !== 'falling') return
 
     this.car.step(dt)
     this.road.step(dt)
     this.road.ensureAhead(this.car.x)
     this.road.prune(this.car.x)
-    this.skater.step(dt, this.road, input)
+    this.skater.step(dt, this.road, input, this.car.x)
 
-    const ceiling = this.car.speed + C.SPEED_LEAD_CAP
-    if (this.skater.vx > ceiling) this.skater.vx = ceiling
-
-    const place = this.framePosition
-    if (place > C.LEAD_LIMIT) {
-      this.skater.x = this.camLeft + C.LEAD_LIMIT * C.VIEW_WIDTH
-      if (this.skater.vx > this.car.speed) this.skater.vx = this.car.speed
-    }
-    if (place < C.TRAIL_LIMIT) {
+    if (this.phase === 'running') {
+      this.distance = this.skater.x - this.startX
+      if (this.skater.fell) this.phase = 'falling'
+    } else if (this.skater.fallTime >= C.FALL_GRACE) {
       this.phase = 'dead'
       this.best = Math.max(this.best, this.distance)
     }
-
-    this.distance = Math.max(this.distance, this.skater.x)
   }
 
   /** World x of the left edge of the window. */
   get camLeft(): number {
     return this.car.x - C.VIEW_WIDTH * C.ANCHOR
-  }
-
-  /** Where the skater sits in the window, 0 at the left edge and 1 at the right. */
-  get framePosition(): number {
-    return (this.skater.x - this.camLeft) / C.VIEW_WIDTH
   }
 }

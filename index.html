@@ -10,23 +10,25 @@
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
-    <div id="stage">
-      <canvas id="view"></canvas>
-      <div id="frame"></div>
-      <div id="hud">
-        <div class="readout">
-          <span id="distance">0</span><span class="unit">m</span>
+    <div id="cabin">
+      <div id="stage">
+        <canvas id="view"></canvas>
+        <div id="danger"></div>
+        <div id="glass"></div>
+        <div id="hud">
+          <div class="readout"><span id="distance">0</span><span class="unit">m</span></div>
+          <div id="trick"></div>
         </div>
-        <div class="gauge"><div id="speed-fill"></div></div>
-        <div id="trick"></div>
+        <div id="overlay">
+          <p class="kicker">Ventanilla</p>
+          <h1 id="overlay-title">Regarde par la fenetre</h1>
+          <p id="overlay-body">La voiture ne t'attend pas.</p>
+          <p class="keys"><kbd>Espace</kbd> sauter &middot; <kbd>Bas</kbd> plonger</p>
+        </div>
       </div>
-      <div id="overlay">
-        <p class="kicker">Ventanilla</p>
-        <h1 id="overlay-title">Regarde par la fenetre</h1>
-        <p id="overlay-body">La voiture avance sans toi. Grind pour tenir le rythme.</p>
-        <p class="keys"><kbd>Espace</kbd> sauter &middot; <kbd>Bas</kbd> plonger &middot; ou touche l'ecran</p>
-      </div>
+      <div id="pillar"></div>
+      <div id="door"></div>
     </div>
-    <script type="module" src="./src/main.ts"></script>
   </body>
+  <script type="module" src="./src/main.ts"></script>
 </html>

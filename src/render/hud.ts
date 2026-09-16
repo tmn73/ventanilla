@@ -8,7 +8,6 @@ function element(id: string): HTMLElement {
 
 export class Hud {
   private distance = element('distance')
-  private speedFill = element('speed-fill')
   private trick = element('trick')
   private overlay = element('overlay')
   private title = element('overlay-title')
@@ -16,11 +15,6 @@ export class Hud {
 
   update(game: Game): void {
     this.distance.textContent = Math.floor(game.distance).toString()
-
-    const pace = game.skater.vx / Math.max(1, game.car.speed)
-    const fill = Math.max(0, Math.min(1, pace / 1.4))
-    this.speedFill.style.transform = `scaleX(${fill.toFixed(3)})`
-    this.speedFill.dataset.losing = pace < 1 ? 'true' : 'false'
 
     const age = game.skater.trickAge
     if (age < 1.1 && game.skater.trick) {
@@ -33,16 +27,13 @@ export class Hud {
 
   showReady(): void {
     this.title.textContent = 'Regarde par la fenetre'
-    this.body.textContent = 'La voiture avance sans toi. Grind pour tenir le rythme.'
+    this.body.textContent = "La voiture ne t'attend pas."
     this.overlay.dataset.visible = 'true'
   }
 
   showDead(distance: number, best: number): void {
     this.title.textContent = `${Math.floor(distance)} m`
-    this.body.textContent =
-      best > distance
-        ? `La voiture t'a seme. Ton record tient a ${Math.floor(best)} m.`
-        : 'La voiture t a seme. Nouveau record.'
+    this.body.textContent = best > distance ? `Record ${Math.floor(best)} m` : 'Nouveau record'
     this.overlay.dataset.visible = 'true'
   }
 

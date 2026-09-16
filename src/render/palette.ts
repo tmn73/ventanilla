@@ -1,6 +1,6 @@
 import { Color } from 'three'
 
-/** Dusk over the cordillera. Everything on the roadside reads as silhouette. */
+/** Dusk over the cordillera. Everything beside the road reads as silhouette. */
 export const SKY_STOPS: Array<[number, string]> = [
   [0.0, '#f5c07a'],
   [0.12, '#e08a4e'],
@@ -11,18 +11,38 @@ export const SKY_STOPS: Array<[number, string]> = [
 
 export const RIDGE_FAR = '#2e2a4d'
 export const RIDGE_NEAR = '#1b1a33'
+export const VERGE = '#0a0912'
+export const TUFT = '#161128'
 
 export const SURFACE_COLOR: Record<string, string> = {
-  ground: '#0b0a14',
-  rail: '#15131f',
-  wall: '#100f1a',
-  wire: '#2b2740',
-  vehicle: '#241a2e',
+  rail: '#16121f',
+  wall: '#120f1b',
+  wire: '#241f36',
+  vehicle: '#261a30',
 }
 
-export const SKATER = '#ffe9c4'
+/** A lit lip on every ridable top edge, so the player can read the line. */
+export const EDGE_COLOR: Record<string, string> = {
+  rail: '#8f7bb0',
+  wall: '#a08bc4',
+  wire: '#d8c2f0',
+  vehicle: '#c08a6a',
+}
 
-/** Samples the gradient at t, where 0 is the horizon and 1 is the top of the sky. */
+export const POST_COLOR: Record<string, string> = {
+  rail: '#0d0b14',
+  wire: '#100d18',
+}
+
+/** Sparks get brighter as the lane gets higher, which is the only hint needed. */
+export const SPARK_COLOR = ['#ffd9a0', '#ffc879', '#fff3d2']
+export const DUST = '#6b5a52'
+
+export const WHEEL_COLOR = '#0a0810'
+export const SKATER = '#ffe9c4'
+export const BOARD = '#e8b478'
+
+/** Samples the sky at t, where 0 is the horizon and 1 is the top. */
 export function skyAt(t: number, out: Color): Color {
   let lower = SKY_STOPS[0]!
   let upper = SKY_STOPS[SKY_STOPS.length - 1]!
