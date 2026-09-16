@@ -2,7 +2,7 @@ import { OrthographicCamera, Scene, WebGLRenderer } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the verge sits in the window, measured from the bottom. */
-const HORIZON = 0.24
+const HORIZON = 0.14
 
 export class Stage {
   readonly renderer: WebGLRenderer

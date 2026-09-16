@@ -11,24 +11,30 @@
   </head>
   <body>
     <div id="cabin">
-      <div id="stage">
-        <canvas id="view"></canvas>
-        <div id="danger"></div>
-        <div id="glass"></div>
-        <div id="hud">
-          <div class="readout"><span id="distance">0</span><span class="unit">m</span></div>
-          <div id="trick"></div>
-        </div>
-        <div id="overlay">
-          <p class="kicker">Ventanilla</p>
-          <h1 id="overlay-title">Regarde par la fenetre</h1>
-          <p id="overlay-body">La voiture ne t'attend pas.</p>
-          <p class="keys"><kbd>Espace</kbd> sauter &middot; <kbd>Bas</kbd> plonger</p>
+      <div id="seal">
+        <div id="stage">
+          <canvas id="view"></canvas>
+          <div id="danger"></div>
+          <div id="glass"></div>
+          <div id="hud">
+            <div class="readout"><span id="distance">0</span><span class="unit">m</span></div>
+            <div id="trick"></div>
+          </div>
+          <div id="overlay">
+            <p class="kicker">Ventanilla</p>
+            <h1 id="overlay-title">Regarde par la fenetre</h1>
+            <p id="overlay-body">La voiture ne t'attend pas.</p>
+            <p class="keys"><kbd>Espace</kbd> sauter &middot; <kbd>Bas</kbd> plonger</p>
+          </div>
         </div>
       </div>
-      <div id="pillar"></div>
-      <div id="door"></div>
+      <div id="door">
+        <div id="armrest">
+          <div id="switches"><span></span><span></span></div>
+        </div>
+      </div>
+      <div id="belt"></div>
     </div>
+    <script type="module" src="./src/main.ts"></script>
   </body>
-  <script type="module" src="./src/main.ts"></script>
 </html>

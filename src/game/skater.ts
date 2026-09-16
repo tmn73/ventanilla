@@ -2,6 +2,8 @@ import * as C from './constants'
 import type { Input } from '../input'
 import type { Road, Segment } from './road'
 
+const GRIND_NAME = ['5-0', '50-50', 'NOSEGRIND']
+
 const LABEL: Record<string, string> = {
   rail: 'RAIL',
   wall: 'MURO',
@@ -18,6 +20,8 @@ export class Skater {
   prevY = 0
 
   support: Segment | null = null
+  /** -1 is a 5-0, 0 is a 50-50, 1 is a nosegrind. */
+  grind = 0
   airTime = 0
   grindTime = 0
   spin = 0
@@ -36,6 +40,7 @@ export class Skater {
     this.prevY = this.y
     this.vy = 0
     this.support = null
+    this.grind = 0
     this.airTime = 0
     this.grindTime = 0
     this.spin = 0
@@ -69,6 +74,8 @@ export class Skater {
 
     if (this.support) this.ride(dt, this.support, input)
     else this.fly(dt, road, input)
+
+    if (!this.fell && road.blockedAt(this.x, this.y)) this.crash()
   }
 
   private ride(dt: number, seg: Segment, input: Input): void {
@@ -78,9 +85,16 @@ export class Skater {
     this.airTime = 0
     this.spin = 0
 
+    if (input.lean !== this.grind) {
+      this.grind = input.lean
+      this.trick = GRIND_NAME[this.grind + 1] ?? '50-50'
+      this.trickAge = 0
+    }
+
     if (input.jumpPressed) {
       this.vy = C.JUMP_SPEED
       this.support = null
+      this.grind = 0
       this.cutApplied = false
       this.grindTime = 0
     }
@@ -94,7 +108,6 @@ export class Skater {
       this.vy *= C.JUMP_CUT
       this.cutApplied = true
     }
-    this.spin += dt * 7
     this.y += this.vy * dt
 
     if (this.vy <= 0) {
@@ -111,11 +124,18 @@ export class Skater {
     }
   }
 
+  private crash(): void {
+    this.fell = true
+    this.support = null
+    this.vy = 3.2
+  }
+
   private land(seg: Segment): void {
     this.y = seg.y
     this.vy = 0
     this.support = seg
     this.spin = 0
+    this.grind = 0
     this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
     this.trickAge = 0
     this.airTime = 0

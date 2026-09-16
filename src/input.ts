@@ -3,6 +3,8 @@ export class Input {
   jumpHeld = false
   jumpPressed = false
   dive = false
+  /** -1 leans back for a 5-0, +1 leans forward for a nosegrind. */
+  lean = 0
 
   private pending = false
   private detach: Array<() => void> = []
@@ -19,10 +21,14 @@ export class Input {
         e.preventDefault()
         this.dive = true
       }
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = -1
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = 1
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') this.jumpHeld = false
       if (e.code === 'ArrowDown' || e.code === 'KeyS') this.dive = false
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = this.lean === -1 ? 0 : this.lean
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = this.lean === 1 ? 0 : this.lean
     }
 
     const pointerDown = (e: PointerEvent) => {

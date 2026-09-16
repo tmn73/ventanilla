@@ -1,13 +1,11 @@
 :root {
   --interior: #08070d;
-  --trim: #17141f;
-  --trim-edge: #2a2435;
-  --door: #120f19;
-  --sill: #4a3f5c;
+  --door: #141019;
+  --door-hi: #2a2233;
+  --sill: #5a4c6e;
   --ink: #ffe9c4;
   --muted: #9b8fa8;
   --alarm: #e2564f;
-  --gain: #9fe0a8;
 }
 
 * {
@@ -32,33 +30,35 @@ body {
   user-select: none;
 }
 
-/* The door card around the glass. This is what says "car" before anything moves. */
 #cabin {
   position: relative;
-  width: min(100vw - 20px, (100vh - 20px) * 16 / 10);
-  aspect-ratio: 16 / 10;
-  border-radius: 18px 40px 14px 14px;
+  width: min(100vw - 20px, (100vh - 20px) * 16 / 9.6);
+  aspect-ratio: 16 / 9.6;
+  border-radius: 14px 40px 12px 12px;
   overflow: hidden;
-  background: linear-gradient(176deg, #1a1622 0%, var(--door) 46%, #0b0911 100%);
-  box-shadow:
-    0 0 0 2px #241f30,
-    0 40px 90px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(170deg, #201a2a 0%, var(--door) 44%, #0a0810 100%);
+  box-shadow: 0 0 0 2px #241f30, 0 36px 84px rgba(0, 0, 0, 0.72);
+}
+
+/* Rear door glass: a rectangle whose rear top corner is heavily rounded. */
+#seal {
+  position: absolute;
+  top: 2.4%;
+  left: 2%;
+  right: 2%;
+  height: 84%;
+  border-radius: 10px 52px 16px 10px;
+  background: linear-gradient(180deg, #4a4058 0%, #191322 55%);
+  padding: 7px;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
 #stage {
   position: absolute;
-  top: 3.4%;
-  left: 2.6%;
-  right: 2.6%;
-  height: 78%;
-  border-radius: 10px 30px 16px 10px;
+  inset: 7px;
+  border-radius: 6px 46px 12px 6px;
   overflow: hidden;
   cursor: pointer;
-  /* Rubber seal, then the bright lip of the sill. */
-  box-shadow:
-    0 0 0 7px #0b0912,
-    0 0 0 9px #2c2539,
-    0 6px 16px rgba(0, 0, 0, 0.8);
 }
 
 #view {
@@ -67,39 +67,56 @@ body {
   height: 100%;
 }
 
-/* The B pillar, cutting the right edge of the window. */
-#pillar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 7.5%;
-  height: 86%;
-  background: linear-gradient(97deg, #0a0810 0%, #1d1826 55%, #100d18 100%);
-  border-left: 1px solid rgba(255, 233, 196, 0.07);
-  pointer-events: none;
-}
-
-/* The door card below the glass, with the sill catching the last light. */
+/* The door card. A thin band, not a wall. */
 #door {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 19%;
+  height: 13.5%;
   pointer-events: none;
-  background: linear-gradient(180deg, #221c2d 0%, var(--door) 34%, #0a0811 100%);
+  background: linear-gradient(180deg, var(--door-hi) 0%, var(--door) 40%, #09070f 100%);
   border-top: 2px solid var(--sill);
-  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.8);
 }
 
-#door::after {
-  content: '';
+#armrest {
   position: absolute;
-  left: 8%;
-  right: 22%;
-  top: 44%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 233, 196, 0.16), transparent);
+  left: 7%;
+  width: 34%;
+  top: 26%;
+  height: 46%;
+  border-radius: 4px 10px 10px 4px;
+  background: linear-gradient(180deg, #2c2438 0%, #171121 70%, #0c0913 100%);
+  box-shadow: 0 -1px 0 rgba(255, 233, 196, 0.12), 0 5px 12px rgba(0, 0, 0, 0.55);
+}
+
+#switches {
+  position: absolute;
+  left: 9%;
+  top: 28%;
+  display: flex;
+  gap: 5px;
+}
+
+#switches span {
+  width: 13px;
+  height: 5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #4a4058 0%, #17121f 100%);
+}
+
+/* The seatbelt, crossing the near edge. Foreground is what sells an interior. */
+#belt {
+  position: absolute;
+  top: -10%;
+  left: -1.5%;
+  width: 3.4%;
+  height: 112%;
+  transform: rotate(9deg);
+  transform-origin: top center;
+  background: linear-gradient(90deg, #120e1c 0%, #2b2236 45%, #100c18 100%);
+  box-shadow: 3px 0 14px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
 }
 
 /* Glass: a vignette plus one low reflection streak. */
@@ -108,26 +125,26 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(104deg, transparent 38%, rgba(255, 233, 196, 0.045) 42%, transparent 47%),
-    radial-gradient(130% 110% at 50% 45%, transparent 52%, rgba(4, 3, 10, 0.8) 100%);
+    linear-gradient(104deg, transparent 36%, rgba(255, 233, 196, 0.05) 41%, transparent 47%),
+    radial-gradient(135% 115% at 50% 45%, transparent 52%, rgba(4, 3, 10, 0.8) 100%);
 }
 
-/* The zone where the car is about to leave you behind. */
 #danger {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  width: 30%;
+  width: 34%;
   pointer-events: none;
   opacity: 0;
-  background: linear-gradient(90deg, rgba(226, 86, 79, 0.62), rgba(226, 86, 79, 0));
+  transition: opacity 120ms linear;
+  background: linear-gradient(90deg, rgba(226, 86, 79, 0.6), rgba(226, 86, 79, 0));
 }
 
 #hud {
   position: absolute;
-  top: 13px;
-  left: 17px;
+  top: 14px;
+  left: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;

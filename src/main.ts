@@ -73,7 +73,8 @@ startLoop(
     // in the dirt. Nothing else tells the player which surface is worth taking.
     if (skater.support && game.phase === 'running') {
       const lane = skater.support.lane
-      particles.emit(frameDt, x - 0.45, y, SPARK_RATE[lane] ?? 40, false, SPARK_COLOR[lane] ?? '#ffd9a0')
+      const truck = skater.grind < 0 ? -0.35 : skater.grind > 0 ? 0.35 : -0.45
+      particles.emit(frameDt, x + truck, y, SPARK_RATE[lane] ?? 40, false, SPARK_COLOR[lane] ?? '#ffd9a0')
     } else if (game.phase === 'falling' && skater.fallTime < 0.3) {
       particles.emit(frameDt, x, y, 180, true, DUST)
     }
@@ -86,8 +87,10 @@ startLoop(
     const shakeX = Math.sin(now * 19.4) * 0.04 * jolt
 
     backdrop.update(camLeft, stage.viewHeight)
-    roadView.update(road.segments, camLeft)
-    skaterView.update(x, y, skater.support ? 0 : skater.spin, grounded, Math.sin(x * 1.7))
+    roadView.update(road.segments, road.obstacles, camLeft, 0.5 + 0.5 * Math.sin(now * 5.2))
+    // He jumps straight. Rotation is for the fall, and later for tricks.
+    const spin = game.phase === 'falling' ? skater.spin : 0
+    skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind)
     hud.update(game)
     danger.style.opacity = game.phase === 'falling' ? '0.85' : '0'
     stage.render(camLeft, shakeX, shakeY)

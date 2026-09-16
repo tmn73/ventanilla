@@ -9,7 +9,7 @@ import {
 } from 'three'
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
 import { Color as ThreeColor, InstancedMesh, Object3D } from 'three'
-import { RIDGE_FAR, RIDGE_NEAR, TUFT, VERGE, skyAt } from './palette'
+import { RIDGE_FAR, RIDGE_MID, RIDGE_NEAR, TUFT, VERGE, skyAt } from './palette'
 
 const RIDGE_SPAN = 240
 const RIDGE_SAMPLES = 200
@@ -117,8 +117,9 @@ export class Backdrop {
     scene.add(this.tufts)
 
     this.layers = [
-      ridgeLayer(scene, RIDGE_FAR, 7.5, 6.5, 0.21, 0.1, -50),
-      ridgeLayer(scene, RIDGE_NEAR, 4.2, 2.4, 0.67, 0.26, -40),
+      ridgeLayer(scene, RIDGE_FAR, 8.2, 7.5, 0.21, 0.07, -50),
+      ridgeLayer(scene, RIDGE_MID, 5.4, 4.2, 0.44, 0.15, -45),
+      ridgeLayer(scene, RIDGE_NEAR, 3.4, 1.9, 0.67, 0.27, -40),
     ]
   }
 
