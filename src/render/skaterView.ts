@@ -39,8 +39,8 @@ const DECK_Y = -0.88
 const DECK_HALF = 0.42
 const DECK_THICK = 0.06
 /** The kicked tail and nose are the silhouette everyone recognises. */
-const KICK_IN = 0.14
-const KICK_RISE = 0.1
+const KICK_IN = 0.15
+const KICK_RISE = 0.06
 const TRUCK_X = 0.24
 const TRUCK_DROP = 0.075
 const WHEEL_RADIUS = 0.045
