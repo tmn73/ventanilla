@@ -13,8 +13,10 @@ import { Path } from './render/path'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
+import { TouchTrail } from './render/touchTrail'
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
+const trailCanvas = document.getElementById('trail') as HTMLCanvasElement
 const surface = document.getElementById('stage') as HTMLElement
 
 // A fresh road every run. ?seed=anything pins one road so it can be replayed.
@@ -37,6 +39,7 @@ const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
+const trail = new TouchTrail(trailCanvas)
 
 // One interruption, one screen: the controls sheet is also the pause screen.
 let paused = false
@@ -54,7 +57,10 @@ mountHelp(
   },
 )
 
-window.addEventListener('resize', () => stage.resize())
+window.addEventListener('resize', () => {
+  stage.resize()
+  trail.resize()
+})
 
 let grounded = 1
 let lastFrame = performance.now() / 1000
@@ -142,6 +148,7 @@ startLoop(
     )
     hud.setStance(skater.stanceWord)
     hud.update(skater)
+    trail.update(input.strokes, now * 1000)
     stage.render(eye.x, camY, eye.z, camHeading)
   },
   FIXED_DT,

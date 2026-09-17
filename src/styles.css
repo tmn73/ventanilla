@@ -265,3 +265,12 @@ body {
   line-height: 1.45;
   color: var(--muted);
 }
+
+/* The gesture trail sits over the game and never takes a touch of its own. */
+#trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

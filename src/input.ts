@@ -17,6 +17,28 @@ const LOAD_GRACE = 400
 const TRAILING = -1
 const LEADING = 1
 
+/** One finger's path, kept so it can be drawn back at the player. */
+export interface Stroke {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  /** What the swipe was read as, or empty when it was read as nothing. */
+  label: string
+  at: number
+  /** True while the finger is still down and the path is still growing. */
+  live: boolean
+}
+
+/** What a swipe was understood to be, in the words the game would use. */
+export function swipeLabel(move: Swipe): string {
+  if (move.flip !== undefined) return move.flip === KICKFLIP ? 'kickflip' : 'heelflip'
+  if (move.shove !== undefined) return move.shove === FRONTSIDE_SHOVE ? 'fs shove' : 'shove-it'
+  if (move.popEnd !== undefined) return 'pop'
+  if (move.push) return 'push'
+  return ''
+}
+
 /** What one flick off one foot asks for. Nothing here touches the game. */
 export interface Swipe {
   /** Which end of the board the pop comes off, if it pops at all. */
@@ -100,10 +122,12 @@ export class Input {
   private latched = 0
   private touches = new Map<
     number,
-    { x: number; y: number; side: number; at: number; spent: boolean }
+    { x: number; y: number; side: number; at: number; spent: boolean; stroke: Stroke }
   >()
   /** When each half last had a foot on it, so a lift is not instantly gone. */
   private leftAt = new Map<number, number>()
+  /** The last few finger paths, for drawing back what the hand actually did. */
+  readonly strokes: Stroke[] = []
   /** Which end the current crouch is loading, kept until the pop spends it. */
   private crouchLeading = false
   private detach: Array<() => void> = []
@@ -225,19 +249,24 @@ export class Input {
 
     const pointerDown = (e: PointerEvent) => {
       e.preventDefault()
-      this.touches.set(e.pointerId, {
+      const touch = {
         x: e.clientX,
         y: e.clientY,
         side: half(e.clientX),
         at: performance.now(),
         spent: false,
-      })
+        stroke: this.openStroke(e.clientX, e.clientY),
+      }
+      this.touches.set(e.pointerId, touch)
       this.jumpHeld = true
     }
 
     const pointerMove = (e: PointerEvent) => {
       const touch = this.touches.get(e.pointerId)
-      if (!touch || touch.spent) return
+      if (!touch) return
+      touch.stroke.x1 = e.clientX
+      touch.stroke.y1 = e.clientY
+      if (touch.spent) return
       const dx = e.clientX - touch.x
       const dy = e.clientY - touch.y
       if (Math.hypot(dx, dy) < FLICK_PIXELS) return
@@ -250,16 +279,22 @@ export class Input {
       if (sideways && touch.side === LEADING) {
         if (performance.now() - touch.at < 110) return
         this.dragRotate = Math.abs(angle) < 30 ? 1 : -1
+        touch.stroke.label = 'spin'
         return
       }
 
       touch.spent = true
-      this.readSwipe(angle, touch.side)
+      touch.stroke.label = this.readSwipe(angle, touch.side)
+      touch.stroke.at = performance.now()
     }
 
     const pointerUp = (e: PointerEvent) => {
       const touch = this.touches.get(e.pointerId)
-      if (touch && !touch.spent) this.leftAt.set(touch.side, performance.now())
+      if (touch) {
+        if (!touch.spent) this.leftAt.set(touch.side, performance.now())
+        touch.stroke.live = false
+        touch.stroke.at = performance.now()
+      }
       this.touches.delete(e.pointerId)
       if (this.touches.size === 0) {
         this.jumpHeld = false
@@ -270,6 +305,7 @@ export class Input {
     const blur = () => {
       this.held.clear()
       this.jumpHeld = false
+      for (const touch of this.touches.values()) touch.stroke.live = false
       this.touches.clear()
       this.leftAt.clear()
       this.dragRotate = 0
@@ -308,8 +344,17 @@ export class Input {
    * the same motion, which is what the foot is doing anyway. The trailing foot
    * also scoops and pushes; the leading one drags the board to a stop.
    */
-  private readSwipe(angle: number, side: number): void {
-    const move = swipeAction(angle, side, this.loaded(-side))
+  /** Opens a path for a finger and retires the oldest when there are too many. */
+  private openStroke(x: number, y: number): Stroke {
+    const stroke: Stroke = { x0: x, y0: y, x1: x, y1: y, label: '', at: performance.now(), live: true }
+    this.strokes.push(stroke)
+    while (this.strokes.length > 8) this.strokes.shift()
+    return stroke
+  }
+
+  private readSwipe(angle: number, side: number): string {
+    const loaded = this.loaded(-side)
+    const move = swipeAction(angle, side, loaded)
     if (move.popEnd !== undefined) {
       this.crouchLeading = move.popEnd === LEADING
       this.pop()
@@ -318,6 +363,12 @@ export class Input {
     if (move.shove !== undefined) this.shove(move.shove)
     if (move.push) this.pushPending = true
     if (move.latch !== undefined) this.latched = move.latch
+
+    // An upward flick with nothing holding the other end is the one refusal
+    // worth explaining, because it looks exactly like the gesture that works.
+    const label = swipeLabel(move)
+    if (label) return label
+    return !loaded && angle >= 20 && angle < 160 ? 'other foot?' : ''
   }
 
 
