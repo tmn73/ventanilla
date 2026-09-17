@@ -101,8 +101,10 @@ startLoop(
     camHeading += (heading - camHeading) * 0.09
     path.place(camS, 0, eye)
     // Park the frame so a local x of camS lands on the camera's point.
-    frame.position.set(eye.x - camS * Math.cos(camHeading), 0, eye.z - camS * Math.sin(camHeading))
-    frame.rotation.y = -camHeading
+    // The frame carries the ground, so it takes the road's true heading. Only
+    // the camera lags; letting the ground lag too swings sand over the road.
+    frame.position.set(eye.x - camS * Math.cos(heading), 0, eye.z - camS * Math.sin(heading))
+    frame.rotation.y = -heading
 
     path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))

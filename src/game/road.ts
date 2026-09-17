@@ -201,19 +201,17 @@ export class Road {
     this.headX += length
   }
 
-  /** A rail over flat ground: level, uphill or downhill, any length. */
+  /**
+   * A flat handrail over flat ground, at any length. A rail that climbs away
+   * from the pavement ends metres up in the air on stilts, so a slope only
+   * belongs to a rail that has a stair set descending under it.
+   */
   private railSpot(scale: number): void {
     const length = 7 + scale * range(this.rng, 8, 20)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
-    const roll = this.rng()
-    const swing = 0.8 + scale * 2.6
-    const drop = roll < 0.4 ? 0 : roll < 0.78 ? -range(this.rng, 0.6, swing) : range(this.rng, 0.5, swing * 0.7)
-    const y0 = this.groundY + RAIL_HEIGHT + (drop < 0 ? -drop : 0)
-    this.push(this.headX + 0.8, this.headX + length - 0.8, y0, y0 + drop, 'rail', false)
-
-    // No clutter under the rail. A hazard the player is grinding over still
-    // reads as a hit, and dying while riding above something is not fair.
+    const y = this.groundY + RAIL_HEIGHT
+    this.push(this.headX + 0.8, this.headX + length - 0.8, y, y, 'rail', false)
     this.headX += length
   }
 
