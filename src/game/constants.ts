@@ -2,6 +2,12 @@ export const FIXED_DT = 1 / 120
 
 /** Where the pavement starts. Everything else is measured from it. */
 export const LANE_Y = [2.2]
+/**
+ * Sea level, fixed. Anchoring the beach to the pavement made the whole world
+ * slide down a stair set with the player, which is backwards: he descends
+ * toward the water, the water does not follow him.
+ */
+export const WORLD_FLOOR = -6.6
 export const DEATH_Y = 0
 
 /** How much road the window shows at once, in metres. */

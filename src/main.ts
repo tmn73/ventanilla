@@ -111,7 +111,7 @@ startLoop(
     path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
-    backdrop.update(camLeft, stage.viewHeight, groundRef, eye.x, eye.z)
+    backdrop.update(camLeft, stage.viewHeight, eye.x, eye.z)
     roadView.update(road.segments, camLeft)
     skaterView.update(
       feet.x,
@@ -128,7 +128,7 @@ startLoop(
       skater.absorb,
       Math.min(1, skater.pushTime / 0.18),
     )
-    hud.update(game)
+    hud.update()
     stage.render(eye.x, camY, eye.z, camHeading)
   },
   FIXED_DT,

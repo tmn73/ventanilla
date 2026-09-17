@@ -1,8 +1,6 @@
 import { Box3, Group, Object3D, Vector3 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import palmTallUrl from '../models/tree_palmDetailedTall.glb'
-import palmShortUrl from '../models/tree_palmDetailedShort.glb'
-import palmBendUrl from '../models/tree_palmBend.glb'
 import rockLargeUrl from '../models/rock_largeB.glb'
 import rockSmallUrl from '../models/rock_smallC.glb'
 import grassUrl from '../models/grass_large.glb'
@@ -24,21 +22,19 @@ import blockWideBUrl from '../models/low-detail-building-wide-b.glb'
  * runs off the top of the frame, which is what a street does.
  */
 const CATALOGUE = {
-  palmTall: { url: palmTallUrl, height: 4.6, copies: 8 },
-  palmShort: { url: palmShortUrl, height: 3.8, copies: 8 },
-  palmBend: { url: palmBendUrl, height: 4.4, copies: 8 },
-  rockLarge: { url: rockLargeUrl, height: 1.1, copies: 8 },
-  rockSmall: { url: rockSmallUrl, height: 0.45, copies: 12 },
-  grass: { url: grassUrl, height: 0.7, copies: 24 },
+  palmTall: { url: palmTallUrl, height: 4.6, copies: 14 },
+  rockLarge: { url: rockLargeUrl, height: 0.5, copies: 8 },
+  rockSmall: { url: rockSmallUrl, height: 0.2, copies: 12 },
+  grass: { url: grassUrl, height: 0.5, copies: 24 },
   parasol: { url: parasolUrl, height: 2.6, copies: 8 },
-  blockA: { url: blockAUrl, width: 7.5, height: 7, copies: 7 },
-  blockC: { url: blockCUrl, width: 7, height: 6, copies: 7 },
-  blockE: { url: blockEUrl, width: 6.5, height: 5.5, copies: 7 },
-  blockH: { url: blockHUrl, width: 8, height: 8.5, copies: 6 },
-  blockJ: { url: blockJUrl, width: 7.5, height: 7.5, copies: 6 },
-  blockL: { url: blockLUrl, width: 7, height: 6.5, copies: 7 },
-  blockWideA: { url: blockWideAUrl, width: 12, height: 0, copies: 7 },
-  blockWideB: { url: blockWideBUrl, width: 13, height: 0, copies: 7 },
+  blockA: { url: blockAUrl, width: 5, height: 7, copies: 7 },
+  blockC: { url: blockCUrl, width: 5, height: 6, copies: 7 },
+  blockE: { url: blockEUrl, width: 5, height: 5.5, copies: 7 },
+  blockH: { url: blockHUrl, width: 5, height: 8.5, copies: 6 },
+  blockJ: { url: blockJUrl, width: 5, height: 7.5, copies: 6 },
+  blockL: { url: blockLUrl, width: 5, height: 6.5, copies: 7 },
+  blockWideA: { url: blockWideAUrl, width: 9, height: 0, copies: 7 },
+  blockWideB: { url: blockWideBUrl, width: 10, height: 0, copies: 7 },
 } as const
 
 export type PropName = keyof typeof CATALOGUE
@@ -52,14 +48,14 @@ class Pool {
   private clones: Object3D[] = []
   private cursor = 0
 
-  constructor(parent: Object3D, source: Object3D, copies: number, scale: number) {
+  constructor(parent: Object3D, source: Object3D, copies: number, scale: number, shadows: boolean) {
     for (let i = 0; i < copies; i++) {
       const clone = source.clone(true)
       clone.scale.setScalar(scale)
       clone.visible = false
       clone.traverse((node) => {
-        node.castShadow = true
-        node.receiveShadow = true
+        node.castShadow = shadows
+        node.receiveShadow = shadows
       })
       parent.add(clone)
       this.clones.push(clone)
@@ -98,7 +94,7 @@ export class Props {
         const size = new Box3().setFromObject(source).getSize(new Vector3())
         const wanted = 'width' in spec ? spec.width : 0
         const scale = wanted > 0 ? wanted / (size.x || 1) : spec.height / (size.y || 1)
-        this.pools.set(name, new Pool(this.root, source, spec.copies, scale))
+        this.pools.set(name, new Pool(this.root, source, spec.copies, scale, !name.startsWith('block')))
       })
     }
   }

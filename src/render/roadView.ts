@@ -9,7 +9,7 @@ import {
   Object3D,
   Scene,
 } from 'three'
-import { VIEW_WIDTH } from '../game/constants'
+import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
 import type { PropName, Props } from './props'
@@ -128,8 +128,11 @@ export class RoadView {
         const edge = BREADTH.flat / 2 - 0.2
         this.strip(segment, -edge, 0.16, 0.42, KERB)
         this.strip(segment, edge, 0.16, 0.42, KERB)
-        this.strip(segment, -edge - 0.14, -0.85, 0.5, WALL, 1.5)
-        this.strip(segment, edge + 0.14, -0.85, 0.5, WALL, 1.5)
+        // The wall runs all the way down to the sand, whatever height the
+        // promenade has climbed to.
+        const wall = Math.max(1, surfaceYAt(segment, segment.x0) - WORLD_FLOOR)
+        this.strip(segment, -edge - 0.14, -wall / 2, 0.5, WALL, wall)
+        this.strip(segment, edge + 0.14, -wall / 2, 0.5, WALL, wall)
       }
     }
 
@@ -266,7 +269,7 @@ export class RoadView {
       if (shape < 0.58) {
         // A planter ring, so the trunk grows out of something.
         this.place(this.boxes, s, ground + 0.11, lateral, 1.5, 0.22, 1.5, KERB)
-        const kind: PropName = jitter < 0.36 ? 'palmTall' : jitter < 0.72 ? 'palmShort' : 'palmBend'
+        const kind: PropName = 'palmTall'
         this.prop(kind, s, ground + 0.2, lateral, jitter * 6.3)
       } else if (shape < 0.82) {
         this.place(this.boxes, s, ground + 0.04, lateral, 2.1, 0.08, 0.78, BENCH_LEG)
@@ -291,9 +294,9 @@ export class RoadView {
 
   /** The town behind the promenade. This is the frame the rest sits inside. */
   private skyline(all: Segment[], camLeft: number, right: number): void {
-    const spacing = 7
-    const first = Math.ceil((camLeft - 30) / spacing) * spacing
-    for (let x = first; x < right + 30; x += spacing) {
+    const spacing = 8
+    const first = Math.ceil((camLeft - 34) / spacing) * spacing
+    for (let x = first; x < right + 34; x += spacing) {
       const ground = this.floorHeight(all, x)
       if (ground === null) continue
 
@@ -309,7 +312,7 @@ export class RoadView {
         name,
         x + jitter * 3,
         ground - 0.14,
-        -14.5 - jitter * 3,
+        -19 - jitter * 7,
         Math.round(jitter * 4) * 1.5708,
       )
     }
