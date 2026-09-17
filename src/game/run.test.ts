@@ -11,6 +11,7 @@ const idle = {
   grind: 0,
   pushing: false,
   braking: false,
+  rotate: 0,
 } as never
 
 test('a run never ends, whatever the road throws up', () => {

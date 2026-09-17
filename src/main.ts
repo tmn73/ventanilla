@@ -75,6 +75,7 @@ startLoop(
       x,
       y,
       lean,
+      skater.yaw,
       grounded,
       Math.sin(x * 1.7),
       skater.grind,

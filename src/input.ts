@@ -12,6 +12,9 @@ export class Input {
   flipPressed = false
   flipSign = KICKFLIP
 
+  /** Held rotation: -1 backside, 1 frontside, 0 straight. */
+  private dragRotate = 0
+  private pressedAt = 0
   private pushPulse = false
   private brakeUntil = 0
   private jumpPending = false
@@ -27,6 +30,16 @@ export class Input {
    * On a rail the arrows choose the grind. Down and up give the two that need
    * depth to read: a feeble hangs the nose over the far side, a smith the near.
    */
+  /**
+   * Rotation is held, never tapped. You spin for as long as you hold it and
+   * you land on whatever angle you stopped at, which is where the skill is.
+   */
+  get rotate(): number {
+    if (this.held.has('KeyA')) return -1
+    if (this.held.has('KeyD')) return 1
+    return this.dragRotate
+  }
+
   /** Held up on the ground, or one flick up. A push is a kick, not a throttle. */
   get pushing(): boolean {
     return this.held.has('ArrowUp') || this.pushPulse
@@ -46,7 +59,7 @@ export class Input {
   }
 
   attach(surface: HTMLElement): void {
-    const arrows = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+    const arrows = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'])
 
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return
@@ -71,25 +84,41 @@ export class Input {
     const pointerDown = (e: PointerEvent) => {
       e.preventDefault()
       this.touchStart = { x: e.clientX, y: e.clientY }
+      this.pressedAt = performance.now()
+      this.dragRotate = 0
       this.ollie()
+    }
+
+    // A quick flick is a flip. A finger that moves and then stays put is a
+    // spin, and it keeps spinning until it lifts.
+    const pointerMove = (e: PointerEvent) => {
+      const start = this.touchStart
+      if (!start) return
+      const dx = e.clientX - start.x
+      if (Math.abs(dx) < 46 || performance.now() - this.pressedAt < 130) return
+      this.dragRotate = dx > 0 ? 1 : -1
     }
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
       this.touchStart = null
       this.jumpHeld = false
-      if (!start) return
+      const spun = this.dragRotate !== 0
+      this.dragRotate = 0
+      if (!start || spun) return
       this.readFlick(e.clientX - start.x, e.clientY - start.y)
     }
     const blur = () => {
       this.held.clear()
       this.jumpHeld = false
       this.touchStart = null
+      this.dragRotate = 0
     }
 
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', blur)
     surface.addEventListener('pointerdown', pointerDown)
+    window.addEventListener('pointermove', pointerMove)
     window.addEventListener('pointerup', pointerUp)
     window.addEventListener('pointercancel', blur)
 
@@ -98,6 +127,7 @@ export class Input {
       () => window.removeEventListener('keyup', up),
       () => window.removeEventListener('blur', blur),
       () => surface.removeEventListener('pointerdown', pointerDown),
+      () => window.removeEventListener('pointermove', pointerMove),
       () => window.removeEventListener('pointerup', pointerUp),
       () => window.removeEventListener('pointercancel', blur),
     ]

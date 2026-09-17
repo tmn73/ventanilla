@@ -207,6 +207,7 @@ export class SkaterView {
 
   /**
    * @param lean radians of the ramp under him
+   * @param yaw radians he has turned about his own axis
    * @param grounded blends the airborne pose into the riding one
    * @param pump the compress and extend of a roll
    * @param grind -2 feeble, -1 five-o, 0 fifty-fifty, 1 nosegrind, 2 smith
@@ -220,6 +221,7 @@ export class SkaterView {
     x: number,
     y: number,
     lean: number,
+    yaw: number,
     grounded: number,
     pump: number,
     grind: number,
@@ -260,7 +262,7 @@ export class SkaterView {
         : (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
 
     this.root.position.set(x, y + FEET_TO_HIP, 0)
-    this.root.rotation.z = lean
+    this.root.rotation.set(0, yaw, lean)
 
     const onRail = grounded > 0.5 && grind !== 0
     const backTruck = grind === 1

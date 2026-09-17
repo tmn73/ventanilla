@@ -31,6 +31,8 @@ export class Skater {
   flipAngle = 0
   /** Which way the deck is turning: a kickflip one way, a heelflip the other. */
   flipSign = 1
+  /** Radians he has turned. Held input spins it; the landing judges it. */
+  yaw = 0
 
   airTime = 0
   grindTime = 0
@@ -58,6 +60,7 @@ export class Skater {
     this.grind = 0
     this.flipAngle = 0
     this.flipSign = 1
+    this.yaw = 0
     this.flipping = false
     this.flipsThisJump = 0
     this.airTime = 0
@@ -134,11 +137,18 @@ export class Skater {
       this.trickAge = 0
     }
 
+    // A turn eases back to straight once he is rolling again.
+    if (this.yaw !== 0) {
+      const settle = Math.min(Math.abs(this.yaw), dt * 6)
+      this.yaw -= Math.sign(this.yaw) * settle
+    }
+
     if (input.jumpPressed) {
       // A ramp adds its own rise, so an uphill launch goes higher.
       this.vy = C.JUMP_SPEED + Math.max(0, slope * this.vx)
       this.support = null
       this.grind = 0
+      this.yaw = 0
       this.flipsThisJump = 0
       this.cutApplied = false
       this.grindTime = 0
@@ -160,6 +170,9 @@ export class Skater {
         this.flipsThisJump++
       }
     }
+
+    // Spin for exactly as long as it is held. Nothing snaps to a half turn.
+    this.yaw += input.rotate * C.SPIN_RATE * dt
 
     this.vy -= C.GRAVITY * dt
     if (!input.jumpHeld && this.vy > 0 && !this.cutApplied) {
@@ -190,8 +203,21 @@ export class Skater {
 
   private land(seg: Segment): void {
     const flips = this.flipsThisJump
+
+    // A landing is judged on the angle he stopped at. Half turns are clean,
+    // anything between them is a bail: he keeps rolling, but not the speed.
+    const halves = Math.round(this.yaw / Math.PI)
+    const error = Math.abs(this.yaw - halves * Math.PI)
+    const bailed = error > C.LANDING_TOLERANCE
+    this.yaw = halves * Math.PI
+
     // The harder he arrives, the deeper he soaks it up.
     this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
+    if (bailed) {
+      this.vx *= C.BAIL_SPEED_KEEP
+      this.absorb = 1
+      if (this.vx < C.MIN_SPEED) this.vx = C.MIN_SPEED
+    }
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg
@@ -202,8 +228,14 @@ export class Skater {
     this.flipsThisJump = 0
 
     const flipName = this.flipSign > 0 ? 'KICKFLIP' : 'HEELFLIP'
-    if (flips > 1) this.trick = `${flips}x ${flipName}`
+    const turn = Math.abs(halves) * 180
+    const spin = turn > 0 ? `${turn}` : ''
+
+    if (bailed) this.trick = 'BAIL'
+    else if (flips > 0 && turn > 0) this.trick = `${spin} ${flipName}`
+    else if (flips > 1) this.trick = `${flips}x ${flipName}`
     else if (flips === 1) this.trick = flipName
+    else if (turn > 0) this.trick = spin
     else this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
     this.trickAge = 0
     this.airTime = 0

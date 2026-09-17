@@ -86,7 +86,7 @@ export class Road {
    */
   private emit(): void {
     const scale = this.rollScale()
-    this.runUp(13 + scale * 27)
+    this.runUp(9 + scale * 19)
     this.spot(scale)
   }
 
@@ -162,7 +162,7 @@ export class Road {
     this.groundY = bottomY
     this.headX = runX
     // Landing room at the bottom of every set.
-    this.runUp(range(this.rng, 10, 16))
+    this.runUp(range(this.rng, 8, 13))
   }
 
   /** Two sets with a landing between them. The second one is the surprise. */
@@ -225,7 +225,7 @@ export class Road {
     const y = this.groundY + (scale > 0.6 ? LEDGE_HEIGHT * 0.55 : LEDGE_HEIGHT)
     this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
     this.headX += length
-    this.runUp(range(this.rng, 8, 13))
+    this.runUp(range(this.rng, 6, 10))
   }
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */

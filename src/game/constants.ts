@@ -31,6 +31,13 @@ export const SLOPE_PULL = 18
 /** Sparks per second on a rail. Concrete throws none, which is the tell. */
 export const SPARK_RATE = 120
 
+/** Radians per second of spin while the rotate input is held. */
+export const SPIN_RATE = 7.5
+/** Past this far from a half turn, the landing is a bail. */
+export const LANDING_TOLERANCE = 0.42
+/** What a bail costs. Nothing is fatal, so speed is the price. */
+export const BAIL_SPEED_KEEP = 0.5
+
 /** One full revolution of a kickflip. */
 export const FLIP_DURATION = 0.42
 
