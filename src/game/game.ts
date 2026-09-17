@@ -1,5 +1,5 @@
 import * as C from './constants'
-import { Road } from './road'
+import { Road, type Course } from './road'
 import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
 import type { Input } from '../input'
@@ -24,7 +24,11 @@ export class Game {
     this.road = new Road(() => this.rng())
   }
 
+  /** Which road to build. Takes effect on the next start. */
+  course: Course = 'street'
+
   start(): void {
+    this.road.course = this.course
     this.seedLabel = this.fixedSeed ?? Math.random().toString(36).slice(2, 10)
     this.rng = mulberry32(seedFrom(this.seedLabel))
     this.road.reset(0)

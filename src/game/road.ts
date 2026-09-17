@@ -63,8 +63,16 @@ export const JUMP_REACH = Math.ceil(((2 * JUMP_SPEED) / GRAVITY) * MAX_SPEED)
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
 
+/**
+ * Which road to build. Street is the whole generator. The other two exist to
+ * practise on: flat is nothing but pavement, and rails is pavement with
+ * things to slide on and no change of height anywhere.
+ */
+export type Course = 'street' | 'flat' | 'rails'
+
 export class Road {
   segments: Segment[] = []
+  course: Course = 'street'
 
   /** The pavement the camera rests on, so it can be followed. */
   groundY = LANE_Y[0]!
@@ -94,10 +102,49 @@ export class Road {
    * enough away to decide what to send at it.
    */
   private emit(): void {
+    if (this.course === 'flat') {
+      this.runUp(60)
+      return
+    }
     // The run-up does not follow the size roll. A long walk with nothing on it
     // is the one thing that is never fun, however big what follows is.
     this.runUp(range(this.rng, JUMP_REACH, 15))
-    this.spot(this.rollScale())
+    if (this.course === 'rails') this.railSpotOnly(this.rollScale())
+    else this.spot(this.rollScale())
+  }
+
+  /**
+   * The practice course. Every one of these leaves the pavement at the height
+   * it found it, so there is nothing to read and nothing to land off.
+   */
+  private railSpotOnly(scale: number): void {
+    const mix: Array<[number, () => void]> = [
+      [7, () => this.railSpot(scale)],
+      [6, () => this.ledgeSpot(scale)],
+      [5, () => this.plaza(scale)],
+      [4, () => this.padChain(scale)],
+      [4, () => this.stepUp(scale)],
+      [3, () => this.picnicTable(scale)],
+      [3, () => this.jerseyBarrier(scale)],
+      [2, () => this.rainbowRail(scale)],
+      [2, () => this.poleJam(scale)],
+    ]
+    this.pick(mix)
+  }
+
+  /** Runs one of a weighted list. */
+  private pick(mix: Array<[number, () => void]>): void {
+    let total = 0
+    for (const [weight] of mix) total += weight
+    let roll = this.rng() * total
+    for (const [weight, build] of mix) {
+      roll -= weight
+      if (roll <= 0) {
+        build()
+        return
+      }
+    }
+    mix[0]![1]()
   }
 
   /**

@@ -5,6 +5,7 @@
 export function mountHelp(
   onPause: (paused: boolean) => void,
   onStance: (stance: 1 | -1) => void,
+  onCourse: (course: string) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -67,6 +68,38 @@ export function mountHelp(
         applyStance(value, true)
       })
     }
+  }
+
+  // Which road to ride is a preference too, and picking one starts it fresh.
+  const courses = ['street', 'flat', 'rails']
+  const buttons = courses.map((name) => document.getElementById(`course-${name}`))
+  if (buttons.every(Boolean)) {
+    const applyCourse = (value: string, remember: boolean) => {
+      buttons.forEach((button, i) => button!.setAttribute('aria-pressed', String(courses[i] === value)))
+      onCourse(value)
+      if (!remember) return
+      try {
+        localStorage.setItem('ventanilla.course', value)
+      } catch {
+        // A private window refuses this. The choice still applies for now.
+      }
+    }
+
+    let saved: string | null = null
+    try {
+      saved = localStorage.getItem('ventanilla.course')
+    } catch {
+      saved = null
+    }
+    applyCourse(saved && courses.includes(saved) ? saved : 'street', false)
+
+    buttons.forEach((button, i) => {
+      button!.addEventListener('pointerdown', (event) => event.stopPropagation())
+      button!.addEventListener('click', (event) => {
+        event.stopPropagation()
+        applyCourse(courses[i]!, true)
+      })
+    })
   }
 
   const setOpen = (open: boolean) => {

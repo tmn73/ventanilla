@@ -141,9 +141,9 @@ export class Input {
       this.held.delete(e.code)
     }
 
-    // Seen from the side, the board's tail is on the left of the screen and
-    // its nose is on the right. So the left half is the back foot and the
-    // right half is the front one, and every gesture is what that foot does.
+    // Seen from the side, the board's ends are left and right on the screen,
+    // so a half is a foot. Pressing a half loads that end. The swipe off it is
+    // what fires, the way a foot flicks, and holding longer loads it harder.
     const half = (x: number): number => {
       const box = surface.getBoundingClientRect()
       return x < box.left + box.width / 2 ? TRAILING : LEADING
@@ -155,60 +155,41 @@ export class Input {
       this.pressedAt = performance.now()
       this.dragRotate = 0
       this.swiped = false
-      // The back foot loads the tail. Nothing leaves the ground until it lifts.
-      // Pressing a half loads that end of the board, the way a foot does.
       this.crouchDown(this.touchStart.side === LEADING)
     }
 
     const pointerMove = (e: PointerEvent) => {
       const start = this.touchStart
-      if (!start) return
+      if (!start || this.swiped) return
       const dx = e.clientX - start.x
       const dy = e.clientY - start.y
-      if (performance.now() - this.pressedAt < 110) return
+      if (Math.hypot(dx, dy) < FLICK_PIXELS) return
 
-      if (start.side === TRAILING) {
-        // Sweeping the back foot off the tail and backwards is a push, and it
-        // is the only way to push, so there is no way to push mongo.
-        if (dx < -FLICK_PIXELS && Math.abs(dx) > Math.abs(dy) && !this.swiped) {
-          this.pushPending = true
-          this.swiped = true
-          this.jumpHeld = false
-        }
+      const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
+      const forward = Math.abs(angle) < 30
+      const backward = Math.abs(angle) > 150
+
+      // A finger held out to the side turns him, and it keeps turning. It is
+      // the one gesture that is not a flick, so it waits to be sure.
+      if ((forward || backward) && start.side === LEADING) {
+        if (performance.now() - this.pressedAt < 110) return
+        this.dragRotate = forward ? 1 : -1
+        this.jumpHeld = false
         return
       }
 
-      // A front foot held out to the side turns him, and it keeps turning.
-      if (Math.abs(dx) >= 46 && Math.abs(dx) >= Math.abs(dy)) this.dragRotate = dx > 0 ? 1 : -1
+      this.swiped = true
+      this.readSwipe(angle, start.side)
     }
 
-    const pointerUp = (e: PointerEvent) => {
+    const pointerUp = () => {
       const start = this.touchStart
       this.touchStart = null
-      const spun = this.dragRotate !== 0
       this.dragRotate = 0
-      if (!start) return
-
-      const dx = e.clientX - start.x
-      const dy = e.clientY - start.y
-
-      if (start.side === TRAILING) {
-        if (this.swiped) {
-          this.swiped = false
-          return
-        }
-        // A scoop of the tail on the way up is a shove-it, and it goes with
-        // the pop rather than instead of it: a shove-it is an ollie too.
-        if (Math.abs(dy) >= FLICK_PIXELS && Math.abs(dy) > Math.abs(dx)) {
-          this.shove(dy < 0 ? FRONTSIDE_SHOVE : BACKSIDE_SHOVE)
-          this.latched = dy < 0 ? 2 : -2
-        }
-        this.pop()
-        return
-      }
-
-      if (spun) return
-      this.readFlick(dx, dy)
+      this.swiped = false
+      // Pressing a half and letting go loads the board and unloads it again.
+      // Nothing leaves the ground without the flick that sends it.
+      if (start) this.jumpHeld = false
     }
 
     const blur = () => {
@@ -247,25 +228,59 @@ export class Input {
    * lands: in the air the flip fires, on a rail the grind changes. Diagonals
    * read as flips, the four straight directions as grinds.
    */
-  private readFlick(dx: number, dy: number): void {
-    if (Math.hypot(dx, dy) < FLICK_PIXELS) return
+  /**
+   * One flick off one foot. Straight up pops, and a diagonal pops and flips in
+   * the same motion, which is what the foot is doing anyway. The trailing foot
+   * also scoops and pushes; the leading one drags the board to a stop.
+   */
+  private readSwipe(angle: number, side: number): void {
+    const up = angle >= 25 && angle < 155
+    const down = angle <= -25 && angle >= -155
 
-    const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
-    // Up and out is the front foot flicking off the nose. Straight down is it
-    // pressing the board into the ground, which is how he scrubs speed.
-    if (angle >= 18 && angle < 80) {
+    if (side === TRAILING) {
+      // The back foot pops the board and nothing else. A flip is the front
+      // foot's job and a second motion, the way it is on a board.
+      if (up) {
+        this.pop()
+        this.latched = 2
+        return
+      }
+      // Except the scoop. A shove-it needs no ollie under it, so this one
+      // gesture is the whole trick.
+      if (down) {
+        this.shove(angle < -90 ? FRONTSIDE_SHOVE : BACKSIDE_SHOVE)
+        this.pop()
+        this.latched = -2
+        return
+      }
+      // Sweeping it backwards is a push, and it is the only way to push, so
+      // there is no way to push mongo.
+      if (Math.abs(angle) > 150) this.pushPending = true
+      this.jumpHeld = false
+      return
+    }
+
+    // The front foot flicks off the nose, and which way it goes off decides
+    // whether the deck rolls toe side or heel side.
+    if (angle >= 25 && angle < 65) {
       this.flick(KICKFLIP)
       this.latched = 1
-    } else if (angle >= 100 && angle < 162) {
+    } else if (angle >= 115 && angle < 155) {
       this.flick(HEELFLIP)
       this.latched = -1
-    } else if (angle >= -135 && angle < -45) {
+    } else if (up) {
+      // Straight up off the nose loads and pops that end instead.
+      this.pop()
+      this.latched = 2
+      return
+    } else if (down) {
       this.brakeUntil = performance.now() + 420
       this.latched = 0
-    } else {
-      this.latched = angle >= -45 && angle < 45 ? 1 : -1
     }
+    this.jumpHeld = false
   }
+
+
 
 
   private crouchDown(leading: boolean): void {

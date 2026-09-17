@@ -47,6 +47,11 @@ mountHelp(
   (stance) => {
     game.skater.stance = stance
   },
+  (course) => {
+    if (course === game.course) return
+    game.course = course as typeof game.course
+    game.start()
+  },
 )
 
 window.addEventListener('resize', () => stage.resize())
