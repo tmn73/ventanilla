@@ -13,7 +13,6 @@ import { Path } from './render/path'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
-import { ModelView } from './render/modelView'
 import { TouchTrail } from './render/touchTrail'
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
@@ -41,8 +40,6 @@ const roadView = new RoadView(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 const trail = new TouchTrail(trailCanvas)
-// The bought-in rider, stood beside the built one so the two can be compared.
-const model = new ModelView(stage.scene, 'assets/human.glb')
 
 // One interruption, one screen: the controls sheet is also the pause screen.
 let paused = false
@@ -63,7 +60,6 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
-  (on) => model.setVisible(on),
 )
 
 window.addEventListener('resize', () => {
@@ -167,10 +163,6 @@ startLoop(
     })
     hud.setStance(skater.stanceWord)
     hud.update(skater)
-    // Three metres to the far side, so both are in frame and neither is in
-    // the way of the other.
-    // His feet are at the model's origin, so it goes on the ground he is on.
-    model.update(feet.x, y - 0.08, feet.z - 3, path.headingAt(x), frameDt)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it
     // is placed with the camera the frame was actually rendered with.
