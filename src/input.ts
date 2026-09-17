@@ -12,7 +12,8 @@ export class Input {
   attach(surface: HTMLElement): void {
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return
-      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+      // Space is the only jump. The arrows belong to the grinds.
+      if (e.code === 'Space') {
         e.preventDefault()
         this.jumpHeld = true
         this.pending = true
@@ -25,7 +26,7 @@ export class Input {
       if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = 1
     }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') this.jumpHeld = false
+      if (e.code === 'Space') this.jumpHeld = false
       if (e.code === 'ArrowDown' || e.code === 'KeyS') this.dive = false
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = this.lean === -1 ? 0 : this.lean
       if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = this.lean === 1 ? 0 : this.lean
