@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun ./index.html",
-    "build": "bun build ./index.html --minify --outdir=dist && cp -r assets dist/assets",
+    "build": "rm -rf dist && bun build ./index.html --minify --outdir=dist && cp -r assets dist/assets",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
