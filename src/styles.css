@@ -274,3 +274,9 @@ body {
   height: 100%;
   pointer-events: none;
 }
+
+#zoom {
+  flex: 1;
+  accent-color: var(--accent, #e2603c);
+  min-width: 8rem;
+}

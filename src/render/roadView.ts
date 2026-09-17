@@ -102,8 +102,8 @@ export class RoadView {
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
   }
 
-  update(segments: Segment[], camLeft: number): void {
-    const right = camLeft + VIEW_WIDTH
+  update(segments: Segment[], camLeft: number, width = VIEW_WIDTH): void {
+    const right = camLeft + width
     this.boxes.reset()
     this.rods.reset()
 

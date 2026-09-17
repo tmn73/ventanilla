@@ -1,6 +1,6 @@
 import { Group } from 'three'
 import { startLoop } from './core/loop'
-import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
+import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE } from './game/constants'
 import { Game } from './game/game'
 import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
@@ -55,6 +55,7 @@ mountHelp(
     game.course = course as typeof game.course
     game.start()
   },
+  (zoom) => stage.setZoom(zoom),
 )
 
 window.addEventListener('resize', () => {
@@ -92,10 +93,10 @@ startLoop(
     const { skater, road } = game
     const x = mix(skater.prevX, skater.x, alpha)
     const y = mix(skater.prevY, skater.y, alpha)
-    const camLeft = x - VIEW_WIDTH * ANCHOR
+    const camLeft = x - stage.visibleWidth * ANCHOR
     // The camera looks a little ahead of him, which is what keeps him on the
     // anchor instead of dead centre.
-    const camS = x + VIEW_WIDTH * (0.5 - ANCHOR)
+    const camS = x + stage.visibleWidth * (0.5 - ANCHOR)
 
     grounded += ((skater.support ? 1 : 0) - grounded) * 0.25
 
@@ -127,7 +128,7 @@ startLoop(
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
     backdrop.update(camLeft, stage.viewHeight)
-    roadView.update(road.segments, camLeft)
+    roadView.update(road.segments, camLeft, stage.visibleWidth)
     skaterView.update(
       feet.x,
       y,

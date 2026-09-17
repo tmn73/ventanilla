@@ -6,6 +6,7 @@ export function mountHelp(
   onPause: (paused: boolean) => void,
   onStance: (stance: 1 | -1) => void,
   onCourse: (course: string) => void,
+  onZoom: (zoom: number) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -100,6 +101,34 @@ export function mountHelp(
         applyCourse(courses[i]!, true)
       })
     })
+  }
+
+  // How much road the window shows. It applies as the slider moves, so the
+  // choice is made by looking at it rather than by reading a number.
+  const zoom = document.getElementById('zoom') as HTMLInputElement | null
+  if (zoom) {
+    const applyZoom = (value: number, remember: boolean) => {
+      zoom.value = String(value)
+      onZoom(value)
+      if (!remember) return
+      try {
+        localStorage.setItem('ventanilla.zoom', String(value))
+      } catch {
+        // A private window refuses this. The choice still applies for now.
+      }
+    }
+
+    let saved: string | null = null
+    try {
+      saved = localStorage.getItem('ventanilla.zoom')
+    } catch {
+      saved = null
+    }
+    const start = Number(saved)
+    applyZoom(Number.isFinite(start) && start > 0 ? start : 1, false)
+
+    zoom.addEventListener('pointerdown', (event) => event.stopPropagation())
+    zoom.addEventListener('input', () => applyZoom(Number(zoom.value), true))
   }
 
   const setOpen = (open: boolean) => {

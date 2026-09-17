@@ -60,8 +60,9 @@ const MAX_SLOPE = 0.9
  */
 export const JUMP_REACH = Math.ceil(((2 * JUMP_SPEED) / GRAVITY) * MAX_SPEED)
 
-const LOOKAHEAD = VIEW_WIDTH * 2.5
-const TRAIL = VIEW_WIDTH * 0.8
+// Wide enough to still be ahead of the camera when the view is zoomed out.
+const LOOKAHEAD = VIEW_WIDTH * 4
+const TRAIL = VIEW_WIDTH * 1.5
 
 /**
  * Which road to build. Street is the whole generator. The other two exist to

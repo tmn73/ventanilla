@@ -26,6 +26,10 @@ export class Stage {
   readonly scene = new Scene()
   readonly camera: OrthographicCamera
   viewHeight = 20.25
+  /** How much road the window shows, which the player sets. */
+  visibleWidth = VIEW_WIDTH
+
+  private zoom = 1
 
   private target = new Vector3()
   private eye = new Vector3()
@@ -44,10 +48,10 @@ export class Stage {
     this.sun = new DirectionalLight(0xfffaf2, 0.72)
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(2048, 2048)
-    this.sun.shadow.camera.left = -VIEW_WIDTH * 0.7
-    this.sun.shadow.camera.right = VIEW_WIDTH * 0.7
-    this.sun.shadow.camera.top = 22
-    this.sun.shadow.camera.bottom = -22
+    this.sun.shadow.camera.left = -VIEW_WIDTH * 1.4
+    this.sun.shadow.camera.right = VIEW_WIDTH * 1.4
+    this.sun.shadow.camera.top = 34
+    this.sun.shadow.camera.bottom = -34
     this.sun.shadow.camera.near = 1
     this.sun.shadow.camera.far = 90
     this.sun.shadow.bias = -0.0012
@@ -62,6 +66,12 @@ export class Stage {
     }
   }
 
+  /** 1 is the width the game is tuned around. Below it is closer, above wider. */
+  setZoom(value: number): void {
+    this.zoom = Math.max(0.6, Math.min(2, value))
+    this.resize()
+  }
+
   resize(): void {
     const canvas = this.renderer.domElement
     const width = canvas.clientWidth || 1
@@ -69,9 +79,10 @@ export class Stage {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(width, height, false)
 
-    this.viewHeight = VIEW_WIDTH * (height / width)
-    this.camera.left = -VIEW_WIDTH / 2
-    this.camera.right = VIEW_WIDTH / 2
+    this.visibleWidth = VIEW_WIDTH * this.zoom
+    this.viewHeight = this.visibleWidth * (height / width)
+    this.camera.left = -this.visibleWidth / 2
+    this.camera.right = this.visibleWidth / 2
     this.camera.bottom = -this.viewHeight * HORIZON
     this.camera.top = this.viewHeight * (1 - HORIZON)
     this.camera.updateProjectionMatrix()
