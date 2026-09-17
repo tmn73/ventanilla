@@ -169,8 +169,8 @@ export class Road {
     const y0 = this.groundY + RAIL_HEIGHT + (drop < 0 ? -drop : 0)
     this.push(this.headX + 0.8, this.headX + length - 0.8, y0, y0 + drop, 'rail', false)
 
-    // Something on the ground under the rail, so taking the low line costs you.
-    this.clutter(this.headX + 2.5, this.headX + length - 2.5)
+    // No clutter under the rail. A hazard the player is grinding over still
+    // reads as a hit, and dying while riding above something is not fair.
     this.headX += length
   }
 

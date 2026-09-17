@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun ./index.html",
     "build": "bun build ./index.html --minify --outdir=dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
     "three": "^0.180.0"
