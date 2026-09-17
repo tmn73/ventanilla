@@ -15,7 +15,7 @@ const ALONE = false
 
 test('an ollie needs the other foot on the board', () => {
   // Straight up off the front foot, with the back foot resting on the tail.
-  expect(swipeAction(90, LEADING, HELD)).toEqual({ popEnd: TRAILING, latch: 2 })
+  expect(swipeAction(90, LEADING, HELD)).toEqual({ popEnd: TRAILING })
   // The same flick with nothing holding the other end does nothing at all.
   expect(swipeAction(90, LEADING, ALONE)).toEqual({})
 })
@@ -26,8 +26,8 @@ test('the end that was held is the end it pops off', () => {
 })
 
 test('flicking out to one side rolls the deck with it', () => {
-  expect(swipeAction(45, LEADING, HELD)).toEqual({ popEnd: TRAILING, flip: KICKFLIP, latch: 1 })
-  expect(swipeAction(135, LEADING, HELD)).toEqual({ popEnd: TRAILING, flip: HEELFLIP, latch: -1 })
+  expect(swipeAction(45, LEADING, HELD)).toEqual({ popEnd: TRAILING, flip: KICKFLIP })
+  expect(swipeAction(135, LEADING, HELD)).toEqual({ popEnd: TRAILING, flip: HEELFLIP })
 })
 
 test('a scoop is the whole trick, with no other foot needed', () => {

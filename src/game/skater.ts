@@ -155,6 +155,15 @@ export class Skater {
   pushTime = 0
   /** How far into the crouch he is, from 0 to 1. The pop spends it. */
   crouch = 0
+  /**
+   * Where his weight is along the board while balancing, from -1 to 1. It runs
+   * away from the middle by itself; at the ends he comes off.
+   */
+  balance = 0
+  /** True while a manual or a grind is being held, which is when it matters. */
+  balancing = false
+  private balanceVel = 0
+  private wobble = 0
   /** Which way the stance is set, so the rig can pick the right pushing foot. */
   stance: 1 | -1 = 1
   trick = ''
@@ -196,6 +205,10 @@ export class Skater {
     this.absorb = 0
     this.pushTime = 0
     this.crouch = 0
+    this.balance = 0
+    this.balanceVel = 0
+    this.balancing = false
+    this.wobble = 0
     this.trick = ''
     this.trickAge = 99
     this.pushCooldown = 0
@@ -261,6 +274,8 @@ export class Skater {
 
     // Plain pavement always rolls flat. A latched flick belongs to the block
     // or the rail it was aimed at, and must not follow him onto the ground.
+    this.keepBalance(dt, seg, input)
+
     // Sideways on a rail, the end under a foot decides which slide it is, the
     // same way it decides which end the pop comes off. Press the nose for a
     // noseslide, the tail for a tailslide, neither for a boardslide.
@@ -306,6 +321,9 @@ export class Skater {
       this.crouch = 0
       this.support = null
       this.grind = 0
+      this.balancing = false
+      this.balance = 0
+      this.balanceVel = 0
       this.takeoffYaw = this.yaw
       this.flipsThisJump = 0
       this.shovesThisJump = 0
@@ -324,6 +342,48 @@ export class Skater {
         this.shoving = true
         this.shoveSign = input.shoveSign
       }
+    }
+  }
+
+  /**
+   * A manual and a grind do not hold themselves. The weight runs away from the
+   * middle, faster the further it has gone, and leaning the other way is what
+   * keeps it there. Run out of board and he simply rolls off it.
+   */
+  private keepBalance(dt: number, seg: Segment, input: Input): void {
+    const rolling = seg.kind === 'flat' || seg.kind === 'step'
+    const wants = !rolling || this.grind !== 0
+
+    if (!wants) {
+      this.balancing = false
+      this.balance += (0 - this.balance) * Math.min(1, dt * 8)
+      this.balanceVel = 0
+      return
+    }
+
+    if (!this.balancing) {
+      this.balancing = true
+      this.balance = 0
+      this.balanceVel = 0
+    }
+
+    // An unstable point: the further it is from the middle, the harder it goes.
+    this.wobble += dt
+    const restless = Math.sin(this.wobble * 5.3) * 0.5 + Math.sin(this.wobble * 2.1) * 0.5
+    this.balanceVel += this.balance * C.BALANCE_RUNAWAY * dt
+    this.balanceVel += restless * C.BALANCE_DRIFT * dt
+    this.balanceVel -= input.lean * C.BALANCE_CORRECT * dt
+    this.balanceVel *= 1 - Math.min(1, dt * 2.2)
+    this.balance += this.balanceVel * dt
+
+    if (Math.abs(this.balance) >= 1) {
+      // Off the end of it. Nothing is fatal, so it costs the trick and no more.
+      this.balance = 0
+      this.balanceVel = 0
+      this.balancing = false
+      this.grind = 0
+      this.trick = 'off'
+      this.trickAge = 0
     }
   }
 

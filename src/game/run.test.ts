@@ -14,6 +14,7 @@ const IDLE = {
   braking: false,
   rotate: 0,
   pressedEnd: 0,
+  lean: 0,
 }
 const idle = IDLE as never
 

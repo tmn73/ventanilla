@@ -9,13 +9,19 @@ export class Hud {
   private trick: HTMLElement
   private switchMark: HTMLElement
   private stance = ''
+  private balance: HTMLElement
+  private needle: HTMLElement
+  private shownBalance = -99
   private shown = -1
 
   constructor() {
     const speed = document.getElementById('speed')
     const trick = document.getElementById('trick')
     const mark = document.getElementById('switch')
-    if (!speed || !trick || !mark) throw new Error('missing readout')
+    const balance = document.getElementById('balance')
+    if (!speed || !trick || !mark || !balance) throw new Error('missing readout')
+    this.balance = balance
+    this.needle = balance.firstElementChild as HTMLElement
     this.speed = speed
     this.trick = trick
     this.switchMark = mark
@@ -30,6 +36,15 @@ export class Hud {
   }
 
   update(skater: Skater): void {
+    // Only on screen while something is being balanced, and moved in whole
+    // percent so the DOM is touched a few times a second, not every frame.
+    if (this.balance.hidden === skater.balancing) this.balance.hidden = !skater.balancing
+    const at = Math.round(skater.balance * 50)
+    if (skater.balancing && at !== this.shownBalance) {
+      this.shownBalance = at
+      this.needle.style.setProperty('--at', `${at * 0.9}px`)
+    }
+
     // Rounded before it is compared, so the DOM is touched a few times a second
     // rather than every frame.
     const kmh = Math.round(skater.vx * 3.6)

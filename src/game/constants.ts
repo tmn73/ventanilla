@@ -63,3 +63,13 @@ export const FLIP_DURATION = 0.42
 /** Half a turn of the board under him, which is one shove-it. */
 export const SHOVE_DURATION = 0.3
 
+
+/**
+ * A manual and a grind are balancing acts. The point runs away from the middle
+ * on its own, faster the further out it is, and holding it there is the trick.
+ */
+export const BALANCE_RUNAWAY = 2.6
+/** How hard the correction pulls it back, at full lean. */
+export const BALANCE_CORRECT = 3.4
+/** How restless it is on its own, so it is never still enough to forget. */
+export const BALANCE_DRIFT = 0.9

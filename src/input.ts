@@ -59,8 +59,6 @@ export interface Swipe {
   flip?: number
   shove?: number
   push?: boolean
-  /** Which grind the same flick picks, when he is on something to grind. */
-  latch?: number
 }
 
 /**
@@ -80,9 +78,9 @@ export function swipeAction(angle: number, side: number, loadedOther: boolean): 
   if (up) {
     if (!loadedOther) return {}
     const popEnd = -side
-    if (angle < 65) return { popEnd, flip: KICKFLIP, latch: 1 }
-    if (angle >= 115) return { popEnd, flip: HEELFLIP, latch: -1 }
-    return { popEnd, latch: 2 }
+    if (angle < 65) return { popEnd, flip: KICKFLIP }
+    if (angle >= 115) return { popEnd, flip: HEELFLIP }
+    return { popEnd }
   }
 
   if (down) {
@@ -92,7 +90,6 @@ export function swipeAction(angle: number, side: number, loadedOther: boolean): 
     return {
       popEnd: side,
       shove: angle < -90 ? BACKSIDE_SHOVE : FRONTSIDE_SHOVE,
-      latch: side === TRAILING ? -2 : 2,
     }
   }
 
@@ -131,8 +128,6 @@ export class Input {
   private shovePending = false
   private pendingShove: number = BACKSIDE_SHOVE
   private held = new Set<string>()
-  /** A flick latches a grind until the next ollie, since a finger cannot hold one. */
-  private latched = 0
   private touches = new Map<
     number,
     {
@@ -201,6 +196,24 @@ export class Input {
     return performance.now() - (this.leftAt.get(side) ?? -Infinity) < LOAD_GRACE
   }
 
+  /**
+   * Which way he is shifting his weight along the board, from -1 to 1. On a
+   * keyboard it is the same two keys that spin him in the air. On a phone it
+   * is the finger that is already resting on an end, moving inside the room it
+   * has before that movement would count as a swipe.
+   */
+  get lean(): number {
+    if (this.held.has('KeyA')) return -1
+    if (this.held.has('KeyD')) return 1
+    for (const touch of this.touches.values()) {
+      if (touch.spent) continue
+      const across = touch.stroke.x1 - touch.x
+      if (Math.abs(across) < 4) continue
+      return Math.max(-1, Math.min(1, across / FLICK_PIXELS))
+    }
+    return 0
+  }
+
   /** Held, the deck keeps rolling, which is how a double and a triple come out. */
   get flipHeld(): boolean {
     return this.held.has('ArrowLeft') || this.held.has('ArrowRight')
@@ -224,12 +237,18 @@ export class Input {
     return this.held.has('ArrowDown') || (this.resting(TRAILING) && this.resting(LEADING))
   }
 
+  /**
+   * Which end he is putting his weight on, from what is held right now. It was
+   * latched by the last flick before, so a flick that popped him off a rail
+   * still applied to whatever he landed on next, and he would roll away in a
+   * nose manual having touched nothing.
+   */
   get grind(): number {
     if (this.held.has('ArrowDown')) return -2
     if (this.held.has('ArrowUp')) return 2
     if (this.held.has('ArrowLeft')) return -1
     if (this.held.has('ArrowRight')) return 1
-    return this.latched
+    return this.pressedEnd === TRAILING ? -1 : this.pressedEnd === LEADING ? 1 : 0
   }
 
   attach(surface: HTMLElement): void {
@@ -415,7 +434,6 @@ export class Input {
     if (move.flip !== undefined) this.flick(move.flip)
     if (move.shove !== undefined) this.shove(move.shove)
     if (move.push) this.pushPending = true
-    if (move.latch !== undefined) this.latched = move.latch
 
     // An upward flick with nothing holding the other end is the one refusal
     // worth explaining, because it looks exactly like the gesture that works.
@@ -435,7 +453,6 @@ export class Input {
   private crouchDown(leading: boolean): void {
     this.jumpHeld = true
     this.crouchLeading = leading
-    this.latched = 0
   }
 
   private pop(): void {

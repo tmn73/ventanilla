@@ -189,6 +189,8 @@ export interface Rider {
   shove: number
   /** True when he popped off the nose, which tips the board the other way. */
   nose: boolean
+  /** True while the board lies across what he is on rather than along it. */
+  sideways: boolean
 }
 
 export class SkaterView {
@@ -290,13 +292,13 @@ export class SkaterView {
       color: Number(SKATER_CAP.replace('#', '0x')),
       flatShading: true,
     })
-    const crown = new Mesh(new BoxGeometry(0.34, 0.2, 0.32), capSkin)
-    crown.position.y = 0.19
+    const crown = new Mesh(new BoxGeometry(0.33, 0.15, 0.31), capSkin)
+    crown.position.y = 0.155
     crown.castShadow = true
     head.add(crown)
 
-    this.peak = new Mesh(new BoxGeometry(0.26, 0.05, 0.22), capSkin)
-    this.peak.position.y = 0.13
+    this.peak = new Mesh(new BoxGeometry(0.3, 0.04, 0.17), capSkin)
+    this.peak.position.y = 0.095
     this.peak.castShadow = true
     head.add(this.peak)
   }
@@ -336,6 +338,7 @@ export class SkaterView {
       stance,
       shove,
       nose,
+      sideways,
     } = rider
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
@@ -387,12 +390,18 @@ export class SkaterView {
 
     const onRail = grounded > 0.5 && grind !== 0
     const backTruck = grind === 1
-    const pivotX = backTruck ? TRUCK_X : -TRUCK_X
+    const pivotX = sideways ? 0 : backTruck ? TRUCK_X : -TRUCK_X
 
     let pitch = 0
     let roll = 0
     let hang = 0
-    if (onRail) {
+    if (sideways && grounded > 0.5) {
+      // Across the rail, the deck lies flat on it and his weight sits over the
+      // end he is on. Nothing tips, because nothing is riding a truck.
+      pitch = 0
+      roll = 0
+      hang = 0
+    } else if (onRail) {
       if (grind === -1) pitch = TILT
       else if (grind === 1) pitch = -TILT
       else {
@@ -435,6 +444,6 @@ export class SkaterView {
     const facing = stance > 0 ? -1 : 1
     this.face.position.z = facing * 0.16
     // Backwards, so the peak hangs off the back of his head.
-    this.peak.position.z = facing * -0.24
+    this.peak.position.z = facing * -0.2
   }
 }

@@ -152,6 +152,7 @@ startLoop(
       stance: skater.stance,
       shove: skater.shoveAngle * skater.shoveSign,
       nose: skater.poppedNose,
+      sideways: skater.sideways,
     })
     hud.setStance(skater.stanceWord)
     hud.update(skater)

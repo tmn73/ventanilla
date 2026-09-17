@@ -281,3 +281,23 @@ body {
   accent-color: var(--accent, #e2603c);
   min-width: 8rem;
 }
+
+/* The balance meter. It only exists while there is something to balance. */
+#balance {
+  width: 9rem;
+  height: 3px;
+  margin-top: 0.5rem;
+  background: rgba(36, 40, 43, 0.22);
+  position: relative;
+}
+
+#balance i {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 3px;
+  height: 9px;
+  margin-left: -1.5px;
+  background: var(--accent, #e2603c);
+  transform: translateX(var(--at, 0));
+}
