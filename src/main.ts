@@ -133,6 +133,7 @@ startLoop(
       Math.min(1, skater.pushTime / 0.22),
       skater.switched,
       skater.stance,
+      skater.shoveAngle * skater.shoveSign,
     )
     hud.setSwitched(skater.switched)
     hud.update(skater)

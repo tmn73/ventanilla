@@ -45,9 +45,14 @@ export const SPARK_RATE = 120
 export const SPIN_RATE = 11.5
 /** Past this far from a half turn, the landing is a bail. */
 export const LANDING_TOLERANCE = 0.42
-/** What a bail costs. Nothing is fatal, so speed is the price. */
-export const BAIL_SPEED_KEEP = 0.5
+/**
+ * What the worst bail costs. Nothing is fatal, so speed is the price, and
+ * the price follows how far off the landing was rather than being a flat cut.
+ */
+export const BAIL_SPEED_KEEP = 0.62
 
 /** One full revolution of a kickflip. */
 export const FLIP_DURATION = 0.42
+/** Half a turn of the board under him, which is one shove-it. */
+export const SHOVE_DURATION = 0.3
 

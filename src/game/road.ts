@@ -126,8 +126,11 @@ export class Road {
 
   private spot(scale: number): void {
     const drift = this.groundY - LANE_Y[0]!
+    // In a world with a floor, every metre lost on a stair set is a metre
+    // that has to be climbed again. So the road climbs on a kicker with a
+    // deck on top, which is a thing to jump off, and never on a bare hill.
     if (drift < -DRIFT_LIMIT * 0.55) {
-      this.bank(1, scale)
+      this.drop(scale, true)
       return
     }
 
@@ -254,9 +257,11 @@ export class Road {
    * bottom if you stay low.
    */
   private funbox(scale: number): void {
-    const rise = 0.7 + scale * 6
+    // A funbox is a box, not a hill. It grows along the road with the size
+    // roll, and the ramp onto it stays something you hit rather than climb.
+    const rise = Math.min(5, 0.7 + scale * 6)
     const top = this.settle(this.groundY + rise)
-    const ramp = Math.max(2, (top - this.groundY) / range(this.rng, 0.22, 0.34))
+    const ramp = Math.max(2, (top - this.groundY) / range(this.rng, 0.34, 0.55))
     const deck = 5 + scale * 22
 
     this.push(this.headX, this.headX + ramp, this.groundY, top, 'flat', true)
@@ -307,9 +312,14 @@ export class Road {
   }
 
   /** A raised platform ending in a sheer edge, with a landing well below. */
-  private drop(scale: number): void {
-    const height = 0.9 + scale * 11
-    const climb = height / range(this.rng, 0.24, 0.34)
+  /**
+   * A kicker up to a deck with a ledge along it. `keep` leaves the road up
+   * there instead of dropping off the far end, which is how the pavement wins
+   * back the height a stair set cost it.
+   */
+  private drop(scale: number, keep = false): void {
+    const height = Math.min(12, 0.9 + scale * 9)
+    const climb = this.rampRun(height / range(this.rng, 0.4, 0.62), height)
     const top = this.settle(this.groundY + height)
 
     this.push(this.headX, this.headX + climb, this.groundY, top, 'flat', true)
@@ -321,8 +331,10 @@ export class Road {
     this.push(this.headX + 1.5, this.headX + deck - 1.5, ledgeY, ledgeY, 'ledge', false)
     this.headX += deck
 
+    const landY = keep ? top : this.groundY
     const landing = 20 + scale * 18
-    this.push(this.headX, this.headX + landing, this.groundY, this.groundY, 'flat', true)
+    this.push(this.headX, this.headX + landing, landY, landY, 'flat', true)
+    this.groundY = landY
     this.headX += landing
   }
 
@@ -469,14 +481,21 @@ export class Road {
     const steep = this.rng() < 0.4
     const length = steep ? 4 + scale * 12 : 11 + scale * 40
     const swing = steep ? 2 + scale * 7 : 1.1 + scale * 13
-    const rise =
+    // The road wants to go down. A climb is something you build to jump off,
+    // not something the ground does on its own, so an uphill drift is rare
+    // and shallow, and a short sharp pitch never goes up at all.
+    const raw =
       force > 0
-        ? range(this.rng, swing * 0.6, swing)
-        : force < 0
-          ? -range(this.rng, swing * 0.5, swing * 0.8)
-          : range(this.rng, -swing * 0.8, swing)
+        ? range(this.rng, swing * 0.45, swing * 0.75)
+        : force < 0 || steep
+          ? -range(this.rng, swing * 0.5, swing)
+          : range(this.rng, -swing, swing * 0.28)
+    const rise = raw > 0 ? raw * 0.5 : raw
     const endY = this.settle(this.groundY + rise)
-    const run = this.rampRun(length, endY - this.groundY)
+    // A long descent is a run. A long ascent is a chore, so a bank that goes
+    // up is capped however far the size roll wanted to take it.
+    const wanted = endY > this.groundY ? Math.min(length, 30) : length
+    const run = this.rampRun(wanted, endY - this.groundY)
     this.push(this.headX, this.headX + run, this.groundY, endY, 'flat', true)
     this.groundY = endY
     this.headX += run

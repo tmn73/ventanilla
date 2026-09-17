@@ -1,6 +1,9 @@
 /** Kickflip and heelflip turn the deck opposite ways around the same axis. */
 export const KICKFLIP = 1
 export const HEELFLIP = -1
+/** A shove-it turns the board under him. Unqualified it means the backside one. */
+export const BACKSIDE_SHOVE = -1
+export const FRONTSIDE_SHOVE = 1
 
 /** Under this, a touch is a tap and not a flick. */
 const FLICK_PIXELS = 34
@@ -11,6 +14,9 @@ export class Input {
   /** Edge. Fires one flip. */
   flipPressed = false
   flipSign = KICKFLIP
+  /** Edge. Starts one shove-it. */
+  shovePressed = false
+  shoveSign = BACKSIDE_SHOVE
 
   /** Held rotation: -1 backside, 1 frontside, 0 straight. */
   private dragRotate = 0
@@ -20,6 +26,8 @@ export class Input {
   private jumpPending = false
   private flipPending = false
   private pendingSign = KICKFLIP
+  private shovePending = false
+  private pendingShove: number = BACKSIDE_SHOVE
   private held = new Set<string>()
   /** A flick latches a grind until the next ollie, since a finger cannot hold one. */
   private latched = 0
@@ -38,6 +46,16 @@ export class Input {
     if (this.held.has('KeyA')) return -1
     if (this.held.has('KeyD')) return 1
     return this.dragRotate
+  }
+
+  /** Held, the deck keeps rolling, which is how a double and a triple come out. */
+  get flipHeld(): boolean {
+    return this.held.has('ArrowLeft') || this.held.has('ArrowRight')
+  }
+
+  /** Held, the board keeps turning under him, a half turn at a time. */
+  get shoveHeld(): boolean {
+    return this.held.has('KeyQ') || this.held.has('KeyE')
   }
 
   /** Held up on the ground, or one flick up. A push is a kick, not a throttle. */
@@ -59,7 +77,16 @@ export class Input {
   }
 
   attach(surface: HTMLElement): void {
-    const arrows = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'])
+    const arrows = new Set([
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'KeyA',
+      'KeyD',
+      'KeyQ',
+      'KeyE',
+    ])
 
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return
@@ -73,6 +100,8 @@ export class Input {
       this.held.add(e.code)
       if (e.code === 'ArrowLeft') this.flick(KICKFLIP)
       if (e.code === 'ArrowRight') this.flick(HEELFLIP)
+      if (e.code === 'KeyQ') this.shove(BACKSIDE_SHOVE)
+      if (e.code === 'KeyE') this.shove(FRONTSIDE_SHOVE)
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') this.jumpHeld = false
@@ -152,7 +181,10 @@ export class Input {
     } else if (angle >= 112 && angle < 158) {
       this.flick(HEELFLIP)
       this.latched = -1
-    } else if (angle >= 68 && angle < 112) this.latched = 2
+    } else if (angle >= 68 && angle < 112) {
+      this.shove(BACKSIDE_SHOVE)
+      this.latched = 2
+    }
     else if (angle >= -112 && angle < -68) this.latched = -2
     else if (angle >= -22 && angle < 22) this.latched = 1
     else this.latched = -1
@@ -174,6 +206,11 @@ export class Input {
     this.pendingSign = sign
   }
 
+  private shove(sign: number): void {
+    this.shovePending = true
+    this.pendingShove = sign
+  }
+
   /** Call once at the top of every fixed step so one press fires one trick. */
   beginStep(): void {
     this.jumpPressed = this.jumpPending
@@ -181,6 +218,9 @@ export class Input {
     this.flipPressed = this.flipPending
     this.flipSign = this.pendingSign
     this.flipPending = false
+    this.shovePressed = this.shovePending
+    this.shoveSign = this.pendingShove
+    this.shovePending = false
     this.pushPulse = false
   }
 

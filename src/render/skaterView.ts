@@ -266,6 +266,7 @@ export class SkaterView {
     push: number,
     switched: boolean,
     stance: number,
+    shove: number,
   ): void {
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
@@ -343,7 +344,8 @@ export class SkaterView {
     this.boardPivot.rotation.set(roll, 0, pitch)
 
     // A flip rolls the deck around its own long axis, not around the rider.
-    this.deckAxis.rotation.x = flip
+    // A shove turns it about the upright, under feet that do not follow it.
+    this.deckAxis.rotation.set(flip, shove, 0)
 
     span(this.deck, [-DECK_HALF + KICK_IN, 0], [DECK_HALF - KICK_IN, 0], DECK_THICK)
     span(this.tail, [-DECK_HALF + KICK_IN, 0], [-DECK_HALF, KICK_RISE], DECK_THICK)

@@ -5,38 +5,61 @@ import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
 const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
 const MANUAL_NAME = ['manual', 'manual', '', 'nose manual', 'nose manual']
+/** Sideways on the obstacle. The same three keys pick which end takes it. */
+const SLIDE_NAME = ['tailslide', 'tailslide', 'boardslide', 'noseslide', 'noseslide']
+const FLIP_COUNT = ['', '', 'double', 'triple', 'quadruple']
+const QUARTER = Math.PI / 2
 
 /**
  * Skate names it properly. Which way a spin goes is frontside or backside
  * depending on the stance, so goofy reverses both, and a trick started while
  * riding switch carries that word in front of everything else.
  */
-function nameTrick(
+export function nameTrick(
   halves: number,
   flips: number,
   flipSign: number,
+  shoves: number,
+  shoveSign: number,
   stance: number,
   wasSwitch: boolean,
   surface: string,
   bigAir: boolean,
 ): string {
-  const turn = Math.abs(halves) * 180
-  const side = halves > 0 === stance > 0 ? 'frontside' : 'backside'
-  const flipName = flipSign > 0 ? 'kickflip' : 'heelflip'
   const parts: string[] = []
   if (wasSwitch) parts.push('switch')
 
-  if (turn > 0 && flips > 0) {
-    // A 180 with a kickflip has its own name and drops both numbers.
-    if (turn === 180 && flipSign > 0) parts.push(side, 'flip')
-    else if (turn === 180) parts.push(side, 'heelflip')
-    else parts.push(side, String(turn), flipName)
-  } else if (turn > 0) {
-    parts.push(side, String(turn))
+  const turn = Math.abs(halves) * 180
+  const shoveTurn = Math.abs(shoves) * 180
+  const spinSide = halves > 0 === stance > 0 ? 'frontside' : 'backside'
+  const shoveSide = shoveSign > 0 === stance > 0 ? 'frontside' : 'backside'
+  const flipName = flipSign > 0 ? 'kickflip' : 'heelflip'
+
+  // What the board did, before the body is taken into account. A shove and a
+  // flip together carry their own name rather than the sum of the two.
+  let core = ''
+  if (shoves > 0 && flips > 0) {
+    if (shoveTurn === 180) core = flipSign > 0 ? 'varial kickflip' : 'varial heelflip'
+    else if (shoveTurn === 360) core = flipSign > 0 ? '360 flip' : 'laser flip'
+    else core = `${shoveTurn} shove-it ${flipName}`
+  } else if (shoves > 0) {
+    // An unqualified shove-it is the backside one, so only the other is named.
+    core = shoveTurn === 180 ? 'shove-it' : `${shoveTurn} shove-it`
+    if (shoveSide === 'frontside') core = `frontside ${core}`
   } else if (flips > 1) {
-    parts.push('double', flipName)
+    core = `${FLIP_COUNT[Math.min(flips, 4)]} ${flipName}`.trim()
   } else if (flips === 1) {
-    parts.push(flipName)
+    core = flipName
+  }
+
+  if (turn > 0) {
+    // A half turn with a kickflip has its own name and drops both numbers.
+    if (turn === 180 && core === 'kickflip') parts.push(spinSide, 'flip')
+    else if (turn === 180 && core) parts.push(spinSide, core)
+    else if (core) parts.push(spinSide, String(turn), core)
+    else parts.push(spinSide, String(turn))
+  } else if (core) {
+    parts.push(core)
   } else if (bigAir) {
     parts.push('big air')
   } else if (surface) {
@@ -46,6 +69,12 @@ function nameTrick(
   }
 
   return parts.join(' ')
+}
+
+/** Sideways onto a rail or a ledge. Which way he turned on names the side. */
+function nameSlide(quarters: number, stance: number, wasSwitch: boolean): string {
+  const side = quarters > 0 === stance > 0 ? 'frontside' : 'backside'
+  return `${wasSwitch ? 'switch ' : ''}${side} boardslide`
 }
 
 const LABEL: Record<string, string> = {
@@ -73,16 +102,25 @@ export class Skater {
   flipAngle = 0
   /** Which way the deck is turning: a kickflip one way, a heelflip the other. */
   flipSign = 1
+  /** Radians the board has turned under him this jump. A half turn is one shove. */
+  shoveAngle = 0
+  shoveSign = 1
   /**
    * Which way he is facing, and it persists. Land a 180 and you ride switch
    * until the next one brings you back round.
    */
   yaw = 0
 
-  /** True while the board's nose points back down the road. */
+  /**
+   * True while the board's nose points back down the road. Measured in
+   * quarters, so lying across a rail counts as neither way round.
+   */
   get switched(): boolean {
-    return Math.abs(Math.round(this.yaw / Math.PI)) % 2 === 1
+    return Math.abs(Math.round(this.yaw / QUARTER)) % 4 === 2
   }
+
+  /** True while the board lies across what it is on, rather than along it. */
+  sideways = false
 
   airTime = 0
   grindTime = 0
@@ -100,8 +138,12 @@ export class Skater {
   private takeoffYaw = 0
   private flipping = false
   private flipsThisJump = 0
+  private shoving = false
+  private shovesThisJump = 0
   private cutApplied = false
   private pushCooldown = 0
+  /** Set on landing, so the frame after it adopts the held grind in silence. */
+  private justLanded = false
 
   reset(x: number): void {
     this.x = x
@@ -114,7 +156,12 @@ export class Skater {
     this.grind = 0
     this.flipAngle = 0
     this.flipSign = 1
+    this.shoveAngle = 0
+    this.shoveSign = 1
+    this.shoving = false
+    this.shovesThisJump = 0
     this.yaw = 0
+    this.sideways = false
     this.takeoffYaw = 0
     this.flipping = false
     this.flipsThisJump = 0
@@ -127,6 +174,7 @@ export class Skater {
     this.trickAge = 99
     this.cutApplied = false
     this.pushCooldown = 0
+    this.justLanded = false
   }
 
   step(dt: number, road: Road, input: Input): void {
@@ -147,6 +195,11 @@ export class Skater {
         this.vy = slopeOf(this.support) * this.vx
         this.support = null
         this.cutApplied = true
+        if (this.sideways) {
+          this.yaw = Math.round(this.yaw / Math.PI) * Math.PI
+          this.takeoffYaw = this.yaw
+          this.sideways = false
+        }
       }
     }
 
@@ -187,18 +240,33 @@ export class Skater {
     const wanted = rolling ? 0 : input.grind
     if (wanted !== this.grind) {
       this.grind = wanted
-      const names = GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
-      this.trick = names[this.grind + 2] ?? ''
-      this.trickAge = 0
+      // He has just landed and named the trick. A grind key he was already
+      // holding is not a new choice, and must not overwrite that name.
+      if (!this.justLanded) {
+        const names = this.sideways ? SLIDE_NAME : GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
+        this.trick = names[this.grind + 2] ?? ''
+        this.trickAge = 0
+      }
     }
+    this.justLanded = false
 
     if (input.jumpPressed) {
+      // Coming out of a slide, the quarter turn back onto the road is part of
+      // the pop. Making the player spin it again would bail every boardslide.
+      if (this.sideways) {
+        const halves = Math.round(this.yaw / Math.PI)
+        this.yaw = halves * Math.PI
+        this.sideways = false
+      }
       // A ramp adds its own rise, so an uphill launch goes higher.
       this.vy = C.JUMP_SPEED + Math.max(0, slope * this.vx)
       this.support = null
       this.grind = 0
       this.takeoffYaw = this.yaw
       this.flipsThisJump = 0
+      this.shovesThisJump = 0
+      this.shoveAngle = 0
+      this.shoving = false
       this.cutApplied = false
       this.grindTime = 0
     }
@@ -214,9 +282,30 @@ export class Skater {
     if (this.flipping) {
       this.flipAngle += ((Math.PI * 2) / C.FLIP_DURATION) * dt
       if (this.flipAngle >= Math.PI * 2) {
-        this.flipAngle = 0
-        this.flipping = false
+        // Keep the overshoot, so a held key rolls the deck without a hitch.
+        this.flipAngle -= Math.PI * 2
         this.flipsThisJump++
+        // Holding the key keeps it turning, which is where a double comes from.
+        if (!input.flipHeld) {
+          this.flipping = false
+          this.flipAngle = 0
+        }
+      }
+    }
+
+    if (input.shovePressed && !this.shoving) {
+      this.shoving = true
+      if (this.shovesThisJump === 0) this.shoveSign = input.shoveSign
+    }
+    if (this.shoving) {
+      this.shoveAngle += (Math.PI / C.SHOVE_DURATION) * dt
+      // A shove always finishes the half turn it started, released or not.
+      if (this.shoveAngle >= (this.shovesThisJump + 1) * Math.PI) {
+        this.shovesThisJump++
+        if (!input.shoveHeld) {
+          this.shoving = false
+          this.shoveAngle = this.shovesThisJump * Math.PI
+        }
       }
     }
 
@@ -252,20 +341,30 @@ export class Skater {
 
   private land(seg: Segment): void {
     const flips = this.flipsThisJump
+    const shoves = this.shovesThisJump
 
-    // Judged on how far he turned during this jump, not on where he started.
-    // The facing itself is kept, so a 180 leaves him riding switch.
-    const spun = this.yaw - this.takeoffYaw
-    const halves = Math.round(spun / Math.PI)
-    const wasSwitch = Math.abs(Math.round(this.takeoffYaw / Math.PI)) % 2 === 1
-    const bailed = Math.abs(spun - halves * Math.PI) > C.LANDING_TOLERANCE
-    this.yaw = this.takeoffYaw + halves * Math.PI
-    this.takeoffYaw = this.yaw
+    // A rail or a ledge takes the board across it as readily as along it, so
+    // the landing is judged on quarter turns. Flat ground has nothing to
+    // slide on and still asks for a half.
+    const slideable = seg.kind !== 'flat' && seg.kind !== 'step'
+    const unit = slideable ? QUARTER : Math.PI
+    const target = Math.round(this.yaw / unit) * unit
+    const off = Math.abs(this.yaw - target)
+    const bailed = off > C.LANDING_TOLERANCE
+
+    const wasSwitch = Math.abs(Math.round(this.takeoffYaw / QUARTER)) % 4 === 2
+    const quarters = Math.round((target - this.takeoffYaw) / QUARTER)
+    this.yaw = target
+    this.takeoffYaw = target
+    this.sideways = slideable && Math.abs(quarters) % 2 === 1
 
     // The harder he arrives, the deeper he soaks it up.
     this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
     if (bailed) {
-      this.vx *= C.BAIL_SPEED_KEEP
+      // The cost follows how far off he was. Nearly landing it nearly costs
+      // nothing, and only a real miss is expensive.
+      const miss = Math.min(1, off / (unit / 2))
+      this.vx *= 1 - miss * (1 - C.BAIL_SPEED_KEEP)
       this.absorb = 1
       if (this.vx < C.MIN_SPEED) this.vx = C.MIN_SPEED
     }
@@ -277,19 +376,27 @@ export class Skater {
     this.flipAngle = 0
     this.flipping = false
     this.flipsThisJump = 0
+    this.shoveAngle = 0
+    this.shoving = false
+    this.shovesThisJump = 0
 
     this.trick = bailed
       ? 'bail'
-      : nameTrick(
-          halves,
-          flips,
-          this.flipSign,
-          this.stance,
-          wasSwitch,
-          LABEL[seg.kind] ?? '',
-          this.airTime > 0.82,
-        )
+      : this.sideways
+        ? nameSlide(quarters, this.stance, wasSwitch)
+        : nameTrick(
+            Math.round(quarters / 2),
+            flips,
+            this.flipSign,
+            shoves,
+            this.shoveSign,
+            this.stance,
+            wasSwitch,
+            LABEL[seg.kind] ?? '',
+            this.airTime > 0.82,
+          )
     this.trickAge = 0
     this.airTime = 0
   }
+
 }
