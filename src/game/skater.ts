@@ -35,6 +35,8 @@ export class Skater {
   airTime = 0
   grindTime = 0
   spin = 0
+  /** Spikes to 1 on impact and decays, so the knees soak up a landing. */
+  absorb = 0
   trick = ''
   trickAge = 99
 
@@ -54,6 +56,7 @@ export class Skater {
     this.airTime = 0
     this.grindTime = 0
     this.spin = 0
+    this.absorb = 0
     this.trick = ''
     this.trickAge = 99
     this.cutApplied = false
@@ -64,6 +67,7 @@ export class Skater {
     this.prevX = this.x
     this.prevY = this.y
     this.trickAge += dt
+    if (this.absorb > 0) this.absorb = Math.max(0, this.absorb - dt * 5.5)
 
     this.x = carX
 
@@ -153,6 +157,8 @@ export class Skater {
 
   private land(seg: Segment): void {
     const flips = this.flipsThisJump
+    // The harder he arrives, the deeper he soaks it up.
+    this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg

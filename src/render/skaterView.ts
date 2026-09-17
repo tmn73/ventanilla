@@ -68,6 +68,32 @@ const AIR: Joints = {
   handFront: [0.52, 0.56],
 }
 
+/** Just after the pop: knees snap up, front arm rises, board comes with them. */
+const POP: Joints = {
+  hip: [0, 0],
+  shoulder: [-0.03, 0.45],
+  head: [-0.07, 0.65],
+  kneeBack: [-0.26, -0.16],
+  footBack: [-0.19, -0.4],
+  kneeFront: [0.3, -0.14],
+  footFront: [0.25, -0.37],
+  handBack: [-0.4, 0.32],
+  handFront: [0.44, 0.7],
+}
+
+/** On the way down, legs reaching for the landing. */
+const REACH: Joints = {
+  hip: [0, 0],
+  shoulder: [0.03, 0.47],
+  head: [0.06, 0.67],
+  kneeBack: [-0.24, -0.44],
+  footBack: [-0.26, -0.84],
+  kneeFront: [0.3, -0.42],
+  footFront: [0.3, -0.84],
+  handBack: [-0.6, 0.3],
+  handFront: [0.54, 0.44],
+}
+
 const JOINT_KEYS = Object.keys(GRIND) as Array<keyof Joints>
 
 function mix(a: Point, b: Point, k: number): Point {
@@ -167,43 +193,56 @@ export class SkaterView {
   }
 
   /**
-   * @param grounded blends the tucked pose into the crouched one
+   * @param lean radians of the ramp under him
+   * @param grounded blends the airborne pose into the riding one
+   * @param pump the compress and extend of a roll
    * @param grind -2 feeble, -1 five-o, 0 fifty-fifty, 1 nosegrind, 2 smith
-   * @param flip signed radians through a flip: one way is a kickflip, the
-   *   other a heelflip
+   * @param flip signed radians through a flip: one way a kickflip, the other
+   *   a heelflip
+   * @param rise vertical speed over the pop speed, 1 at the pop and -1 falling
+   * @param absorb 0 to 1, how hard the last landing has to be soaked up
    */
   update(
     x: number,
     y: number,
-    spin: number,
+    lean: number,
     grounded: number,
     pump: number,
     grind: number,
     flip: number,
+    rise: number,
+    absorb: number,
   ): void {
-    const pose = {} as Joints
-    for (const key of JOINT_KEYS) pose[key] = mix(AIR[key], GRIND[key], grounded)
+    // Airborne, the pose runs pop to level to reach. On the ground it settles
+    // into the ride, then compresses under whatever the landing cost.
+    const air = {} as Joints
+    for (const key of JOINT_KEYS) {
+      air[key] = rise >= 0 ? mix(AIR[key], POP[key], rise) : mix(AIR[key], REACH[key], -rise)
+    }
 
-    const squat = pump * 0.07 * grounded
+    const pose = {} as Joints
+    for (const key of JOINT_KEYS) pose[key] = mix(air[key], GRIND[key], grounded)
+
+    const squat = pump * 0.06 * grounded - absorb * 0.2 * grounded
     const shift = Math.sign(grind) * 0.1 * grounded
     pose.hip = [pose.hip[0] + shift, pose.hip[1] + squat]
-    pose.shoulder = [pose.shoulder[0] + shift, pose.shoulder[1] + squat * 1.3]
-    pose.head = [pose.head[0] + shift, pose.head[1] + squat * 1.4]
-    pose.handBack = [pose.handBack[0] - pump * 0.06 * grounded, pose.handBack[1]]
-    pose.handFront = [pose.handFront[0] + pump * 0.06 * grounded, pose.handFront[1]]
+    pose.shoulder = [pose.shoulder[0] + shift, pose.shoulder[1] + squat * 1.25]
+    pose.head = [pose.head[0] + shift, pose.head[1] + squat * 1.35]
+    pose.kneeBack = [pose.kneeBack[0] - absorb * 0.06, pose.kneeBack[1] + squat * 0.45]
+    pose.kneeFront = [pose.kneeFront[0] + absorb * 0.06, pose.kneeFront[1] + squat * 0.45]
+    pose.handBack = [pose.handBack[0] - pump * 0.05 * grounded, pose.handBack[1] + absorb * 0.1]
+    pose.handFront = [pose.handFront[0] + pump * 0.05 * grounded, pose.handFront[1] + absorb * 0.1]
+
+    // The deck rides under the feet rather than at a fixed height, which is
+    // what makes a pop look like the board coming up with him.
+    const boardY = (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
 
     this.root.position.set(x, y + FEET_TO_HIP, 0)
-    this.root.rotation.z = -spin
-
-    // The deck rides high off the hip in the air and sits low on a grind.
-    const deckLift = (1 - grounded) * 0.26
+    this.root.rotation.z = lean
 
     const onRail = grounded > 0.5 && grind !== 0
     const backTruck = grind === 1
     const pivotX = backTruck ? TRUCK_X : -TRUCK_X
-    // The pivot sits on the truck that is touching, so the board turns on it.
-    this.boardPivot.position.set(pivotX, DECK_Y - TRUCK_DROP + deckLift, 0)
-    this.board.position.set(-pivotX, -(DECK_Y - TRUCK_DROP), 0)
 
     let pitch = 0
     let roll = 0
@@ -217,11 +256,18 @@ export class SkaterView {
         roll = grind === -2 ? ROLL : -ROLL
         hang = grind === -2 ? -HANG : HANG
       }
+    } else {
+      // The tail snaps down to pop, and the board levels out at the top.
+      pitch = (rise > 0 ? rise * 0.52 : rise * 0.16) * (1 - grounded)
     }
-    this.boardPivot.rotation.set(roll, 0, pitch)
-    this.boardPivot.position.z = hang
 
-    // A kickflip rolls the deck around its own long axis, not around the rider.
+    // The pivot sits on the truck that is touching, so the board turns on it.
+    this.boardPivot.position.set(pivotX, boardY - TRUCK_DROP, hang)
+    this.board.position.set(-pivotX, -(boardY - TRUCK_DROP), 0)
+    this.deckAxis.position.y = boardY
+    this.boardPivot.rotation.set(roll, 0, pitch)
+
+    // A flip rolls the deck around its own long axis, not around the rider.
     this.deckAxis.rotation.x = flip
 
     span(this.deck, [-DECK_HALF + KICK_IN, 0], [DECK_HALF - KICK_IN, 0], DECK_THICK)

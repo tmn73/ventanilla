@@ -54,9 +54,12 @@ export class Input {
       this.held.delete(e.code)
     }
 
+    // The ollie fires on the press and the flick on the release, so a trick
+    // is two motions: you pop, then you flick. Holding longer pops higher.
     const pointerDown = (e: PointerEvent) => {
       e.preventDefault()
       this.touchStart = { x: e.clientX, y: e.clientY }
+      this.ollie()
     }
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
@@ -92,16 +95,22 @@ export class Input {
    * A tap is an ollie. A diagonal flick up and right is a kickflip, up and
    * left a heelflip, and the four straight directions pick the grind.
    */
+  /**
+   * A flick sets both a flip and a grind, and the context picks which one
+   * lands: in the air the flip fires, on a rail the grind changes. Diagonals
+   * read as flips, the four straight directions as grinds.
+   */
   private readFlick(dx: number, dy: number): void {
-    if (Math.hypot(dx, dy) < FLICK_PIXELS) {
-      this.ollie()
-      return
-    }
+    if (Math.hypot(dx, dy) < FLICK_PIXELS) return
 
     const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
-    if (angle >= 22 && angle < 68) this.flick(KICKFLIP)
-    else if (angle >= 112 && angle < 158) this.flick(HEELFLIP)
-    else if (angle >= 68 && angle < 112) this.latched = 2
+    if (angle >= 22 && angle < 68) {
+      this.flick(KICKFLIP)
+      this.latched = 1
+    } else if (angle >= 112 && angle < 158) {
+      this.flick(HEELFLIP)
+      this.latched = -1
+    } else if (angle >= 68 && angle < 112) this.latched = 2
     else if (angle >= -112 && angle < -68) this.latched = -2
     else if (angle >= -22 && angle < 22) this.latched = 1
     else this.latched = -1
@@ -111,6 +120,11 @@ export class Input {
     this.jumpHeld = true
     this.jumpPending = true
     this.latched = 0
+  }
+
+  /** True while a finger is down, which is what makes a tap a short pop. */
+  get pressing(): boolean {
+    return this.touchStart !== null
   }
 
   private flick(sign: number): void {

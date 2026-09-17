@@ -11,14 +11,23 @@ import {
 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
-import { POST_COLOR, SURFACE_COLOR } from './palette'
+import {
+  BENCH,
+  BENCH_LEG,
+  PALM_CROWN_NEAR,
+  PALM_TRUNK_NEAR,
+  POST_COLOR,
+  SURFACE_COLOR,
+  UMBRELLA,
+  UMBRELLA_POLE,
+} from './palette'
 
 const MAX_BOXES = 900
 const MAX_RODS = 500
 
 /** How far each surface hangs below its ridable top edge, and how deep it runs. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  flat: 1.5,
+  flat: 2.4,
   step: 1.0,
   ledge: 0.58,
   hubba: 0.62,
@@ -26,8 +35,8 @@ const THICKNESS: Record<SurfaceKind, number> = {
 }
 
 const BREADTH: Record<SurfaceKind, number> = {
-  flat: 7,
-  step: 7,
+  flat: 15,
+  step: 15,
   ledge: 1.7,
   hubba: 1.7,
   rail: 0.11,
@@ -122,14 +131,18 @@ export class RoadView {
       )
     }
 
+    this.decorate(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
   }
 
   /** Uprights holding the handrail up, following its pitch. */
   private railPosts(segment: Segment, all: Segment[], camLeft: number, right: number): void {
+    const stops: number[] = [segment.x0 + 0.18, segment.x1 - 0.18]
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
-    for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) {
+    for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) stops.push(x)
+
+    for (const x of stops) {
       if (x < camLeft - 14 || x > right + 14) continue
       const top = surfaceYAt(segment, x)
       // A post reaches the ground under it. A fixed length leaves rails hanging
@@ -138,6 +151,67 @@ export class RoadView {
       const drop = Math.max(0.2, top - foot)
       this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
     }
+  }
+
+  /**
+   * Palms, benches and parasols along the back of the plaza. None of it is in
+   * the skate plane, so none of it can be hit. It is here because a promenade
+   * made only of concrete and sand is one colour.
+   */
+  private decorate(all: Segment[], camLeft: number, right: number): void {
+    const spacing = 8.2
+    const first = Math.ceil((camLeft - 12) / spacing) * spacing
+    for (let x = first; x < right + 12; x += spacing) {
+      const shape = Math.abs(Math.sin(x * 7.311) * 21374.9) % 1
+      if (shape < 0.22) continue
+      const jitter = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
+      const ground = this.floorHeight(all, x)
+      if (ground === null) continue
+
+      const wx = x + jitter * 2.4
+      const z = -5.4 - jitter * 1.8
+
+      if (shape < 0.58) {
+        const height = 4.2 + jitter * 2.6
+        this.rod(wx, ground + height / 2, z, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
+        for (const angle of [2.5, 2.0, 1.571, 1.15, 0.65]) {
+          const reach = 1.5
+          this.box(
+            wx + Math.cos(angle) * reach * 0.5,
+            ground + height + Math.sin(angle) * reach * 0.3,
+            z + Math.cos(angle) * 0.4,
+            reach * 1.35,
+            0.1,
+            0.5,
+            PALM_CROWN_NEAR,
+            angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55),
+          )
+        }
+      } else if (shape < 0.82) {
+        this.box(wx, ground + 0.46, z, 1.9, 0.12, 0.55, BENCH)
+        this.box(wx, ground + 0.72, z - 0.22, 1.9, 0.42, 0.1, BENCH)
+        this.box(wx - 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
+        this.box(wx + 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
+      } else {
+        const height = 2.4
+        const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
+        this.rod(wx, ground + height / 2, z, height, 0.05, Math.PI / 2, UMBRELLA_POLE)
+        this.box(wx, ground + height, z, 2.6, 0.16, 2.6, shade)
+        this.box(wx, ground + height - 0.28, z, 1.7, 0.4, 1.7, shade)
+      }
+    }
+  }
+
+  /** Height of the pavement at a point, or null where there is none. */
+  private floorHeight(all: Segment[], x: number): number | null {
+    let best: number | null = null
+    for (const segment of all) {
+      if (!segment.floor) continue
+      if (x < segment.x0 || x > segment.x1) continue
+      const top = surfaceYAt(segment, x)
+      if (best === null || top > best) best = top
+    }
+    return best
   }
 
   private floorUnder(all: Segment[], x: number, below: number): number {

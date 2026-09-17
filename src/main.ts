@@ -1,5 +1,5 @@
 import { startLoop } from './core/loop'
-import { ANCHOR, FIXED_DT, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
+import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
@@ -70,7 +70,18 @@ startLoop(
 
     backdrop.update(camLeft, stage.viewHeight, groundRef)
     roadView.update(road.segments, camLeft)
-    skaterView.update(x, y, lean, grounded, Math.sin(x * 1.7), skater.grind, skater.flipAngle * skater.flipSign)
+    const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
+    skaterView.update(
+      x,
+      y,
+      lean,
+      grounded,
+      Math.sin(x * 1.7),
+      skater.grind,
+      skater.flipAngle * skater.flipSign,
+      rise,
+      skater.absorb,
+    )
     hud.update(game)
     stage.render(camLeft, camY)
   },

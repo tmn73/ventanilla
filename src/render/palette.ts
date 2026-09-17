@@ -69,6 +69,14 @@ export const LAMP_GLOW = '#4a5560'
 export const SIGN_FACE = '#f4f7f9'
 export const FROND = '#2f8a4f'
 
+/** Everything along the back of the plaza. It exists to break up the sand. */
+export const PALM_TRUNK_NEAR = '#7a5f3c'
+export const PALM_CROWN_NEAR = '#2f9e57'
+export const BENCH = '#b3552f'
+export const BENCH_LEG = '#4a4a52'
+export const UMBRELLA = ['#e8483c', '#f2b23c', '#3aa9c4', '#e8dcc4']
+export const UMBRELLA_POLE = '#d6cdb8'
+
 export const WHEEL_COLOR = '#2b2a33'
 export const SKATER = '#fffaf0'
 export const BOARD = '#ff7a3d'

@@ -10,14 +10,14 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
-const HORIZON = 0.34
+const HORIZON = 0.36
 
 /**
  * A small three quarter offset. Enough to show the top of a ledge and which
  * side of a rail the board hangs over, not enough to stop reading as a
  * side-scroller.
  */
-const EYE = new Vector3(5.5, 7.2, 26)
+const EYE = new Vector3(7, 9, 34)
 
 export class Stage {
   readonly renderer: WebGLRenderer

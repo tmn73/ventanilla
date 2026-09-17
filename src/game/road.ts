@@ -43,14 +43,14 @@ export function slopeOf(segment: Segment): number {
 
 const RISE = 0.34
 const TREAD = 0.8
-const MAX_STEPS = 16
+const MAX_STEPS = 20
 /** Without a rail the whole set has to be cleared in one ollie. */
 const MAX_FREE_STEPS = 8
 
 const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
 /** The pavement never wanders further than this from where it started. */
-const DRIFT_LIMIT = 3.2
+const DRIFT_LIMIT = 7
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -80,32 +80,33 @@ export class Road {
   }
 
   /**
-   * Stairs only ever go down, so without a counterweight the pavement walks
-   * off the bottom of the world. A low street is climbed back with a bank.
+   * One spot at a time, each with a long clean run-up in front of it. The
+   * run-up is the point: you see the set coming and you decide what to send.
    */
   private emit(): void {
-    const base = LANE_Y[0]!
-    const drift = this.groundY - base
-    if (drift < -DRIFT_LIMIT) {
+    this.runUp()
+    this.spot()
+  }
+
+  /** Open pavement. Long enough to read what is ahead and commit to it. */
+  private runUp(): void {
+    const length = range(this.rng, 22, 38)
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    this.headX += length
+  }
+
+  private spot(): void {
+    const drift = this.groundY - LANE_Y[0]!
+    if (drift < -DRIFT_LIMIT * 0.55) {
       this.bank(1)
       return
     }
 
     const roll = this.rng()
-    if (roll < 0.2) this.flat()
-    else if (roll < 0.44) {
-      if (drift < -DRIFT_LIMIT * 0.5) this.bank(1)
-      else this.stairs()
-    } else if (roll < 0.62) this.railSpot()
-    else if (roll < 0.76) this.ledgeSpot()
-    else this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
-  }
-
-  /** Plain pavement, with room to set up. */
-  private flat(): void {
-    const length = range(this.rng, 9, 19)
-    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
-    this.headX += length
+    if (roll < 0.38) this.stairs()
+    else if (roll < 0.62) this.railSpot()
+    else if (roll < 0.82) this.ledgeSpot()
+    else this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0)
   }
 
   /**
@@ -114,7 +115,9 @@ export class Road {
    */
   private stairs(): void {
     const headroom = Math.floor((this.groundY - (LANE_Y[0]! - DRIFT_LIMIT)) / RISE)
-    const steps = Math.max(3, Math.min(Math.round(range(this.rng, 3, MAX_STEPS)), headroom))
+    // Weighted toward the big sets, because the big set is the thing you want.
+    const wish = Math.round(range(this.rng, 4, MAX_STEPS + 6))
+    const steps = Math.max(4, Math.min(wish, MAX_STEPS, headroom))
     const hasRail = steps > MAX_FREE_STEPS || this.rng() < 0.55
     const count = hasRail ? Math.min(steps, MAX_STEPS) : Math.min(steps, MAX_FREE_STEPS)
 
@@ -136,8 +139,8 @@ export class Road {
 
     this.groundY = bottomY
     this.headX = runX
-    // Landing room at the bottom of every set, then something to dodge.
-    const runout = range(this.rng, 8, 14)
+    // Landing room at the bottom of every set.
+    const runout = range(this.rng, 12, 20)
     this.push(this.headX, this.headX + runout, this.groundY, this.groundY, 'flat', true)
     this.headX += runout
   }
@@ -172,13 +175,13 @@ export class Road {
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
   private bank(force: number): void {
-    const length = range(this.rng, 8, 15)
+    const length = range(this.rng, 12, 22)
     const rise =
       force > 0
-        ? range(this.rng, 1.1, 2.4)
+        ? range(this.rng, 2.2, 4.2)
         : force < 0
-          ? -range(this.rng, 1.1, 2.4)
-          : range(this.rng, -1.8, 1.8)
+          ? -range(this.rng, 1.4, 2.6)
+          : range(this.rng, -1.8, 2.2)
     const endY = this.groundY + rise
     this.push(this.headX, this.headX + length, this.groundY, endY, 'flat', true)
     this.groundY = endY
