@@ -135,7 +135,8 @@ function span(mesh: Mesh, from: Point, to: Point, width: number): void {
 
 export class SkaterView {
   private root = new Group()
-  /** Carries the facing, under the node that carries the ramp lean. */
+  /** The road's heading, then the ramp lean, then the rider's own facing. */
+  private leaner = new Group()
   private turner = new Group()
   private boardPivot = new Group()
   private board = new Group()
@@ -152,7 +153,8 @@ export class SkaterView {
 
   constructor(scene: Scene) {
     scene.add(this.root)
-    this.root.add(this.turner)
+    this.root.add(this.leaner)
+    this.leaner.add(this.turner)
     this.turner.add(this.boardPivot)
     this.boardPivot.add(this.board)
     this.board.add(this.deckAxis)
@@ -209,6 +211,8 @@ export class SkaterView {
   }
 
   /**
+   * @param z where the bending road has put him
+   * @param heading which way the road points under him
    * @param lean radians of the ramp under him
    * @param yaw radians he has turned about his own axis
    * @param grounded blends the airborne pose into the riding one
@@ -223,6 +227,8 @@ export class SkaterView {
   update(
     x: number,
     y: number,
+    z: number,
+    heading: number,
     lean: number,
     yaw: number,
     grounded: number,
@@ -264,8 +270,9 @@ export class SkaterView {
         ? pose.footFront[1] - 0.09
         : (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
 
-    this.root.position.set(x, y + FEET_TO_HIP, 0)
-    this.root.rotation.z = lean
+    this.root.position.set(x, y + FEET_TO_HIP, z)
+    this.root.rotation.y = -heading
+    this.leaner.rotation.z = lean
     this.turner.rotation.y = yaw
 
     const onRail = grounded > 0.5 && grind !== 0

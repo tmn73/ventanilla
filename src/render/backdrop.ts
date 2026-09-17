@@ -7,7 +7,6 @@ import {
   MeshBasicMaterial,
   Object3D,
   PlaneGeometry,
-  Scene,
 } from 'three'
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
 import {
@@ -104,7 +103,7 @@ function ridgeGeometry(amplitude: number, baseline: number, phase: number): Buff
 }
 
 function ridgeLayer(
-  scene: Scene,
+  scene: Object3D,
   color: string,
   amplitude: number,
   baseline: number,
@@ -124,7 +123,7 @@ function ridgeLayer(
   return { near, far, parallax }
 }
 
-function band(scene: Scene, color: string, z: number): Mesh {
+function band(scene: Object3D, color: string, z: number): Mesh {
   const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color }))
   mesh.position.z = z
   mesh.frustumCulled = false
@@ -132,7 +131,7 @@ function band(scene: Scene, color: string, z: number): Mesh {
   return mesh
 }
 
-function instanced(scene: Scene, color: string, max: number, z: number): InstancedMesh {
+function instanced(scene: Object3D, color: string, max: number, z: number): InstancedMesh {
   const mesh = new InstancedMesh(
     new PlaneGeometry(1, 1),
     new MeshBasicMaterial({ color: new Color(color) }),
@@ -152,7 +151,7 @@ export class Backdrop {
   private proxy = new Object3D()
   private layers: Layer[]
 
-  constructor(scene: Scene) {
+  constructor(scene: Object3D) {
     const geometry = new PlaneGeometry(1, 1, 1, 28)
     const position = geometry.getAttribute('position')
     const colors = new Float32Array(position.count * 3)
@@ -174,8 +173,8 @@ export class Backdrop {
     this.layers = [
       ridgeLayer(scene, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -80),
       ridgeLayer(scene, SIERRA, 6.4, 7.6, 0.24, 0.07, -78),
-      ridgeLayer(scene, HEADLAND, 3.8, 5.2, 0.44, 0.14, -60),
-      ridgeLayer(scene, JUNGLE, 2.4, 4.1, 0.67, 0.26, -50),
+      ridgeLayer(scene, HEADLAND, 3.2, 4.0, 0.44, 0.14, -60),
+      ridgeLayer(scene, JUNGLE, 1.7, 2.5, 0.67, 0.26, -50),
     ]
 
     this.bands = BANDS.map((spec) => ({
@@ -193,11 +192,11 @@ export class Backdrop {
     const lift = ground - DEATH_Y
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
-    this.sky.scale.set(VIEW_WIDTH * 2.6, top + 60, 1)
+    this.sky.scale.set(VIEW_WIDTH * 4.5, top + 60, 1)
     this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -90)
 
     for (const item of this.bands) {
-      item.mesh.scale.set(VIEW_WIDTH * 2.6, item.depth, 1)
+      item.mesh.scale.set(VIEW_WIDTH * 4.5, item.depth, 1)
       item.mesh.position.set(centre, lift + item.top - item.depth / 2, item.z)
     }
 

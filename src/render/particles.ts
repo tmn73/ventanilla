@@ -1,4 +1,4 @@
-import { Color, InstancedMesh, MeshBasicMaterial, Object3D, PlaneGeometry, Scene } from 'three'
+import { Color, InstancedMesh, MeshBasicMaterial, Object3D, PlaneGeometry } from 'three'
 
 const POOL = 260
 
@@ -24,7 +24,7 @@ export class Particles {
   private cursor = 0
   private debt = 0
 
-  constructor(scene: Scene) {
+  constructor(scene: Object3D) {
     this.mesh = new InstancedMesh(
       new PlaneGeometry(1, 1),
       new MeshBasicMaterial({ transparent: true, opacity: 0.95 }),

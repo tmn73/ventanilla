@@ -11,6 +11,7 @@ import {
 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
+import type { Path } from './path'
 import {
   BENCH,
   BENCH_LEG,
@@ -23,12 +24,18 @@ import {
   UMBRELLA_POLE,
 } from './palette'
 
-const MAX_BOXES = 900
-const MAX_RODS = 500
+const MAX_BOXES = 1600
+const MAX_RODS = 700
+const MAX_CONES = 120
 
-/** How far each surface hangs below its ridable top edge, and how deep it runs. */
+/** No piece of a surface is longer than this, so a bend never gets cut short. */
+const PIECE = 5
+/** Pieces overlap a little, which hides the wedge a bend leaves between them. */
+const OVERLAP = 1.09
+
+/** How far each surface hangs below its ridable top edge, and how wide it runs. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  flat: 2.4,
+  flat: 1.5,
   step: 1.0,
   ledge: 0.58,
   hubba: 0.62,
@@ -89,12 +96,16 @@ export class RoadView {
   private rods: Pool
   private cones: Pool
   private proxy = new Object3D()
+  private point = { x: 0, z: 0 }
 
-  constructor(scene: Scene) {
+  constructor(
+    scene: Scene,
+    private path: Path,
+  ) {
     this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
     // A rod lies along its own length once the proxy turns it a quarter turn.
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
-    this.cones = new Pool(scene, new CylinderGeometry(0.04, 1, 1, 10), 120)
+    this.cones = new Pool(scene, new CylinderGeometry(0.04, 1, 1, 10), MAX_CONES)
   }
 
   update(segments: Segment[], camLeft: number): void {
@@ -104,37 +115,16 @@ export class RoadView {
     this.cones.reset()
 
     for (const segment of segments) {
-      if (segment.x1 < camLeft - 14 || segment.x0 > right + 14) continue
-
-      const run = segment.x1 - segment.x0
-      const rise = segment.y1 - segment.y0
-      const length = Math.hypot(run, rise)
-      const angle = Math.atan2(rise, run)
-      const cx = (segment.x0 + segment.x1) / 2
-      const cy = (segment.y0 + segment.y1) / 2
-      // Perpendicular pointing into the surface, so offsets follow the slope.
-      const nx = Math.sin(angle)
-      const ny = -Math.cos(angle)
+      if (segment.x1 < camLeft - 16 || segment.x0 > right + 16) continue
 
       if (segment.kind === 'rail') {
-        this.rod(cx + nx * RAIL_RADIUS, cy + ny * RAIL_RADIUS, 0, length, RAIL_RADIUS, angle, SURFACE_COLOR.rail)
+        this.railAlong(segment, RAIL_RADIUS, SURFACE_COLOR.rail)
         this.railPosts(segment, segments, camLeft, right)
         continue
       }
 
-      const depth = THICKNESS[segment.kind]
-      this.box(
-        cx + nx * (depth / 2),
-        cy + ny * (depth / 2),
-        0,
-        length,
-        depth,
-        BREADTH[segment.kind],
-        SURFACE_COLOR[segment.kind],
-        angle,
-      )
-
-      if (segment.kind === 'flat') this.paving(segment, camLeft, right, angle)
+      this.slab(segment, THICKNESS[segment.kind], BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
+      if (segment.kind === 'flat') this.paving(segment, camLeft, right)
     }
 
     this.decorate(segments, camLeft, right)
@@ -143,30 +133,70 @@ export class RoadView {
     this.cones.finish()
   }
 
-  /** Uprights holding the handrail up, following its pitch. */
-  /** Slab joints across the plaza. They also give the eye something to clock. */
-  private paving(segment: Segment, camLeft: number, right: number, angle: number): void {
-    const spacing = 3.6
-    const first = Math.ceil(segment.x0 / spacing) * spacing
-    for (let x = first; x < segment.x1; x += spacing) {
-      if (x < camLeft - 14 || x > right + 14) continue
-      this.box(x, surfaceYAt(segment, x) + 0.005, 0, 0.07, 0.02, BREADTH.flat, PAVING, angle)
+  /** A surface, cut into pieces short enough to follow the bend under it. */
+  private slab(segment: Segment, depth: number, breadth: number, color: string | undefined): void {
+    const span = segment.x1 - segment.x0
+    const pieces = Math.max(1, Math.ceil(span / PIECE))
+    const step = span / pieces
+    const slope = Math.atan2(segment.y1 - segment.y0, span)
+    const nx = Math.sin(slope)
+    const ny = -Math.cos(slope)
+    const length = (step / Math.cos(slope)) * OVERLAP
+
+    for (let i = 0; i < pieces; i++) {
+      const s = segment.x0 + step * (i + 0.5)
+      const top = surfaceYAt(segment, s)
+      this.place(
+        this.boxes,
+        s + nx * (depth / 2),
+        top + ny * (depth / 2),
+        0,
+        length,
+        depth,
+        breadth,
+        color,
+        slope,
+      )
     }
   }
 
+  private railAlong(segment: Segment, radius: number, color: string | undefined): void {
+    const span = segment.x1 - segment.x0
+    const pieces = Math.max(1, Math.ceil(span / PIECE))
+    const step = span / pieces
+    const slope = Math.atan2(segment.y1 - segment.y0, span)
+    const length = (step / Math.cos(slope)) * OVERLAP
+
+    for (let i = 0; i < pieces; i++) {
+      const s = segment.x0 + step * (i + 0.5)
+      this.rod(s, surfaceYAt(segment, s) - radius, 0, length, radius, slope, color)
+    }
+  }
+
+  /** Uprights holding the handrail up, following its pitch. */
   private railPosts(segment: Segment, all: Segment[], camLeft: number, right: number): void {
     const stops: number[] = [segment.x0 + 0.18, segment.x1 - 0.18]
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
     for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) stops.push(x)
 
     for (const x of stops) {
-      if (x < camLeft - 14 || x > right + 14) continue
+      if (x < camLeft - 16 || x > right + 16) continue
       const top = surfaceYAt(segment, x)
       // A post reaches the ground under it. A fixed length leaves rails hanging
       // in the air wherever the pavement drops away, such as over a stair set.
       const foot = this.floorUnder(all, x, top)
       const drop = Math.max(0.2, top - foot)
       this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
+    }
+  }
+
+  /** Slab joints across the plaza. They also give the eye something to clock. */
+  private paving(segment: Segment, camLeft: number, right: number): void {
+    const spacing = 3.6
+    const first = Math.ceil(segment.x0 / spacing) * spacing
+    for (let x = first; x < segment.x1; x += spacing) {
+      if (x < camLeft - 16 || x > right + 16) continue
+      this.place(this.boxes, x, surfaceYAt(segment, x) + 0.005, 0, 0.07, 0.02, BREADTH.flat, PAVING)
     }
   }
 
@@ -177,20 +207,20 @@ export class RoadView {
    */
   private decorate(all: Segment[], camLeft: number, right: number): void {
     const spacing = 8.2
-    const first = Math.ceil((camLeft - 12) / spacing) * spacing
-    for (let x = first; x < right + 12; x += spacing) {
+    const first = Math.ceil((camLeft - 14) / spacing) * spacing
+    for (let x = first; x < right + 14; x += spacing) {
       const shape = Math.abs(Math.sin(x * 7.311) * 21374.9) % 1
       if (shape < 0.22) continue
       const jitter = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
       const ground = this.floorHeight(all, x)
       if (ground === null) continue
 
-      const wx = x + jitter * 2.4
-      const z = -5.4 - jitter * 1.8
+      const s = x + jitter * 2.4
+      const lateral = -5.2 - jitter * 1.6
 
       if (shape < 0.58) {
         const height = 4.2 + jitter * 2.6
-        this.rod(wx, ground + height / 2, z, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
+        this.rod(s, ground + height / 2, lateral, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
         // Fronds radiate from the crown and droop, which is what makes the
         // shape a palm rather than a handful of sticks.
         for (const angle of [2.79, 2.36, 1.92, 1.571, 1.22, 0.79, 0.35]) {
@@ -198,10 +228,11 @@ export class RoadView {
           const dx = Math.cos(angle)
           const dy = Math.sin(angle) * 0.42 - 0.12
           const len = Math.hypot(dx, dy)
-          this.box(
-            wx + (dx / len) * reach * 0.5,
+          this.place(
+            this.boxes,
+            s + (dx / len) * reach * 0.5,
             ground + height + (dy / len) * reach * 0.5,
-            z + dx * 0.55,
+            lateral + dx * 0.55,
             reach,
             0.11,
             0.42,
@@ -210,15 +241,15 @@ export class RoadView {
           )
         }
       } else if (shape < 0.82) {
-        this.box(wx, ground + 0.46, z, 1.9, 0.12, 0.55, BENCH)
-        this.box(wx, ground + 0.72, z - 0.22, 1.9, 0.42, 0.1, BENCH)
-        this.box(wx - 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
-        this.box(wx + 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
+        this.place(this.boxes, s, ground + 0.46, lateral, 1.9, 0.12, 0.55, BENCH)
+        this.place(this.boxes, s, ground + 0.72, lateral - 0.22, 1.9, 0.42, 0.1, BENCH)
+        this.place(this.boxes, s - 0.75, ground + 0.23, lateral, 0.09, 0.46, 0.5, BENCH_LEG)
+        this.place(this.boxes, s + 0.75, ground + 0.23, lateral, 0.09, 0.46, 0.5, BENCH_LEG)
       } else {
         const height = 2.5
         const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
-        this.rod(wx, ground + height / 2, z, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
-        this.cone(wx, ground + height + 0.22, z, 0.62, 2.1, shade)
+        this.rod(s, ground + height / 2, lateral, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
+        this.cone(s, ground + height + 0.22, lateral, 0.62, 2.1, shade)
       }
     }
   }
@@ -246,43 +277,51 @@ export class RoadView {
     return best
   }
 
-  private box(
-    x: number,
-    y: number,
-    z: number,
-    width: number,
-    height: number,
-    breadth: number,
-    color: string | undefined,
-    rotation = 0,
-  ): void {
-    this.proxy.position.set(x, y, z)
-    this.proxy.scale.set(width, height, breadth)
-    this.proxy.rotation.set(0, 0, rotation)
-    this.boxes.add(this.proxy, color)
-  }
-
   /** A canopy: wide at the bottom, closed at the top. */
-  private cone(x: number, y: number, z: number, height: number, width: number, color: string): void {
-    this.proxy.position.set(x, y, z)
+  private cone(s: number, y: number, lateral: number, height: number, width: number, color: string): void {
+    this.path.place(s, lateral, this.point)
+    this.proxy.position.set(this.point.x, y, this.point.z)
     this.proxy.scale.set(width / 2, height, width / 2)
-    this.proxy.rotation.set(Math.PI, 0, 0)
+    this.proxy.rotation.set(Math.PI, -this.path.headingAt(s), 0)
     this.cones.add(this.proxy, color)
   }
 
-  /** A round bar. `rotation` is the angle its length makes with the x axis. */
+  /** A round bar. `rotation` is the angle its length makes with the road. */
   private rod(
-    x: number,
+    s: number,
     y: number,
-    z: number,
+    lateral: number,
     length: number,
     radius: number,
     rotation: number,
     color: string | undefined,
   ): void {
-    this.proxy.position.set(x, y, z)
+    this.path.place(s, lateral, this.point)
+    this.proxy.position.set(this.point.x, y, this.point.z)
     this.proxy.scale.set(radius, length, radius)
-    this.proxy.rotation.set(0, 0, rotation - Math.PI / 2)
+    this.proxy.rotation.set(0, -this.path.headingAt(s), rotation - Math.PI / 2)
     this.rods.add(this.proxy, color)
+  }
+
+  /**
+   * Everything lands here. `s` is a distance along the road and `lateral` is
+   * how far to the side of it, so a bend is applied in exactly one place.
+   */
+  private place(
+    pool: Pool,
+    s: number,
+    y: number,
+    lateral: number,
+    width: number,
+    height: number,
+    breadth: number,
+    color: string | undefined,
+    slope = 0,
+  ): void {
+    this.path.place(s, lateral, this.point)
+    this.proxy.position.set(this.point.x, y, this.point.z)
+    this.proxy.scale.set(width, height, breadth)
+    this.proxy.rotation.set(0, -this.path.headingAt(s), slope)
+    pool.add(this.proxy, color)
   }
 }

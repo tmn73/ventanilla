@@ -1,3 +1,4 @@
+import { Group } from 'three'
 import { startLoop } from './core/loop'
 import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
@@ -8,6 +9,7 @@ import { Backdrop } from './render/backdrop'
 import { Hud } from './render/hud'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
+import { Path } from './render/path'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
@@ -15,19 +17,27 @@ import { Stage } from './render/stage'
 const canvas = document.getElementById('view') as HTMLCanvasElement
 const surface = document.getElementById('stage') as HTMLElement
 
-const stage = new Stage(canvas)
-const backdrop = new Backdrop(stage.scene)
-const roadView = new RoadView(stage.scene)
-const particles = new Particles(stage.scene)
-const skaterView = new SkaterView(stage.scene)
-const hud = new Hud()
-mountHelp()
-
 // A fresh road every run. ?seed=anything pins one road so it can be replayed.
-const game = new Game(new URLSearchParams(location.search).get('seed'))
+const seed = new URLSearchParams(location.search).get('seed')
+const game = new Game(seed)
 const input = new Input()
 input.attach(surface)
 game.start()
+
+const path = new Path(game.seedLabel)
+const stage = new Stage(canvas)
+
+// The backdrop and the sparks work on one axis, so they hang off a frame that
+// carries the bend for them. Only the road and the skater are placed by hand.
+const frame = new Group()
+stage.scene.add(frame)
+
+const backdrop = new Backdrop(frame)
+const particles = new Particles(frame)
+const roadView = new RoadView(stage.scene, path)
+const skaterView = new SkaterView(stage.scene)
+const hud = new Hud()
+mountHelp()
 
 window.addEventListener('resize', () => stage.resize())
 
@@ -37,6 +47,8 @@ let lastFrame = performance.now() / 1000
 let camY = 0
 let groundRef = LANE_Y[0]!
 
+const eye = { x: 0, z: 0 }
+const feet = { x: 0, z: 0 }
 const mix = (from: number, to: number, alpha: number) => from + (to - from) * alpha
 
 startLoop(
@@ -50,9 +62,10 @@ startLoop(
     lastFrame = now
 
     const { skater, road } = game
-    const camLeft = mix(skater.prevX, skater.x, alpha) - VIEW_WIDTH * ANCHOR
     const x = mix(skater.prevX, skater.x, alpha)
     const y = mix(skater.prevY, skater.y, alpha)
+    const camLeft = x - VIEW_WIDTH * ANCHOR
+    const camS = x
 
     grounded += ((skater.support ? 1 : 0) - grounded) * 0.25
 
@@ -70,12 +83,22 @@ startLoop(
     // He rides straight, and leans with whatever ramp he is on.
     const lean = skater.support ? Math.atan(slopeOf(skater.support)) : 0
 
+    const heading = path.headingAt(camS)
+    path.place(camS, 0, eye)
+    // Park the frame so a local x of camS lands on the camera's point.
+    frame.position.set(eye.x - camS * Math.cos(heading), 0, eye.z - camS * Math.sin(heading))
+    frame.rotation.y = -heading
+
+    path.place(x, 0, feet)
+    const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
+
     backdrop.update(camLeft, stage.viewHeight, groundRef)
     roadView.update(road.segments, camLeft)
-    const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
     skaterView.update(
-      x,
+      feet.x,
       y,
+      feet.z,
+      path.headingAt(x),
       lean,
       skater.yaw,
       grounded,
@@ -87,7 +110,7 @@ startLoop(
       Math.min(1, skater.pushTime / 0.18),
     )
     hud.update(game)
-    stage.render(camLeft, camY)
+    stage.render(eye.x, camY, eye.z, heading)
   },
   FIXED_DT,
 )

@@ -18,6 +18,8 @@ const HORIZON = 0.2
  * side-scroller.
  */
 const EYE = new Vector3(7, 9, 34)
+const SUN = new Vector3(-16, 26, 20)
+const UP = new Vector3(0, 1, 0)
 
 export class Stage {
   readonly renderer: WebGLRenderer
@@ -26,6 +28,7 @@ export class Stage {
   viewHeight = 20.25
 
   private target = new Vector3()
+  private eye = new Vector3()
   private sun: DirectionalLight
 
   constructor(canvas: HTMLCanvasElement) {
@@ -77,12 +80,20 @@ export class Stage {
     this.camera.updateProjectionMatrix()
   }
 
-  render(camLeft: number, camY: number, shakeX = 0, shakeY = 0): void {
-    this.target.set(camLeft + VIEW_WIDTH / 2 + shakeX, camY + shakeY, 0)
-    this.camera.position.copy(this.target).add(EYE)
+  /**
+   * `heading` is which way the road is pointing here. Turning the eye with it
+   * is what keeps the skater running left to right while the world bends.
+   */
+  render(x: number, y: number, z: number, heading: number): void {
+    this.target.set(x, y, z)
+
+    this.eye.copy(EYE).applyAxisAngle(UP, -heading)
+    this.camera.position.copy(this.target).add(this.eye)
+    this.camera.up.set(0, 1, 0)
     this.camera.lookAt(this.target)
 
-    this.sun.position.set(this.target.x - 16, this.target.y + 26, 20)
+    this.eye.copy(SUN).applyAxisAngle(UP, -heading)
+    this.sun.position.copy(this.target).add(this.eye)
     this.sun.target.position.copy(this.target)
     this.sun.target.updateMatrixWorld()
 
