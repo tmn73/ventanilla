@@ -131,11 +131,11 @@ startLoop(
       rise,
       Math.max(skater.absorb, skater.crouch * 0.72),
       Math.min(1, skater.pushTime / 0.22),
-      skater.switched,
+      skater.reversed,
       skater.stance,
       skater.shoveAngle * skater.shoveSign,
     )
-    hud.setSwitched(skater.switched)
+    hud.setStance(skater.stanceWord)
     hud.update(skater)
     stage.render(eye.x, camY, eye.z, camHeading)
   },

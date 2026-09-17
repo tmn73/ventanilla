@@ -8,6 +8,17 @@ const MANUAL_NAME = ['manual', 'manual', '', 'nose manual', 'nose manual']
 /** Sideways on the obstacle. The same three keys pick which end takes it. */
 const SLIDE_NAME = ['tailslide', 'tailslide', 'boardslide', 'noseslide', 'noseslide']
 const FLIP_COUNT = ['', '', 'double', 'triple', 'quadruple']
+/**
+ * Which stance a trick goes out under, from whether the board is turned round
+ * and which end he popped. Riding normally you pop the tail for an ollie and
+ * the nose for a nollie. Turned round it is a switch ollie off the tail and a
+ * fakie off the nose.
+ */
+const STANCE_WORD = ['', 'nollie', 'switch', 'fakie']
+
+function stanceOf(reversed: boolean, nose: boolean): string {
+  return STANCE_WORD[(reversed ? 2 : 0) + (nose ? 1 : 0)]!
+}
 const QUARTER = Math.PI / 2
 
 /**
@@ -22,12 +33,15 @@ export function nameTrick(
   shoves: number,
   shoveSign: number,
   stance: number,
-  wasSwitch: boolean,
+  reversed: boolean,
+  nose: boolean,
   surface: string,
   bigAir: boolean,
 ): string {
+  // The stance word comes first, the way a skater says it.
   const parts: string[] = []
-  if (wasSwitch) parts.push('switch')
+  const word = stanceOf(reversed, nose)
+  if (word) parts.push(word)
 
   const turn = Math.abs(halves) * 180
   const shoveTurn = Math.abs(shoves) * 180
@@ -64,7 +78,8 @@ export function nameTrick(
     parts.push('big air')
   } else if (surface) {
     parts.push(surface)
-  } else {
+  } else if (word !== 'nollie') {
+    // A nollie is the whole name on its own. The others take the word ollie.
     parts.push('ollie')
   }
 
@@ -72,9 +87,10 @@ export function nameTrick(
 }
 
 /** Sideways onto a rail or a ledge. Which way he turned on names the side. */
-function nameSlide(quarters: number, stance: number, wasSwitch: boolean): string {
+function nameSlide(quarters: number, stance: number, reversed: boolean, nose: boolean): string {
   const side = quarters > 0 === stance > 0 ? 'frontside' : 'backside'
-  return `${wasSwitch ? 'switch ' : ''}${side} boardslide`
+  const word = stanceOf(reversed, nose)
+  return [word, side, 'boardslide'].filter(Boolean).join(' ')
 }
 
 const LABEL: Record<string, string> = {
@@ -112,12 +128,20 @@ export class Skater {
   yaw = 0
 
   /**
-   * True while the board's nose points back down the road. Measured in
-   * quarters, so lying across a rail counts as neither way round.
+   * True while the board is turned round under him. Measured in quarters, so
+   * lying across a rail counts as neither way round.
    */
-  get switched(): boolean {
+  get reversed(): boolean {
     return Math.abs(Math.round(this.yaw / QUARTER)) % 4 === 2
   }
+
+  /** What he is riding right now, which is the word every trick carries. */
+  get stanceWord(): string {
+    return this.reversed ? 'switch' : ''
+  }
+
+  /** Which end of the board he popped off. The nose makes it a nollie. */
+  poppedNose = false
 
   /** True while the board lies across what it is on, rather than along it. */
   sideways = false
@@ -237,7 +261,15 @@ export class Skater {
 
     // Plain pavement always rolls flat. A latched flick belongs to the block
     // or the rail it was aimed at, and must not follow him onto the ground.
-    const wanted = rolling ? 0 : input.grind
+    // Sideways on a rail, the end under a foot decides which slide it is, the
+    // same way it decides which end the pop comes off. Press the nose for a
+    // noseslide, the tail for a tailslide, neither for a boardslide.
+    const held = input.pressedEnd
+    const wanted = rolling
+      ? 0
+      : this.sideways && held !== 0
+        ? ((held === 1) !== this.reversed ? 1 : -1)
+        : input.grind
     if (wanted !== this.grind) {
       this.grind = wanted
       // He has just landed and named the trick. A grind key he was already
@@ -264,8 +296,13 @@ export class Skater {
       }
       // How long he held it decides how high it goes, and a ramp adds its own
       // rise on top, so an uphill launch still goes higher.
+      // The input says which end of the board he popped in screen terms. Turn
+      // the board round and that same end is the other one, which is the whole
+      // difference between an ollie, a nollie, a switch ollie and a fakie.
+      this.poppedNose = input.popLeading !== this.reversed
+      const end = this.poppedNose ? C.NOLLIE_KEEP : 1
       const charge = C.POP_MIN + (1 - C.POP_MIN) * this.crouch
-      this.vy = C.JUMP_SPEED * charge + Math.max(0, slope * this.vx)
+      this.vy = C.JUMP_SPEED * charge * end + Math.max(0, slope * this.vx)
       this.crouch = 0
       this.support = null
       this.grind = 0
@@ -360,7 +397,7 @@ export class Skater {
     const off = Math.abs(this.yaw - target)
     const bailed = off > C.LANDING_TOLERANCE
 
-    const wasSwitch = Math.abs(Math.round(this.takeoffYaw / QUARTER)) % 4 === 2
+    const wasReversed = Math.abs(Math.round(this.takeoffYaw / QUARTER)) % 4 === 2
     const quarters = Math.round((target - this.takeoffYaw) / QUARTER)
     this.yaw = target
     this.takeoffYaw = target
@@ -391,7 +428,7 @@ export class Skater {
     this.trick = bailed
       ? 'bail'
       : this.sideways
-        ? nameSlide(quarters, this.stance, wasSwitch)
+        ? nameSlide(quarters, this.stance, wasReversed, this.poppedNose)
         : nameTrick(
             Math.round(quarters / 2),
             flips,
@@ -399,7 +436,8 @@ export class Skater {
             shoves,
             this.shoveSign,
             this.stance,
-            wasSwitch,
+            wasReversed,
+            this.poppedNose,
             LABEL[seg.kind] ?? '',
             this.airTime > 0.82,
           )

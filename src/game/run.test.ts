@@ -6,12 +6,14 @@ import { Game } from './game'
 const IDLE = {
   jumpHeld: false,
   jumpReleased: false,
+  popLeading: false,
   flipPressed: false,
   flipSign: 1,
   grind: 0,
   pushing: false,
   braking: false,
   rotate: 0,
+  pressedEnd: 0,
 }
 const idle = IDLE as never
 

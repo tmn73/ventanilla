@@ -7,11 +7,25 @@ export const FRONTSIDE_SHOVE = 1
 
 /** Under this, a touch is a tap and not a flick. */
 const FLICK_PIXELS = 34
+/**
+ * Which half of the screen a finger is on. The board is drawn from the side,
+ * so the left half is always the end trailing behind him and the right half
+ * the end leading. Turn the board round and the tail changes sides with it.
+ */
+const TRAILING = -1
+const LEADING = 1
 
 export class Input {
   jumpHeld = false
   /** Edge, on the way up. The pop is the release, so this is what fires it. */
   jumpReleased = false
+  /**
+   * Which end of the board the release popped off, in screen terms: false is
+   * the end trailing behind him, true is the one leading. Which of those is
+   * the tail depends on whether the board is turned round, and that is what
+   * makes the same gesture an ollie one way and a fakie the other.
+   */
+  popLeading = false
   /** Edge. Fires one flip. */
   flipPressed = false
   flipSign = KICKFLIP
@@ -23,8 +37,10 @@ export class Input {
   private dragRotate = 0
   private pressedAt = 0
   private pushPulse = false
+  private pushPending = false
   private brakeUntil = 0
   private releasePending = false
+  private leadingPending = false
   private flipPending = false
   private pendingSign = KICKFLIP
   private shovePending = false
@@ -32,7 +48,11 @@ export class Input {
   private held = new Set<string>()
   /** A flick latches a grind until the next ollie, since a finger cannot hold one. */
   private latched = 0
-  private touchStart: { x: number; y: number } | null = null
+  private touchStart: { x: number; y: number; side: number } | null = null
+  /** True once a drag has spent itself, so the release does not also fire. */
+  private swiped = false
+  /** Which end the current crouch is loading, kept until the pop spends it. */
+  private crouchLeading = false
   private detach: Array<() => void> = []
 
   /**
@@ -47,6 +67,14 @@ export class Input {
     if (this.held.has('KeyA')) return -1
     if (this.held.has('KeyD')) return 1
     return this.dragRotate
+  }
+
+  /**
+   * Which half a finger is resting on, or zero. On a slide this is the end he
+   * is weighting, and that is what makes it a noseslide or a tailslide.
+   */
+  get pressedEnd(): number {
+    return this.touchStart?.side ?? 0
   }
 
   /** Held, the deck keeps rolling, which is how a double and a triple come out. */
@@ -93,8 +121,11 @@ export class Input {
       if (e.repeat) return
       if (e.code === 'Space') {
         e.preventDefault()
-        this.jumpHeld = true
-        this.latched = 0
+        this.crouchDown(this.held.has('ShiftLeft') || this.held.has('ShiftRight'))
+        return
+      }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.held.add(e.code)
         return
       }
       if (!arrows.has(e.code)) return
@@ -106,46 +137,86 @@ export class Input {
       if (e.code === 'KeyE') this.shove(FRONTSIDE_SHOVE)
     }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && this.jumpHeld) {
-        this.jumpHeld = false
-        this.releasePending = true
-      }
+      if (e.code === 'Space') this.pop()
       this.held.delete(e.code)
     }
 
-    // The ollie fires on the press and the flick on the release, so a trick
-    // is two motions: you pop, then you flick. Holding longer pops higher.
-    const pointerDown = (e: PointerEvent) => {
-      e.preventDefault()
-      this.touchStart = { x: e.clientX, y: e.clientY }
-      this.pressedAt = performance.now()
-      this.dragRotate = 0
-      this.crouchDown()
+    // Seen from the side, the board's tail is on the left of the screen and
+    // its nose is on the right. So the left half is the back foot and the
+    // right half is the front one, and every gesture is what that foot does.
+    const half = (x: number): number => {
+      const box = surface.getBoundingClientRect()
+      return x < box.left + box.width / 2 ? TRAILING : LEADING
     }
 
-    // A quick flick is a flip. A finger that moves and then stays put is a
-    // spin, and it keeps spinning until it lifts.
+    const pointerDown = (e: PointerEvent) => {
+      e.preventDefault()
+      this.touchStart = { x: e.clientX, y: e.clientY, side: half(e.clientX) }
+      this.pressedAt = performance.now()
+      this.dragRotate = 0
+      this.swiped = false
+      // The back foot loads the tail. Nothing leaves the ground until it lifts.
+      // Pressing a half loads that end of the board, the way a foot does.
+      this.crouchDown(this.touchStart.side === LEADING)
+    }
+
     const pointerMove = (e: PointerEvent) => {
       const start = this.touchStart
       if (!start) return
       const dx = e.clientX - start.x
-      if (Math.abs(dx) < 46 || performance.now() - this.pressedAt < 130) return
-      this.dragRotate = dx > 0 ? 1 : -1
+      const dy = e.clientY - start.y
+      if (performance.now() - this.pressedAt < 110) return
+
+      if (start.side === TRAILING) {
+        // Sweeping the back foot off the tail and backwards is a push, and it
+        // is the only way to push, so there is no way to push mongo.
+        if (dx < -FLICK_PIXELS && Math.abs(dx) > Math.abs(dy) && !this.swiped) {
+          this.pushPending = true
+          this.swiped = true
+          this.jumpHeld = false
+        }
+        return
+      }
+
+      // A front foot held out to the side turns him, and it keeps turning.
+      if (Math.abs(dx) >= 46 && Math.abs(dx) >= Math.abs(dy)) this.dragRotate = dx > 0 ? 1 : -1
     }
+
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
       this.touchStart = null
-      this.pop()
       const spun = this.dragRotate !== 0
       this.dragRotate = 0
-      if (!start || spun) return
-      this.readFlick(e.clientX - start.x, e.clientY - start.y)
+      if (!start) return
+
+      const dx = e.clientX - start.x
+      const dy = e.clientY - start.y
+
+      if (start.side === TRAILING) {
+        if (this.swiped) {
+          this.swiped = false
+          return
+        }
+        // A scoop of the tail on the way up is a shove-it, and it goes with
+        // the pop rather than instead of it: a shove-it is an ollie too.
+        if (Math.abs(dy) >= FLICK_PIXELS && Math.abs(dy) > Math.abs(dx)) {
+          this.shove(dy < 0 ? FRONTSIDE_SHOVE : BACKSIDE_SHOVE)
+          this.latched = dy < 0 ? 2 : -2
+        }
+        this.pop()
+        return
+      }
+
+      if (spun) return
+      this.readFlick(dx, dy)
     }
+
     const blur = () => {
       this.held.clear()
       this.jumpHeld = false
       this.touchStart = null
       this.dragRotate = 0
+      this.swiped = false
     }
 
     window.addEventListener('keydown', down)
@@ -180,23 +251,26 @@ export class Input {
     if (Math.hypot(dx, dy) < FLICK_PIXELS) return
 
     const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
-    if (angle >= 22 && angle < 68) {
+    // Up and out is the front foot flicking off the nose. Straight down is it
+    // pressing the board into the ground, which is how he scrubs speed.
+    if (angle >= 18 && angle < 80) {
       this.flick(KICKFLIP)
       this.latched = 1
-    } else if (angle >= 112 && angle < 158) {
+    } else if (angle >= 100 && angle < 162) {
       this.flick(HEELFLIP)
       this.latched = -1
-    } else if (angle >= 68 && angle < 112) {
-      this.shove(BACKSIDE_SHOVE)
-      this.latched = 2
+    } else if (angle >= -135 && angle < -45) {
+      this.brakeUntil = performance.now() + 420
+      this.latched = 0
+    } else {
+      this.latched = angle >= -45 && angle < 45 ? 1 : -1
     }
-    else if (angle >= -112 && angle < -68) this.latched = -2
-    else if (angle >= -22 && angle < 22) this.latched = 1
-    else this.latched = -1
   }
 
-  private crouchDown(): void {
+
+  private crouchDown(leading: boolean): void {
     this.jumpHeld = true
+    this.crouchLeading = leading
     this.latched = 0
   }
 
@@ -204,6 +278,7 @@ export class Input {
     if (!this.jumpHeld) return
     this.jumpHeld = false
     this.releasePending = true
+    this.leadingPending = this.crouchLeading
   }
 
   /** True while a finger is down, which is what makes a tap a short pop. */
@@ -224,6 +299,7 @@ export class Input {
   /** Call once at the top of every fixed step so one press fires one trick. */
   beginStep(): void {
     this.jumpReleased = this.releasePending
+    this.popLeading = this.leadingPending
     this.releasePending = false
     this.flipPressed = this.flipPending
     this.flipSign = this.pendingSign
@@ -231,7 +307,10 @@ export class Input {
     this.shovePressed = this.shovePending
     this.shoveSign = this.pendingShove
     this.shovePending = false
-    this.pushPulse = false
+    // Carried over one step rather than cleared, or a push that arrived
+    // between two steps would be wiped before the skater ever read it.
+    this.pushPulse = this.pushPending
+    this.pushPending = false
   }
 
   release(): void {

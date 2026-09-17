@@ -8,7 +8,7 @@ export class Hud {
   private speed: HTMLElement
   private trick: HTMLElement
   private switchMark: HTMLElement
-  private wasSwitched = false
+  private stance = ''
   private shown = -1
 
   constructor() {
@@ -22,10 +22,11 @@ export class Hud {
   }
 
   /** Which way round the rider is. Everything else they can see for themselves. */
-  setSwitched(switched: boolean): void {
-    if (switched === this.wasSwitched) return
-    this.wasSwitched = switched
-    this.switchMark.hidden = !switched
+  setStance(word: string): void {
+    if (word === this.stance) return
+    this.stance = word
+    this.switchMark.textContent = word
+    this.switchMark.hidden = word === ''
   }
 
   update(skater: Skater): void {

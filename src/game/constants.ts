@@ -24,6 +24,8 @@ export const JUMP_SPEED = 8.2
 export const CROUCH_TIME = 0.3
 /** What a straight tap is worth, as a share of a full crouch. */
 export const POP_MIN = 0.85
+/** A nollie against an ollie. Less tail to lever against, so a little lower. */
+export const NOLLIE_KEEP = 0.92
 
 /**
  * Speed, in metres per second, and a skater's rather than a car's. Cruising is
