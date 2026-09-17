@@ -25,11 +25,21 @@ const RADIUS_MIN = 22
 const RADIUS_MAX = 34
 const QUARTER = Math.PI / 2
 
+/** Legs further behind than this are dropped; nothing ever looks back that far. */
+const TRAIL = 600
+
 export class Path {
   private legs: Leg[] = []
   private rng: () => number
   /** Pretend the lead-in was a corner, so a straight is laid before the first one. */
   private lastWasCorner = true
+  /**
+   * The leg the last query landed on. Lookups arrive in a near monotonic
+   * stream, thousands per frame, so starting from the last answer turns a scan
+   * over every leg ever laid into a couple of comparisons. Without it the cost
+   * grows with the distance travelled and the tab eventually dies.
+   */
+  private cursor = 0
 
   constructor(seed: string) {
     this.rng = mulberry32(seedFrom(seed))
@@ -39,7 +49,9 @@ export class Path {
 
   /** Lays legs forward until the path covers this distance. */
   private extendTo(s: number): void {
-    while (true) {
+    // A leg is never shorter than thirty metres, so this can only run a few
+    // times. The bound is there so a bad length can never hang the tab.
+    for (let guard = 0; guard < 64; guard++) {
       const last = this.legs[this.legs.length - 1]!
       if (last.s0 + last.length > s) return
 
@@ -66,6 +78,17 @@ export class Path {
     }
   }
 
+  /** Drops legs that are far behind, so the list cannot grow without end. */
+  forget(s: number): void {
+    if (this.legs.length < 16) return
+    const cutoff = s - TRAIL
+    let keep = 0
+    while (keep + 1 < this.legs.length && this.legs[keep + 1]!.s0 < cutoff) keep++
+    if (keep === 0) return
+    this.legs.splice(0, keep)
+    this.cursor = Math.max(0, this.cursor - keep)
+  }
+
   /** Position and heading at the far end of a leg. */
   private endOf(leg: Leg): { x: number; z: number; heading: number } {
     return this.walk(leg, leg.length)
@@ -89,16 +112,22 @@ export class Path {
 
   private legAt(s: number): Leg {
     this.extendTo(s + 400)
-    for (let i = this.legs.length - 1; i >= 0; i--) {
-      const leg = this.legs[i]!
-      if (s >= leg.s0) return leg
-    }
-    return this.legs[0]!
+
+    let i = Math.min(this.cursor, this.legs.length - 1)
+    while (i > 0 && s < this.legs[i]!.s0) i--
+    while (i + 1 < this.legs.length && s >= this.legs[i + 1]!.s0) i++
+    this.cursor = i
+    return this.legs[i]!
   }
 
   /** Reciprocal of the turning radius here, or zero on a straight. */
   curvatureAt(s: number): number {
     return this.legAt(s).curvature
+  }
+
+  /** How many legs are held. Bounded, or a long session eats the tab. */
+  get legCount(): number {
+    return this.legs.length
   }
 
   /** Radians the road has turned away from straight at this distance. */

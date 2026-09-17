@@ -31,8 +31,8 @@ test('the pavement stays within reach of where it started', () => {
   for (let trial = 0; trial < TRIALS; trial++) {
     for (const segment of laid(trial).segments) {
       if (!segment.floor) continue
-      expect(Math.abs(segment.y0 - 2.2)).toBeLessThanOrEqual(16.01)
-      expect(Math.abs(segment.y1 - 2.2)).toBeLessThanOrEqual(16.01)
+      expect(Math.abs(segment.y0 - 2.2)).toBeLessThanOrEqual(60.01)
+      expect(Math.abs(segment.y1 - 2.2)).toBeLessThanOrEqual(60.01)
     }
   }
 })

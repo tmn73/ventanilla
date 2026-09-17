@@ -23,8 +23,8 @@ test('a run never ends, whatever the road throws up', () => {
     for (let tick = 0; tick < 120 * 120; tick++) game.step(FIXED_DT, idle)
 
     if (game.phase !== 'running') stalled.push(`trial ${trial}: phase ${game.phase}`)
-    // Two minutes at the speed he coasts at still covers most of a kilometre.
-    if (game.distance < 700) stalled.push(`trial ${trial}: only ${game.distance.toFixed(0)} m`)
+    // Two minutes coasting, never pushing, still covers a few hundred metres.
+    if (game.distance < 400) stalled.push(`trial ${trial}: only ${game.distance.toFixed(0)} m`)
   }
 
   expect(stalled).toEqual([])

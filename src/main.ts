@@ -102,6 +102,7 @@ startLoop(
     // He rides straight, and leans with whatever ramp he is on.
     const lean = skater.support ? Math.atan(slopeOf(skater.support)) : 0
 
+    path.forget(camS)
     const heading = path.headingAt(camS)
     camHeading += (heading - camHeading) * 0.09
     path.place(camS, 0, eye)
