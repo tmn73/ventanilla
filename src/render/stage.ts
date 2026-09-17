@@ -17,7 +17,7 @@ const HORIZON = 0.34
  * side of a rail the board hangs over, not enough to stop reading as a
  * side-scroller.
  */
-const EYE = new Vector3(6, 12, 31)
+const EYE = new Vector3(6, 9.5, 32)
 const SUN = new Vector3(-16, 26, 20)
 const UP = new Vector3(0, 1, 0)
 

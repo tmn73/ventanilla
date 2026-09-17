@@ -78,6 +78,9 @@ export const UMBRELLA = ['#e8483c', '#f2b23c', '#3aa9c4', '#e8dcc4']
 export const UMBRELLA_POLE = '#d6cdb8'
 /** The joint between paving slabs. */
 export const PAVING = '#b9ab8b'
+/** The kerb that runs each edge of the promenade, and the wall under it. */
+export const KERB = '#efe4c6'
+export const WALL = '#c3b795'
 
 export const WHEEL_COLOR = '#2b2a33'
 export const SKATER = '#fffaf0'

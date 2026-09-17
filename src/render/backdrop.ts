@@ -8,7 +8,7 @@ import {
   Object3D,
   PlaneGeometry,
 } from 'three'
-import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
+import { VIEW_WIDTH } from '../game/constants'
 import {
   FOAM,
   HEADLAND,
@@ -41,23 +41,30 @@ interface Layer {
  */
 interface Band {
   mesh: Mesh
-  top: number
-  depth: number
-  z: number
+  drop: number
+  from: number
+  to: number
 }
 
 /**
- * The promenade runs along the sand, the sand meets the water, and the
- * headlands close the bay. Every band is offset by the pavement height, so
- * the composition holds while the street climbs and drops.
+ * Ground, laid flat. These were upright bands painted behind the promenade,
+ * which is why it looked like it floated in front of a wall of sand instead
+ * of standing on a beach.
+ *
+ * `drop` is metres below the pavement, `from` and `to` are metres to the side
+ * of the road. Positive is toward the camera.
  */
-const BANDS: Array<{ color: string; top: number; depth: number; z: number }> = [
-  { color: SAND, top: 1.6, depth: 60, z: -14 },
-  { color: SAND_WET, top: 1.75, depth: 0.28, z: -14.2 },
-  { color: FOAM, top: 1.95, depth: 0.22, z: -14.4 },
-  { color: SEA, top: 4.6, depth: 2.65, z: -14.6 },
-  { color: SEA_DEEP, top: 4.9, depth: 0.3, z: -14.8 },
+const GROUND: Array<{ color: string; drop: number; from: number; to: number }> = [
+  { color: SAND, drop: 1.3, from: 6, to: 60 },
+  { color: SAND, drop: 1.3, from: -15, to: -6 },
+  { color: SAND_WET, drop: 1.36, from: -16.4, to: -15 },
+  { color: FOAM, drop: 1.42, from: -17.2, to: -16.4 },
+  { color: SEA, drop: 1.5, from: -21, to: -17.2 },
+  { color: SEA_DEEP, drop: 1.54, from: -21, to: -19.2 },
 ]
+
+/** Where the flat ground stops and the upright backdrop takes over. */
+const HORIZON_LATERAL = -21
 
 const MAX_PALMS = 26
 const PALM_SPACING = 7.4
@@ -174,33 +181,32 @@ export class Backdrop {
     // swing is the only thing that shows a bend, since the camera and the
     // promenade both turn together and cancel each other out.
     this.layers = [
-      ridgeLayer(world, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -80),
-      ridgeLayer(world, SIERRA, 6.4, 7.6, 0.24, 0.07, -78),
-      ridgeLayer(world, HEADLAND, 3.2, 4.0, 0.44, 0.14, -60),
-      ridgeLayer(world, JUNGLE, 1.7, 2.5, 0.67, 0.26, -50),
+      ridgeLayer(world, SIERRA_SNOW, 2.6, 4.4, 0.21, 0.05, -20.6),
+      ridgeLayer(world, SIERRA, 2.2, 3.4, 0.24, 0.07, -20.5),
+      ridgeLayer(world, HEADLAND, 1.3, 1.9, 0.44, 0.14, -20.3),
+      ridgeLayer(world, JUNGLE, 0.8, 1.0, 0.67, 0.26, -20.1),
     ]
 
-    this.bands = BANDS.map((spec) => ({
-      mesh: band(scene, spec.color, spec.z),
-      top: spec.top,
-      depth: spec.depth,
-      z: spec.z,
-    }))
+    this.bands = GROUND.map((spec) => {
+      const mesh = band(scene, spec.color, 0)
+      // Flat on the ground rather than standing up facing the camera.
+      mesh.rotation.x = -Math.PI / 2
+      return { mesh, drop: spec.drop, from: spec.from, to: spec.to }
+    })
 
     this.trunks = instanced(scene, PALM_TRUNK, MAX_PALMS, -13)
     this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -12.8)
   }
 
   update(camLeft: number, viewHeight: number, ground: number, worldX: number, worldZ: number): void {
-    const lift = ground - DEATH_Y
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
-    this.sky.scale.set(VIEW_WIDTH * 4.5, top + 60, 1)
-    this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -90)
+    this.sky.scale.set(VIEW_WIDTH * 9, top + 30, 1)
+    this.sky.position.set(centre, ground - 1.5 + (top + 30) / 2, HORIZON_LATERAL - 2)
 
     for (const item of this.bands) {
-      item.mesh.scale.set(VIEW_WIDTH * 4.5, item.depth, 1)
-      item.mesh.position.set(centre, lift + item.top - item.depth / 2, item.z)
+      item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)
+      item.mesh.position.set(centre, ground - item.drop, (item.from + item.to) / 2)
     }
 
     // Palms along the promenade, drifting at their own rate.
@@ -215,9 +221,11 @@ export class Backdrop {
       if (spread < 0.3) continue
       const height = 3.4 + hash * 2.8
       const wx = px + lag
-      const footY = lift + 1.5
+      const footY = ground - 1.28
+      // Scattered back across the sand rather than all on one line.
+      const back = -8.5 - spread * 5.5
 
-      this.proxy.position.set(wx, footY + height / 2, -13)
+      this.proxy.position.set(wx, footY + height / 2, back)
       this.proxy.scale.set(0.26, height, 1)
       this.proxy.rotation.z = (hash - 0.5) * 0.16
       this.proxy.updateMatrix()
@@ -230,7 +238,7 @@ export class Backdrop {
         this.proxy.position.set(
           wx + Math.cos(angle) * reach * 0.5,
           footY + height + Math.sin(angle) * reach * 0.3,
-          -12.8,
+          back + Math.cos(angle) * 0.6,
         )
         this.proxy.scale.set(reach * 1.4, 0.2, 1)
         this.proxy.rotation.z = angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55)
@@ -249,8 +257,8 @@ export class Backdrop {
       // frame that carries the bend.
       const anchor = worldX * (1 - layer.parallax)
       const start = anchor + Math.floor((worldX - RIDGE_SPAN / 2 - anchor) / RIDGE_SPAN) * RIDGE_SPAN
-      layer.near.position.set(start, lift, worldZ + layer.depth)
-      layer.far.position.set(start + RIDGE_SPAN, lift, worldZ + layer.depth)
+      layer.near.position.set(start, ground - 1.5, worldZ + layer.depth)
+      layer.far.position.set(start + RIDGE_SPAN, ground - 1.5, worldZ + layer.depth)
     }
   }
 }

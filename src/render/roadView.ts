@@ -17,14 +17,16 @@ import {
   BENCH_LEG,
   PALM_CROWN_NEAR,
   PALM_TRUNK_NEAR,
+  KERB,
   PAVING,
   POST_COLOR,
+  WALL,
   SURFACE_COLOR,
   UMBRELLA,
   UMBRELLA_POLE,
 } from './palette'
 
-const MAX_BOXES = 1600
+const MAX_BOXES = 2600
 const MAX_RODS = 700
 const MAX_CONES = 120
 
@@ -124,7 +126,16 @@ export class RoadView {
       }
 
       this.slab(segment, THICKNESS[segment.kind], BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
-      if (segment.kind === 'flat') this.paving(segment, camLeft, right)
+      if (segment.kind === 'flat') {
+        this.paving(segment, camLeft, right)
+        // The lip along each edge, and the wall it stands on. A slab with no
+        // edge and nothing under it reads as floating.
+        const edge = BREADTH.flat / 2 - 0.2
+        this.strip(segment, -edge, 0.16, 0.42, KERB)
+        this.strip(segment, edge, 0.16, 0.42, KERB)
+        this.strip(segment, -edge - 0.14, -0.85, 0.5, WALL, 1.5)
+        this.strip(segment, edge + 0.14, -0.85, 0.5, WALL, 1.5)
+      }
     }
 
     this.decorate(segments, camLeft, right)
@@ -158,6 +169,38 @@ export class RoadView {
         0,
         length,
         depth,
+        breadth,
+        color,
+        slope,
+      )
+    }
+  }
+
+  /** A run of something narrow along one edge of a surface, piece by piece. */
+  private strip(
+    segment: Segment,
+    lateral: number,
+    lift: number,
+    breadth: number,
+    color: string,
+    height = 0.3,
+  ): void {
+    const span = segment.x1 - segment.x0
+    const pieces = Math.max(1, Math.ceil(span / PIECE))
+    const step = span / pieces
+    const slope = Math.atan2(segment.y1 - segment.y0, span)
+
+    for (let i = 0; i < pieces; i++) {
+      const s = segment.x0 + step * (i + 0.5)
+      const spread = 1 + Math.abs(this.path.curvatureAt(s)) * Math.abs(lateral)
+      const length = (step / Math.cos(slope)) * OVERLAP * spread
+      this.place(
+        this.boxes,
+        s,
+        surfaceYAt(segment, s) + lift,
+        lateral,
+        length,
+        height,
         breadth,
         color,
         slope,
@@ -225,6 +268,8 @@ export class RoadView {
 
       if (shape < 0.58) {
         const height = 4.2 + jitter * 2.6
+        // A planter ring, so the trunk grows out of something.
+        this.place(this.boxes, s, ground + 0.11, lateral, 1.5, 0.22, 1.5, KERB)
         this.rod(s, ground + height / 2, lateral, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
         // Fronds radiate from the crown and droop, which is what makes the
         // shape a palm rather than a handful of sticks.
@@ -246,13 +291,15 @@ export class RoadView {
           )
         }
       } else if (shape < 0.82) {
+        this.place(this.boxes, s, ground + 0.04, lateral, 2.1, 0.08, 0.78, BENCH_LEG)
         this.place(this.boxes, s, ground + 0.46, lateral, 1.9, 0.12, 0.55, BENCH)
         this.place(this.boxes, s, ground + 0.72, lateral - 0.22, 1.9, 0.42, 0.1, BENCH)
-        this.place(this.boxes, s - 0.75, ground + 0.23, lateral, 0.09, 0.46, 0.5, BENCH_LEG)
-        this.place(this.boxes, s + 0.75, ground + 0.23, lateral, 0.09, 0.46, 0.5, BENCH_LEG)
+        this.place(this.boxes, s - 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
+        this.place(this.boxes, s + 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
       } else {
         const height = 2.5
         const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
+        this.place(this.boxes, s, ground + 0.05, lateral, 0.6, 0.1, 0.6, WALL)
         this.rod(s, ground + height / 2, lateral, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
         this.cone(s, ground + height + 0.22, lateral, 0.62, 2.1, shade)
       }
