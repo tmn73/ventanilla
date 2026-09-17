@@ -7,7 +7,7 @@ export const LANE_Y = [2.2]
  * slide down a stair set with the player, which is backwards: he descends
  * toward the water, the water does not follow him.
  */
-export const WORLD_FLOOR = -62
+export const WORLD_FLOOR = -22
 export const DEATH_Y = 0
 
 /** How much road the window shows at once, in metres. */
