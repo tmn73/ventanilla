@@ -21,7 +21,9 @@ const particles = new Particles(stage.scene)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 
-const game = new Game('mvp')
+// One road per day, the same for everyone. ?seed=anything overrides it for testing.
+const seed = new URLSearchParams(location.search).get('seed') ?? new Date().toISOString().slice(0, 10)
+const game = new Game(seed)
 const input = new Input()
 input.attach(surface)
 
