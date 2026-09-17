@@ -15,6 +15,8 @@ import type { Path } from './path'
 import type { PropName, Props } from './props'
 import {
   BENCH,
+  CONTACT,
+  EDGE_COLOR,
   BENCH_LEG,
   KERB,
   PAVING,
@@ -121,7 +123,15 @@ export class RoadView {
       }
 
       this.slab(segment, THICKNESS[segment.kind], BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
-      if (segment.kind === 'flat') {
+
+      if (segment.kind === 'ledge' || segment.kind === 'hubba') {
+        // A sunlit cap on the edge you are aiming at, and a contact line at
+        // the foot so the block reads as standing on the pavement.
+        const half = BREADTH[segment.kind] / 2
+        this.strip(segment, 0, 0.02, BREADTH[segment.kind] + 0.26, EDGE_COLOR[segment.kind]!, 0.12)
+        this.strip(segment, -half - 0.1, -THICKNESS[segment.kind] + 0.03, 0.26, CONTACT, 0.06)
+        this.strip(segment, half + 0.1, -THICKNESS[segment.kind] + 0.03, 0.26, CONTACT, 0.06)
+      } else if (segment.kind === 'flat') {
         this.paving(segment, camLeft, right)
         // The lip along each edge, and the wall it stands on. A slab with no
         // edge and nothing under it reads as floating.

@@ -33,21 +33,30 @@ export const PALM_TRUNK = '#6b5335'
 export const PALM_CROWN = '#2f8a4f'
 
 /** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
+/**
+ * Everything ridable needs to separate from the pavement it stands on, and
+ * value alone does not do it at this camera angle. Blocks are painted
+ * concrete, the way they are on a real malecon, and the rails are steel.
+ */
 export const SURFACE_COLOR: Record<string, string> = {
   flat: '#ddd2b4',
-  step: '#cabd9c',
-  ledge: '#e0d4b4',
-  hubba: '#dbcfae',
-  rail: '#6a7783',
+  step: '#c6b391',
+  ledge: '#b8563a',
+  hubba: '#a8492f',
+  rail: '#55636f',
 }
 
+/** The sunlit top, which is the edge the player is actually aiming at. */
 export const EDGE_COLOR: Record<string, string> = {
-  flat: '#e6dcc8',
-  step: '#ddd2bd',
-  ledge: '#f1e7d3',
-  hubba: '#ece1cb',
+  flat: '#e9e0cd',
+  step: '#efe3c8',
+  ledge: '#ffe0bd',
+  hubba: '#ffd9b2',
   rail: '#ffffff',
 }
+
+/** A dark line where a block meets the ground, so it sits rather than floats. */
+export const CONTACT = '#8a7a5e'
 
 export const POST_COLOR: Record<string, string> = {
   rail: '#5b6874',
