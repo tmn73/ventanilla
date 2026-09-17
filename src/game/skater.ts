@@ -17,6 +17,8 @@ const LABEL: Record<string, string> = {
 export class Skater {
   x = 0
   y = C.LANE_Y[0]!
+  /** His own speed now. Nothing else carries him forward. */
+  vx = C.START_SPEED
   vy = 0
 
   prevX = 0
@@ -30,46 +32,52 @@ export class Skater {
   /** Which way the deck is turning: a kickflip one way, a heelflip the other. */
   flipSign = 1
 
-  private flipping = false
-  private flipsThisJump = 0
   airTime = 0
   grindTime = 0
   spin = 0
   /** Spikes to 1 on impact and decays, so the knees soak up a landing. */
   absorb = 0
+  /** Counts down a push, which drives the kick in the animation. */
+  pushTime = 0
   trick = ''
   trickAge = 99
 
+  private flipping = false
+  private flipsThisJump = 0
   private cutApplied = false
+  private pushCooldown = 0
 
   reset(x: number): void {
     this.x = x
     this.y = C.LANE_Y[0]!
     this.prevX = x
     this.prevY = this.y
+    this.vx = C.START_SPEED
     this.vy = 0
     this.support = null
     this.grind = 0
     this.flipAngle = 0
+    this.flipSign = 1
     this.flipping = false
     this.flipsThisJump = 0
     this.airTime = 0
     this.grindTime = 0
     this.spin = 0
     this.absorb = 0
+    this.pushTime = 0
     this.trick = ''
     this.trickAge = 99
     this.cutApplied = false
+    this.pushCooldown = 0
   }
 
-  /** The car carries him forward. All he owns is the vertical. */
-  step(dt: number, road: Road, input: Input, carX: number, carSpeed: number): void {
+  step(dt: number, road: Road, input: Input): void {
     this.prevX = this.x
     this.prevY = this.y
     this.trickAge += dt
     if (this.absorb > 0) this.absorb = Math.max(0, this.absorb - dt * 5.5)
-
-    this.x = carX
+    if (this.pushTime > 0) this.pushTime = Math.max(0, this.pushTime - dt)
+    if (this.pushCooldown > 0) this.pushCooldown = Math.max(0, this.pushCooldown - dt)
 
     if (this.support && !road.stillCarries(this.support, this.x)) {
       // Hand over to whatever continues at this height before calling it a fall.
@@ -78,26 +86,47 @@ export class Skater {
         this.support = next
       } else {
         // Rolling off the end of a ramp carries its rise into the air.
-        this.vy = slopeOf(this.support) * carSpeed
+        this.vy = slopeOf(this.support) * this.vx
         this.support = null
         this.cutApplied = true
       }
     }
 
-    if (this.support) this.ride(dt, this.support, input, carSpeed)
+    if (this.support) this.ride(dt, this.support, input)
     else this.fly(dt, road, input)
+
+    this.x += this.vx * dt
   }
 
-  private ride(dt: number, seg: Segment, input: Input, carSpeed: number): void {
+  private ride(dt: number, seg: Segment, input: Input): void {
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.grindTime += dt
     this.airTime = 0
     this.spin = 0
 
+    const slope = slopeOf(seg)
+    const rolling = seg.kind === 'flat' || seg.kind === 'step'
+
+    // A slope pulls him along it, which is why a bank is worth taking.
+    this.vx -= slope * C.SLOPE_PULL * dt
+    this.vx -= (C.DRAG_BASE + this.vx * C.DRAG_SPEED) * dt
+
+    if (rolling) {
+      if (input.pushing && this.pushCooldown <= 0) {
+        this.vx += C.PUSH_IMPULSE
+        this.pushCooldown = C.PUSH_COOLDOWN
+        this.pushTime = 0.26
+      }
+      if (input.braking) this.vx -= C.BRAKE_ACCEL * dt
+    }
+
+    if (this.vx < C.MIN_SPEED) this.vx = C.MIN_SPEED
+    if (this.vx > C.MAX_SPEED) this.vx = C.MAX_SPEED
+
     // Plain pavement always rolls flat. A latched flick belongs to the block
     // or the rail it was aimed at, and must not follow him onto the ground.
-    const wanted = seg.kind === 'flat' || seg.kind === 'step' ? 0 : input.grind
+    const wanted = rolling ? 0 : input.grind
     if (wanted !== this.grind) {
       this.grind = wanted
       const names = GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
@@ -107,7 +136,7 @@ export class Skater {
 
     if (input.jumpPressed) {
       // A ramp adds its own rise, so an uphill launch goes higher.
-      this.vy = C.JUMP_SPEED + Math.max(0, slopeOf(seg) * carSpeed)
+      this.vy = C.JUMP_SPEED + Math.max(0, slope * this.vx)
       this.support = null
       this.grind = 0
       this.flipsThisJump = 0
@@ -146,6 +175,7 @@ export class Skater {
         return
       }
     }
+
     // Nothing is fatal. If he ever ends up under the pavement, put him back on.
     const floor = road.floorAt(this.x)
     if (this.y < floor) {

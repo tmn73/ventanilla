@@ -1,5 +1,4 @@
 import * as C from './constants'
-import { Car } from './car'
 import { Road } from './road'
 import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
@@ -11,7 +10,6 @@ export class Game {
   phase: Phase = 'ready'
   distance = 0
 
-  readonly car: Car
   readonly road: Road
   readonly skater = new Skater()
 
@@ -23,19 +21,16 @@ export class Game {
 
   /** A null seed means a fresh road every run. A string pins the same one. */
   constructor(private fixedSeed: string | null) {
-    const draw = () => this.rng()
-    this.car = new Car(draw)
-    this.road = new Road(draw)
+    this.road = new Road(() => this.rng())
   }
 
   start(): void {
     this.seedLabel = this.fixedSeed ?? Math.random().toString(36).slice(2, 10)
     this.rng = mulberry32(seedFrom(this.seedLabel))
-    this.car.reset()
-    this.road.reset(this.car.x)
-    this.road.ensureAhead(this.car.x)
-    this.skater.reset(this.car.x)
-    this.startX = this.car.x
+    this.road.reset(0)
+    this.road.ensureAhead(0)
+    this.skater.reset(0)
+    this.startX = 0
     this.distance = 0
     this.phase = 'running'
   }
@@ -43,16 +38,15 @@ export class Game {
   step(dt: number, input: Input): void {
     if (this.phase !== 'running') return
 
-    this.car.step(dt)
-    this.road.ensureAhead(this.car.x)
-    this.road.prune(this.car.x)
-    this.skater.step(dt, this.road, input, this.car.x, this.car.speed)
+    this.skater.step(dt, this.road, input)
+    this.road.ensureAhead(this.skater.x)
+    this.road.prune(this.skater.x)
 
     this.distance = this.skater.x - this.startX
   }
 
   /** World x of the left edge of the window. */
   get camLeft(): number {
-    return this.car.x - C.VIEW_WIDTH * C.ANCHOR
+    return this.skater.x - C.VIEW_WIDTH * C.ANCHOR
   }
 }

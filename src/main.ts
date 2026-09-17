@@ -47,8 +47,8 @@ startLoop(
     const frameDt = Math.min(now - lastFrame, 0.05)
     lastFrame = now
 
-    const { car, skater, road } = game
-    const camLeft = mix(car.prevX, car.x, alpha) - VIEW_WIDTH * ANCHOR
+    const { skater, road } = game
+    const camLeft = mix(skater.prevX, skater.x, alpha) - VIEW_WIDTH * ANCHOR
     const x = mix(skater.prevX, skater.x, alpha)
     const y = mix(skater.prevY, skater.y, alpha)
 
@@ -81,6 +81,7 @@ startLoop(
       skater.flipAngle * skater.flipSign,
       rise,
       skater.absorb,
+      Math.min(1, skater.pushTime / 0.18),
     )
     hud.update(game)
     stage.render(camLeft, camY)

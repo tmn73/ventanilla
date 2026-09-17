@@ -94,6 +94,19 @@ const REACH: Joints = {
   handFront: [0.54, 0.44],
 }
 
+/** Mid push: the back foot is off the board and driving behind him. */
+const PUSH: Joints = {
+  hip: [0.05, -0.05],
+  shoulder: [0.14, 0.41],
+  head: [0.18, 0.61],
+  kneeBack: [-0.42, -0.36],
+  footBack: [-0.74, -0.66],
+  kneeFront: [0.23, -0.45],
+  footFront: [0.2, -0.79],
+  handBack: [-0.46, 0.28],
+  handFront: [0.64, 0.3],
+}
+
 const JOINT_KEYS = Object.keys(GRIND) as Array<keyof Joints>
 
 function mix(a: Point, b: Point, k: number): Point {
@@ -201,6 +214,7 @@ export class SkaterView {
    *   a heelflip
    * @param rise vertical speed over the pop speed, 1 at the pop and -1 falling
    * @param absorb 0 to 1, how hard the last landing has to be soaked up
+   * @param push 0 to 1, how far through a kick he is
    */
   update(
     x: number,
@@ -212,6 +226,7 @@ export class SkaterView {
     flip: number,
     rise: number,
     absorb: number,
+    push: number,
   ): void {
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
@@ -220,8 +235,11 @@ export class SkaterView {
       air[key] = rise >= 0 ? mix(AIR[key], POP[key], rise) : mix(AIR[key], REACH[key], -rise)
     }
 
+    const ride = {} as Joints
+    for (const key of JOINT_KEYS) ride[key] = mix(GRIND[key], PUSH[key], push)
+
     const pose = {} as Joints
-    for (const key of JOINT_KEYS) pose[key] = mix(air[key], GRIND[key], grounded)
+    for (const key of JOINT_KEYS) pose[key] = mix(air[key], ride[key], grounded)
 
     const squat = pump * 0.06 * grounded - absorb * 0.2 * grounded
     const shift = Math.sign(grind) * 0.1 * grounded
@@ -234,8 +252,12 @@ export class SkaterView {
     pose.handFront = [pose.handFront[0] + pump * 0.05 * grounded, pose.handFront[1] + absorb * 0.1]
 
     // The deck rides under the feet rather than at a fixed height, which is
-    // what makes a pop look like the board coming up with him.
-    const boardY = (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
+    // what makes a pop look like the board coming up with him. During a push
+    // only the front foot is on it, so the back foot must not drag it down.
+    const boardY =
+      push > 0.05
+        ? pose.footFront[1] - 0.09
+        : (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
 
     this.root.position.set(x, y + FEET_TO_HIP, 0)
     this.root.rotation.z = lean

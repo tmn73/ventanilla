@@ -12,6 +12,8 @@ export class Input {
   flipPressed = false
   flipSign = KICKFLIP
 
+  private pushPulse = false
+  private brakeUntil = 0
   private jumpPending = false
   private flipPending = false
   private pendingSign = KICKFLIP
@@ -25,6 +27,16 @@ export class Input {
    * On a rail the arrows choose the grind. Down and up give the two that need
    * depth to read: a feeble hangs the nose over the far side, a smith the near.
    */
+  /** Held up on the ground, or one flick up. A push is a kick, not a throttle. */
+  get pushing(): boolean {
+    return this.held.has('ArrowUp') || this.pushPulse
+  }
+
+  /** Held down on the ground, or half a second after a flick down. */
+  get braking(): boolean {
+    return this.held.has('ArrowDown') || performance.now() < this.brakeUntil
+  }
+
   get grind(): number {
     if (this.held.has('ArrowDown')) return -2
     if (this.held.has('ArrowUp')) return 2
@@ -139,6 +151,7 @@ export class Input {
     this.flipPressed = this.flipPending
     this.flipSign = this.pendingSign
     this.flipPending = false
+    this.pushPulse = false
   }
 
   release(): void {

@@ -14,9 +14,19 @@ export const JUMP_SPEED = 8.6
 /** Releasing the jump key early cuts the rise short. */
 export const JUMP_CUT = 0.52
 
-export const CAR_START = 12.5
-/** The slowest the car ever goes. Gaps are sized against this, so a jump always clears. */
-export const CAR_SLOWEST = 10
+/** Speed, in metres per second. He rolls forever, but only pushing keeps pace. */
+export const START_SPEED = 11
+export const MIN_SPEED = 6.5
+export const MAX_SPEED = 22
+/** One push is an impulse, not a throttle, so it reads as a kick. */
+export const PUSH_IMPULSE = 3.2
+export const PUSH_COOLDOWN = 0.4
+export const BRAKE_ACCEL = 11
+/** Rolling friction, which is why you have to keep pushing. */
+export const DRAG_BASE = 1.05
+export const DRAG_SPEED = 0.022
+/** How hard a slope pulls him along it. */
+export const SLOPE_PULL = 18
 
 /** Sparks per second on a rail. Concrete throws none, which is the tell. */
 export const SPARK_RATE = 120

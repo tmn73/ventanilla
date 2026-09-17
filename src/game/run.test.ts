@@ -3,7 +3,15 @@ import { FIXED_DT } from './constants'
 import { Game } from './game'
 
 /** A player who never touches a key. The run has to carry on regardless. */
-const idle = { jumpHeld: false, jumpPressed: false, flipPressed: false, flipSign: 1, grind: 0 } as never
+const idle = {
+  jumpHeld: false,
+  jumpPressed: false,
+  flipPressed: false,
+  flipSign: 1,
+  grind: 0,
+  pushing: false,
+  braking: false,
+} as never
 
 test('a run never ends, whatever the road throws up', () => {
   const stalled: string[] = []
@@ -14,8 +22,8 @@ test('a run never ends, whatever the road throws up', () => {
     for (let tick = 0; tick < 120 * 120; tick++) game.step(FIXED_DT, idle)
 
     if (game.phase !== 'running') stalled.push(`trial ${trial}: phase ${game.phase}`)
-    // Two minutes at the slowest the car drives still covers well over a kilometre.
-    if (game.distance < 1000) stalled.push(`trial ${trial}: only ${game.distance.toFixed(0)} m`)
+    // Two minutes at the speed he coasts at still covers most of a kilometre.
+    if (game.distance < 700) stalled.push(`trial ${trial}: only ${game.distance.toFixed(0)} m`)
   }
 
   expect(stalled).toEqual([])
