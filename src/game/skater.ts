@@ -313,10 +313,16 @@ export class Skater {
       this.shoving = false
       this.grindTime = 0
 
-      // A flick that arrives with the pop belongs to the jump it started.
+      // A flick or a scoop that arrives with the pop belongs to the jump it
+      // started. Without this the step that pops never reaches fly(), and the
+      // edge is gone by the next one.
       if (input.flipPressed) {
         this.flipping = true
         this.flipSign = input.flipSign
+      }
+      if (input.shovePressed) {
+        this.shoving = true
+        this.shoveSign = input.shoveSign
       }
     }
   }
