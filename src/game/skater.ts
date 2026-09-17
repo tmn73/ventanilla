@@ -1,12 +1,13 @@
 import * as C from './constants'
 import type { Input } from '../input'
-import type { Road, Segment } from './road'
+import { GRINDABLE, type Road, type Segment } from './road'
 
 const GRIND_NAME = ['5-0', '50-50', 'NOSEGRIND']
+const MANUAL_NAME = ['MANUAL', '', 'NOSE MANUAL']
 
 const LABEL: Record<string, string> = {
   rail: 'RAIL',
-  wall: 'MURO',
+  wall: 'BORDE',
   wire: 'CABLE',
   vehicle: 'CHIVA',
 }
@@ -95,7 +96,8 @@ export class Skater {
 
     if (input.lean !== this.grind) {
       this.grind = input.lean
-      this.trick = GRIND_NAME[this.grind + 1] ?? '50-50'
+      const names = GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
+      this.trick = names[this.grind + 1] ?? ''
       this.trickAge = 0
     }
 

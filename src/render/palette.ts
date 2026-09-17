@@ -17,8 +17,13 @@ export const RIDGE_MID = '#332c58'
 export const RIDGE_NEAR = '#231d3e'
 
 /** The floor is the darkest thing on screen, because touching it ends the run. */
-export const VERGE = '#100d1e'
-export const TUFT = '#1b1531'
+export const VERGE = '#191428'
+export const TUFT = '#241c3c'
+/** The road itself: gravel shoulder, painted edge line, then asphalt. */
+export const ROAD_LINE = '#c9bfa6'
+export const ASPHALT = '#0e0d16'
+/** Buildings between the hills and the roadside, for one more depth step. */
+export const BUILDING = '#1d1833'
 
 /** Ridable bodies sit above the floor in value, so they read as objects. */
 export const SURFACE_COLOR: Record<string, string> = {
@@ -40,6 +45,9 @@ export const POST_COLOR: Record<string, string> = {
   rail: '#1d1830',
   wire: '#211b36',
 }
+
+/** Block seams, so a parapet reads as masonry and not as a rectangle. */
+export const JOINT = '#3a3159'
 
 /** Sparks brighten with the lane too, which is the only hint the player needs. */
 export const SPARK_COLOR = ['#ffd9a0', '#ffc879', '#fff3d2']

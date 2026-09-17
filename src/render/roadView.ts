@@ -9,7 +9,7 @@ import {
 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 import type { Obstacle, Segment, SurfaceKind } from '../game/road'
-import { EDGE_COLOR, FROND, LAMP_GLOW, POST_COLOR, PROP_BODY, SIGN_FACE, SURFACE_COLOR, WHEEL_COLOR } from './palette'
+import { EDGE_COLOR, FROND, JOINT, LAMP_GLOW, POST_COLOR, PROP_BODY, SIGN_FACE, SURFACE_COLOR, WHEEL_COLOR } from './palette'
 
 const MAX_SLABS = 400
 const MAX_POSTS = 700
@@ -120,6 +120,8 @@ export class RoadView {
         slabs++
       }
 
+      if (segment.kind === 'wall') posts = this.addJoints(segment, camLeft, right, posts)
+
       const spec = POSTS[segment.kind]
       if (spec) posts = this.addPosts(segment, spec, camLeft, right, posts)
       if (segment.kind === 'vehicle') wheels = this.addWheels(segment, wheels)
@@ -190,6 +192,18 @@ export class RoadView {
       }
     }
     void pulse
+    return cursor
+  }
+
+  /** Seams down the face of a parapet. Masonry, not a rectangle. */
+  private addJoints(segment: Segment, camLeft: number, right: number, cursor: number): number {
+    const spacing = 2.4
+    const first = Math.ceil((segment.x0 + 0.8) / spacing) * spacing
+    for (let x = first; x < segment.x1 - 0.8; x += spacing) {
+      if (cursor >= MAX_POSTS) break
+      if (x < camLeft - 2 || x > right + 2) continue
+      this.place(this.posts, cursor++, x, segment.y - 0.95, -0.5, 0.06, 1.4, JOINT)
+    }
     return cursor
   }
 

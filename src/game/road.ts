@@ -25,6 +25,18 @@ export interface Segment {
 
 const KIND_OF_LANE: SurfaceKind[] = ['rail', 'wall', 'wire']
 
+/**
+ * Metal is ground on and throws sparks. Concrete and truck roofs are flat, so
+ * you roll on them and the trick becomes a manual. The missing sparks are how
+ * the player feels the difference.
+ */
+export const GRINDABLE: Record<SurfaceKind, boolean> = {
+  rail: true,
+  wire: true,
+  wall: false,
+  vehicle: false,
+}
+
 /** Air time of a full jump, up and back down to the same height. */
 const HANG = (2 * JUMP_SPEED) / GRAVITY
 /** Gaps are sized against the slowest the car ever goes, so they always clear. */

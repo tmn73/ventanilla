@@ -9,7 +9,7 @@ import {
 } from 'three'
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
 import { Color as ThreeColor, InstancedMesh, Object3D } from 'three'
-import { RIDGE_FAR, RIDGE_MID, RIDGE_NEAR, TUFT, VERGE, skyAt } from './palette'
+import { ASPHALT, BUILDING, RIDGE_FAR, RIDGE_MID, RIDGE_NEAR, ROAD_LINE, TUFT, VERGE, skyAt } from './palette'
 
 const RIDGE_SPAN = 240
 const RIDGE_SAMPLES = 200
@@ -76,10 +76,20 @@ function ridgeLayer(scene: Scene, color: string, amplitude: number, baseline: nu
 
 const MAX_TUFTS = 120
 const TUFT_SPACING = 1.15
+const MAX_BUILDINGS = 60
+const BUILDING_SPACING = 4.2
+const BUILDING_PARALLAX = 0.45
+
+/** The shoulder the skater dies on, then the painted line, then the tarmac. */
+const SHOULDER_DEPTH = 1.1
+const LINE_HEIGHT = 0.12
 
 export class Backdrop {
   private sky: Mesh
   private verge: Mesh
+  private line: Mesh
+  private asphalt: Mesh
+  private buildings: InstancedMesh
   private tufts: InstancedMesh
   private proxy = new Object3D()
   private layers: Layer[]
@@ -108,6 +118,24 @@ export class Backdrop {
     this.verge.frustumCulled = false
     scene.add(this.verge)
 
+    this.line = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: ROAD_LINE }))
+    this.line.position.z = -2.9
+    this.line.frustumCulled = false
+    scene.add(this.line)
+
+    this.asphalt = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: ASPHALT }))
+    this.asphalt.position.z = -2.8
+    this.asphalt.frustumCulled = false
+    scene.add(this.asphalt)
+
+    this.buildings = new InstancedMesh(
+      new PlaneGeometry(1, 1),
+      new MeshBasicMaterial({ color: new ThreeColor(BUILDING) }),
+      MAX_BUILDINGS,
+    )
+    this.buildings.frustumCulled = false
+    scene.add(this.buildings)
+
     this.tufts = new InstancedMesh(
       new PlaneGeometry(1, 1),
       new MeshBasicMaterial({ color: new ThreeColor(TUFT) }),
@@ -126,10 +154,35 @@ export class Backdrop {
   update(camLeft: number, viewHeight: number): void {
     const top = viewHeight * 0.76
 
-    // The verge. Touching it ends the run, so it is drawn as a flat dead floor.
-    const depth = 40
-    this.verge.scale.set(VIEW_WIDTH * 1.1, depth, 1)
-    this.verge.position.set(camLeft + VIEW_WIDTH / 2, DEATH_Y - depth / 2, -3)
+    // Gravel shoulder, the painted edge line, then the tarmac below it.
+    const centre = camLeft + VIEW_WIDTH / 2
+    this.verge.scale.set(VIEW_WIDTH * 1.1, SHOULDER_DEPTH, 1)
+    this.verge.position.set(centre, DEATH_Y - SHOULDER_DEPTH / 2, -3)
+
+    const lineY = DEATH_Y - SHOULDER_DEPTH
+    this.line.scale.set(VIEW_WIDTH * 1.1, LINE_HEIGHT, 1)
+    this.line.position.set(centre, lineY - LINE_HEIGHT / 2, -2.9)
+
+    this.asphalt.scale.set(VIEW_WIDTH * 1.1, 40, 1)
+    this.asphalt.position.set(centre, lineY - LINE_HEIGHT - 20, -2.8)
+
+    // Low buildings between the hills and the road, at their own drift rate.
+    let built = 0
+    const base = camLeft * BUILDING_PARALLAX
+    const firstBuilding = Math.ceil((base - 4) / BUILDING_SPACING) * BUILDING_SPACING
+    for (let bx = firstBuilding; bx < base + VIEW_WIDTH + 4 && built < MAX_BUILDINGS; bx += BUILDING_SPACING) {
+      const hash = Math.abs(Math.sin(bx * 7.311) * 21374.9) % 1
+      const hash2 = Math.abs(Math.sin(bx * 3.117) * 9431.7) % 1
+      if (hash2 < 0.25) continue
+      const height = 1.6 + hash * 3.4
+      const width = 2.2 + hash2 * 2.6
+      this.proxy.position.set(bx + (camLeft - base), DEATH_Y + height / 2, -3.4)
+      this.proxy.scale.set(width, height, 1)
+      this.proxy.updateMatrix()
+      this.buildings.setMatrixAt(built++, this.proxy.matrix)
+    }
+    this.buildings.count = built
+    this.buildings.instanceMatrix.needsUpdate = true
 
     let planted = 0
     const first = Math.ceil((camLeft - 1) / TUFT_SPACING) * TUFT_SPACING

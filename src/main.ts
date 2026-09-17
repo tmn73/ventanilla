@@ -1,6 +1,7 @@
 import { startLoop } from './core/loop'
 import { ANCHOR, FIXED_DT, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
+import { GRINDABLE } from './game/road'
 import { Input } from './input'
 import { Backdrop } from './render/backdrop'
 import { Hud } from './render/hud'
@@ -72,7 +73,7 @@ startLoop(
 
     // Sparks while grinding, brighter the higher the lane. Dust when he lands
     // in the dirt. Nothing else tells the player which surface is worth taking.
-    if (skater.support && game.phase === 'running') {
+    if (skater.support && game.phase === 'running' && GRINDABLE[skater.support.kind]) {
       const lane = skater.support.lane
       const truck = skater.grind < 0 ? -0.35 : skater.grind > 0 ? 0.35 : -0.45
       particles.emit(frameDt, x + truck, y, SPARK_RATE[lane] ?? 40, false, SPARK_COLOR[lane] ?? '#ffd9a0')
