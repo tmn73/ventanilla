@@ -37,6 +37,11 @@ bun run typecheck
   between steps. Two machines that replay the same inputs reach the same state.
 - Every random draw comes from one seeded generator, so a seed names a road.
 
+## Credits
+
+The palms, rocks and grass are from Kenney's Nature Kit, released under CC0.
+The licence sits next to them in `src/models/`.
+
 ## Not built yet
 
 - The daily road: one seed per date, shared by everyone.

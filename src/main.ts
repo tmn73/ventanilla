@@ -10,6 +10,7 @@ import { Hud } from './render/hud'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
 import { Path } from './render/path'
+import { Props } from './render/props'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
@@ -34,7 +35,8 @@ stage.scene.add(frame)
 
 const backdrop = new Backdrop(frame, stage.scene)
 const particles = new Particles(frame)
-const roadView = new RoadView(stage.scene, path)
+const props = new Props(stage.scene)
+const roadView = new RoadView(stage.scene, path, props)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 

@@ -12,11 +12,10 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
+import type { PropName, Props } from './props'
 import {
   BENCH,
   BENCH_LEG,
-  PALM_CROWN_NEAR,
-  PALM_TRUNK_NEAR,
   KERB,
   PAVING,
   POST_COLOR,
@@ -103,6 +102,7 @@ export class RoadView {
   constructor(
     scene: Scene,
     private path: Path,
+    private props: Props,
   ) {
     this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
     // A rod lies along its own length once the proxy turns it a quarter turn.
@@ -115,6 +115,7 @@ export class RoadView {
     this.boxes.reset()
     this.rods.reset()
     this.cones.reset()
+    this.props.reset()
 
     for (const segment of segments) {
       if (segment.x1 < camLeft - 16 || segment.x0 > right + 16) continue
@@ -139,9 +140,11 @@ export class RoadView {
     }
 
     this.decorate(segments, camLeft, right)
+    this.beach(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
     this.cones.finish()
+    this.props.finish()
   }
 
   /** A surface, cut into pieces short enough to follow the bend under it. */
@@ -267,35 +270,18 @@ export class RoadView {
       const lateral = -5.2 - jitter * 1.6
 
       if (shape < 0.58) {
-        const height = 4.2 + jitter * 2.6
         // A planter ring, so the trunk grows out of something.
         this.place(this.boxes, s, ground + 0.11, lateral, 1.5, 0.22, 1.5, KERB)
-        this.rod(s, ground + height / 2, lateral, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
-        // Fronds radiate from the crown and droop, which is what makes the
-        // shape a palm rather than a handful of sticks.
-        for (const angle of [2.79, 2.36, 1.92, 1.571, 1.22, 0.79, 0.35]) {
-          const reach = 1.55 + jitter * 0.4
-          const dx = Math.cos(angle)
-          const dy = Math.sin(angle) * 0.42 - 0.12
-          const len = Math.hypot(dx, dy)
-          this.place(
-            this.boxes,
-            s + (dx / len) * reach * 0.5,
-            ground + height + (dy / len) * reach * 0.5,
-            lateral + dx * 0.55,
-            reach,
-            0.11,
-            0.42,
-            PALM_CROWN_NEAR,
-            Math.atan2(dy, dx),
-          )
-        }
+        const kind: PropName = jitter < 0.36 ? 'palmTall' : jitter < 0.72 ? 'palmShort' : 'palmBend'
+        this.prop(kind, s, ground + 0.2, lateral, jitter * 6.3)
       } else if (shape < 0.82) {
         this.place(this.boxes, s, ground + 0.04, lateral, 2.1, 0.08, 0.78, BENCH_LEG)
         this.place(this.boxes, s, ground + 0.46, lateral, 1.9, 0.12, 0.55, BENCH)
         this.place(this.boxes, s, ground + 0.72, lateral - 0.22, 1.9, 0.42, 0.1, BENCH)
         this.place(this.boxes, s - 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
         this.place(this.boxes, s + 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
+        // Rocks and grass out on the sand, where the promenade stops.
+        this.prop('rockSmall', s + 2.4, ground - 1.3, -9 - jitter * 3.5, jitter * 6.3)
       } else {
         const height = 2.5
         const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
@@ -303,6 +289,28 @@ export class RoadView {
         this.rod(s, ground + height / 2, lateral, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
         this.cone(s, ground + height + 0.22, lateral, 0.62, 2.1, shade)
       }
+    }
+  }
+
+  /** Places a loaded model at a point on the road, turned with it. */
+  private prop(name: PropName, s: number, y: number, lateral: number, spin = 0): void {
+    this.path.place(s, lateral, this.point)
+    this.props.place(name, this.point.x, y, this.point.z, this.path.headingAt(s), spin)
+  }
+
+  /** Loose ground cover on the sand, so the beach is not a flat expanse. */
+  private beach(all: Segment[], camLeft: number, right: number): void {
+    const spacing = 5.6
+    const first = Math.ceil((camLeft - 10) / spacing) * spacing
+    for (let x = first; x < right + 10; x += spacing) {
+      const pick = Math.abs(Math.sin(x * 4.117) * 12983.4) % 1
+      if (pick < 0.4) continue
+      const jitter = Math.abs(Math.sin(x * 9.731) * 33471.2) % 1
+      const ground = this.floorHeight(all, x)
+      if (ground === null) continue
+      const name: PropName = pick < 0.62 ? 'grass' : pick < 0.84 ? 'rockSmall' : 'rockLarge'
+      const side = jitter < 0.55 ? -8.5 - jitter * 5 : 8 + jitter * 9
+      this.prop(name, x + jitter * 3, ground - 1.3, side, jitter * 6.3)
     }
   }
 
