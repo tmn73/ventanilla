@@ -278,7 +278,7 @@ export class SkaterView {
     // is not the same from both sides, so it is the whole answer to whether
     // you are looking at his face or his back.
     this.face = new Mesh(
-      new BoxGeometry(0.2, 0.13, 0.04),
+      new BoxGeometry(0.18, 0.11, 0.04),
       new MeshLambertMaterial({ color: Number(SKATER_FACE.replace('#', '0x')), flatShading: true }),
     )
     this.face.position.y = 0.02
@@ -290,13 +290,13 @@ export class SkaterView {
       color: Number(SKATER_CAP.replace('#', '0x')),
       flatShading: true,
     })
-    const crown = new Mesh(new BoxGeometry(0.32, 0.13, 0.29), capSkin)
-    crown.position.y = 0.16
+    const crown = new Mesh(new BoxGeometry(0.34, 0.2, 0.32), capSkin)
+    crown.position.y = 0.19
     crown.castShadow = true
     head.add(crown)
 
-    this.peak = new Mesh(new BoxGeometry(0.21, 0.035, 0.15), capSkin)
-    this.peak.position.y = 0.12
+    this.peak = new Mesh(new BoxGeometry(0.26, 0.05, 0.22), capSkin)
+    this.peak.position.y = 0.13
     this.peak.castShadow = true
     head.add(this.peak)
   }
@@ -435,6 +435,6 @@ export class SkaterView {
     const facing = stance > 0 ? -1 : 1
     this.face.position.z = facing * 0.16
     // Backwards, so the peak hangs off the back of his head.
-    this.peak.position.z = facing * -0.2
+    this.peak.position.z = facing * -0.24
   }
 }

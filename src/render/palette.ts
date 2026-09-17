@@ -41,10 +41,13 @@ export const SKATER = '#24282b'
  * break the symmetry on the axis that matters: the face says which way he
  * looks, the leading arm says which way he travels.
  */
-export const SKATER_FACE = '#cfcac1'
+export const SKATER_FACE = '#8d8a84'
 export const SKATER_LEAD = '#4c545c'
-/** The cap. A shade off the body, so it reads as worn and not as painted on. */
-export const SKATER_CAP = '#3c4349'
+/**
+ * The cap. Light against a dark body, because at this size a shade off the
+ * body is four pixels of almost the same grey and reads as nothing at all.
+ */
+export const SKATER_CAP = '#ddd8cf'
 export const BOARD = '#e2603c'
 export const GRIP = '#1a1d1f'
 export const WHEEL_COLOR = '#6f7378'
