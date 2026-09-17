@@ -9,8 +9,12 @@ export const FRONTSIDE_SHOVE = 1
 const FLICK_PIXELS = 34
 /** How long a foot still counts as on the board after it lifts, in ms. */
 const LOAD_GRACE = 400
-/** How long a foot has to settle on an end before it counts as weighting it. */
-const WEIGHT_DWELL = 190
+/**
+ * How long a foot has to stay on an end before it counts as weighting it. A
+ * quick press is a pop and nothing more; leaning on it is what puts the board
+ * up on that end, the same as it is under a real foot.
+ */
+const WEIGHT_DWELL = 340
 /** How far the foot still on the board slides before he starts turning. */
 const SPIN_PIXELS = 24
 /** How far it slides for a full lean, which is wider than a flick so the two
