@@ -10,7 +10,6 @@ import { Hud } from './render/hud'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
 import { Path } from './render/path'
-import { Props } from './render/props'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
@@ -33,10 +32,9 @@ const stage = new Stage(canvas)
 const frame = new Group()
 stage.scene.add(frame)
 
-const backdrop = new Backdrop(frame, stage.scene)
+const backdrop = new Backdrop(frame)
 const particles = new Particles(frame)
-const props = new Props(stage.scene)
-const roadView = new RoadView(stage.scene, path, props)
+const roadView = new RoadView(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 
@@ -111,7 +109,7 @@ startLoop(
     path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
-    backdrop.update(camLeft, stage.viewHeight, eye.x, eye.z)
+    backdrop.update(camLeft, stage.viewHeight)
     roadView.update(road.segments, camLeft)
     skaterView.update(
       feet.x,

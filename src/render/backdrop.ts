@@ -1,155 +1,36 @@
 import {
   BufferAttribute,
-  BufferGeometry,
   Color,
-
   Mesh,
   MeshBasicMaterial,
   Object3D,
   PlaneGeometry,
 } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
-import {
-  FOAM,
-  STREET,
-  TOWN,
-  HEADLAND,
-  JUNGLE,
-  SAND,
-  SAND_WET,
-  SEA,
-  SEA_DEEP,
-  SIERRA,
-  SIERRA_SNOW,
-  skyAt,
-} from './palette'
-
-const RIDGE_SPAN = 240
-const RIDGE_SAMPLES = 200
-
-interface Layer {
-  near: Mesh
-  far: Mesh
-  parallax: number
-  depth: number
-}
+import { GROUND, WATER, skyAt } from './palette'
 
 /**
- * Flat bands, stacked by distance. Nearest is lowest in the window, because
- * that is what a side window shows: tarmac at your feet, then the shoulder,
- * the sand, the bay, and the headlands across it.
- */
-interface Band {
-  mesh: Mesh
-  y: number
-  from: number
-  to: number
-}
-
-/**
- * Ground, laid flat. These were upright bands painted behind the promenade,
- * which is why it looked like it floated in front of a wall of sand instead
- * of standing on a beach.
+ * Three planes and a sky. Everything that used to stand here, the town, the
+ * palms, the benches, the hills, is gone: none of it was ever looked at, and
+ * all of it could be got wrong.
  *
- * `drop` is metres below the pavement, `from` and `to` are metres to the side
- * of the road. Positive is toward the camera.
+ * `y` is a fixed world height. Anchoring any of this to the pavement made the
+ * whole world slide down a stair set with the player.
  */
-/**
- * A malecon has the water on one side and the town on the other. The camera
- * looks from the sea side, so the bay is in the foreground and the town rises
- * behind: positive is toward the camera, negative is away.
- */
-/** `y` is a fixed world height, not an offset from the pavement. */
-const GROUND: Array<{ color: string; y: number; from: number; to: number }> = [
-  { color: SEA_DEEP, y: WORLD_FLOOR - 0.04, from: 30, to: 90 },
-  { color: SEA, y: WORLD_FLOOR, from: 17, to: 90 },
-  { color: FOAM, y: WORLD_FLOOR + 0.06, from: 15.8, to: 17.1 },
-  { color: SAND_WET, y: WORLD_FLOOR + 0.1, from: 14, to: 15.9 },
-  { color: SAND, y: WORLD_FLOOR + 0.16, from: 6.2, to: 14.1 },
-  { color: STREET, y: WORLD_FLOOR + 0.16, from: -13, to: -6.2 },
-  { color: TOWN, y: WORLD_FLOOR + 0.16, from: -34, to: -13 },
+const BANDS: Array<{ color: string; y: number; from: number; to: number }> = [
+  { color: WATER, y: WORLD_FLOOR, from: 16, to: 120 },
+  { color: GROUND, y: WORLD_FLOOR + 0.16, from: -60, to: 16 },
 ]
 
-/** Where the flat ground stops and the upright backdrop takes over. */
-const HORIZON_LATERAL = -34
-
-
-/**
- * Seamless ridge line. Every wave completes a whole number of cycles over the
- * span, so the tile joins itself without a visible seam.
- */
-function ridgeGeometry(amplitude: number, baseline: number, phase: number): BufferGeometry {
-  const profile = new Float32Array(RIDGE_SAMPLES + 1)
-  for (let i = 0; i <= RIDGE_SAMPLES; i++) {
-    const t = i / RIDGE_SAMPLES
-    profile[i] =
-      baseline +
-      amplitude *
-        (0.55 * Math.sin(2 * Math.PI * (t + phase)) +
-          0.28 * Math.sin(2 * Math.PI * (3 * t + phase * 2)) +
-          0.17 * Math.sin(2 * Math.PI * (7 * t + phase * 3)))
-  }
-
-  const floor = -40
-  const positions = new Float32Array(RIDGE_SAMPLES * 6 * 3)
-  let k = 0
-  const push = (x: number, y: number) => {
-    positions[k++] = x
-    positions[k++] = y
-    positions[k++] = 0
-  }
-  for (let i = 0; i < RIDGE_SAMPLES; i++) {
-    const x0 = (i / RIDGE_SAMPLES) * RIDGE_SPAN
-    const x1 = ((i + 1) / RIDGE_SAMPLES) * RIDGE_SPAN
-    push(x0, floor)
-    push(x1, floor)
-    push(x1, profile[i + 1]!)
-    push(x0, floor)
-    push(x1, profile[i + 1]!)
-    push(x0, profile[i]!)
-  }
-
-  const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(positions, 3))
-  return geometry
-}
-
-function ridgeLayer(
-  scene: Object3D,
-  color: string,
-  amplitude: number,
-  baseline: number,
-  phase: number,
-  parallax: number,
-  depth: number,
-): Layer {
-  const geometry = ridgeGeometry(amplitude, baseline, phase)
-  const material = new MeshBasicMaterial({ color })
-  const near = new Mesh(geometry, material)
-  const far = new Mesh(geometry, material)
-  for (const mesh of [near, far]) {
-    mesh.position.z = depth
-    mesh.frustumCulled = false
-    scene.add(mesh)
-  }
-  return { near, far, parallax, depth }
-}
-
-function band(scene: Object3D, color: string, z: number): Mesh {
-  const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color }))
-  mesh.position.z = z
-  mesh.frustumCulled = false
-  scene.add(mesh)
-  return mesh
-}
+/** Where the flat ground stops and the sky takes over. */
+const HORIZON_LATERAL = -60
 
 export class Backdrop {
   private sky: Mesh
-  private bands: Band[]
-  private layers: Layer[]
+  private bands: Array<{ mesh: Mesh; y: number; from: number; to: number }>
 
-  constructor(scene: Object3D, world: Object3D) {
-    const geometry = new PlaneGeometry(1, 1, 1, 28)
+  constructor(scene: Object3D) {
+    const geometry = new PlaneGeometry(1, 1, 1, 12)
     const position = geometry.getAttribute('position')
     const colors = new Float32Array(position.count * 3)
     const shade = new Color()
@@ -162,47 +43,29 @@ export class Backdrop {
     geometry.setAttribute('color', new BufferAttribute(colors, 3))
 
     this.sky = new Mesh(geometry, new MeshBasicMaterial({ vertexColors: true }))
-    this.sky.position.z = -60
     this.sky.frustumCulled = false
     scene.add(this.sky)
 
-    // The hills stay put in the world while the road turns under them. That
-    // swing is the only thing that shows a bend, since the camera and the
-    // promenade both turn together and cancel each other out.
-    this.layers = [
-      ridgeLayer(world, SIERRA_SNOW, 4.5, 9.5, 0.21, 0.05, -33.6),
-      ridgeLayer(world, SIERRA, 3.6, 7.6, 0.24, 0.07, -33.5),
-      ridgeLayer(world, HEADLAND, 2.4, 4.4, 0.44, 0.14, -33.4),
-      ridgeLayer(world, JUNGLE, 1.6, 2.6, 0.67, 0.26, -33.3),
-    ]
-
-    this.bands = GROUND.map((spec) => {
-      const mesh = band(scene, spec.color, 0)
+    this.bands = BANDS.map((spec) => {
+      const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: spec.color }))
       // Flat on the ground rather than standing up facing the camera.
       mesh.rotation.x = -Math.PI / 2
+      mesh.frustumCulled = false
+      scene.add(mesh)
       return { mesh, y: spec.y, from: spec.from, to: spec.to }
     })
-
   }
 
-  update(camLeft: number, viewHeight: number, worldX: number, worldZ: number): void {
-    const top = viewHeight * 0.76
+  update(camLeft: number, viewHeight: number): void {
     const centre = camLeft + VIEW_WIDTH / 2
-    this.sky.scale.set(VIEW_WIDTH * 9, top + 30, 1)
-    this.sky.position.set(centre, WORLD_FLOOR + (top + 30) / 2, HORIZON_LATERAL - 2)
+    const top = viewHeight * 0.76
+
+    this.sky.scale.set(VIEW_WIDTH * 9, top + 40, 1)
+    this.sky.position.set(centre, WORLD_FLOOR + (top + 40) / 2, HORIZON_LATERAL - 2)
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)
       item.mesh.position.set(centre, item.y, (item.from + item.to) / 2)
-    }
-
-    for (const layer of this.layers) {
-      // Tiled against the camera's world position, since these sit outside the
-      // frame that carries the bend.
-      const anchor = worldX * (1 - layer.parallax)
-      const start = anchor + Math.floor((worldX - RIDGE_SPAN / 2 - anchor) / RIDGE_SPAN) * RIDGE_SPAN
-      layer.near.position.set(start, WORLD_FLOOR + 0.16, worldZ + layer.depth)
-      layer.far.position.set(start + RIDGE_SPAN, WORLD_FLOOR + 0.16, worldZ + layer.depth)
     }
   }
 }

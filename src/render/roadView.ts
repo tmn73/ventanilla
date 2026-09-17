@@ -12,21 +12,10 @@ import {
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
-import type { PropName, Props } from './props'
-import {
-  BENCH,
-  CONTACT,
-  EDGE_COLOR,
-  BENCH_LEG,
-  KERB,
-  PAVING,
-  POST_COLOR,
-  WALL,
-  SURFACE_COLOR,
-} from './palette'
+import { CONTACT, EDGE_COLOR, KERB, PAVING, POST_COLOR, SURFACE_COLOR, WALL } from './palette'
 
-const MAX_BOXES = 2600
-const MAX_RODS = 700
+const MAX_BOXES = 1400
+const MAX_RODS = 500
 
 /** No piece of a surface is longer than this, so a corner never gets chorded. */
 const PIECE = 3
@@ -91,6 +80,11 @@ class Pool {
   }
 }
 
+/**
+ * Only what the player rides. There is no decoration here on purpose: nothing
+ * that is not part of the line can be got wrong, and the accent colour is
+ * spent entirely on telling you what you can get on.
+ */
 export class RoadView {
   private boxes: Pool
   private rods: Pool
@@ -100,7 +94,6 @@ export class RoadView {
   constructor(
     scene: Scene,
     private path: Path,
-    private props: Props,
   ) {
     this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
     // A rod lies along its own length once the proxy turns it a quarter turn.
@@ -111,7 +104,6 @@ export class RoadView {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
-    this.props.reset()
 
     for (const segment of segments) {
       if (segment.x1 < camLeft - 16 || segment.x0 > right + 16) continue
@@ -125,8 +117,8 @@ export class RoadView {
       this.slab(segment, THICKNESS[segment.kind], BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
 
       if (segment.kind === 'ledge' || segment.kind === 'hubba') {
-        // A sunlit cap on the edge you are aiming at, and a contact line at
-        // the foot so the block reads as standing on the pavement.
+        // A lit cap on the edge you are aiming at, and a contact line at the
+        // foot so the block reads as standing on the pavement.
         const half = BREADTH[segment.kind] / 2
         this.strip(segment, 0, 0.02, BREADTH[segment.kind] + 0.26, EDGE_COLOR[segment.kind]!, 0.12)
         this.strip(segment, -half - 0.1, -THICKNESS[segment.kind] + 0.03, 0.26, CONTACT, 0.06)
@@ -138,19 +130,16 @@ export class RoadView {
         const edge = BREADTH.flat / 2 - 0.2
         this.strip(segment, -edge, 0.16, 0.42, KERB)
         this.strip(segment, edge, 0.16, 0.42, KERB)
-        // The wall runs all the way down to the sand, whatever height the
-        // promenade has climbed to.
         const wall = Math.max(1, surfaceYAt(segment, segment.x0) - WORLD_FLOOR)
         this.strip(segment, -edge - 0.14, -wall / 2, 0.5, WALL, wall)
         this.strip(segment, edge + 0.14, -wall / 2, 0.5, WALL, wall)
+      } else if (segment.kind === 'step') {
+        this.strip(segment, 0, 0.015, BREADTH.step, EDGE_COLOR.step!, 0.05)
       }
     }
 
-    this.decorate(segments, camLeft, right)
-    this.skyline(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
-    this.props.finish()
   }
 
   /** A surface, cut into pieces short enough to follow the bend under it. */
@@ -167,8 +156,8 @@ export class RoadView {
       const top = surfaceYAt(segment, s)
       // Round a corner the outer edge travels further than the centre, so a
       // plain rectangle leaves a wedge open. Stretch it by what the far edge
-      // actually needs, and nudge every other piece so the overlap cannot
-      // fight for the same depth.
+      // needs, and nudge every other piece so the overlap cannot fight for the
+      // same depth.
       const spread = 1 + Math.abs(this.path.curvatureAt(s)) * (breadth / 2)
       const length = (step / Math.cos(slope)) * OVERLAP * spread
       this.place(
@@ -230,7 +219,7 @@ export class RoadView {
     }
   }
 
-  /** Uprights holding the handrail up, following its pitch. */
+  /** Uprights holding the handrail up, reaching whatever is under them. */
   private railPosts(segment: Segment, all: Segment[], camLeft: number, right: number): void {
     const stops: number[] = [segment.x0 + 0.18, segment.x1 - 0.18]
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
@@ -239,15 +228,13 @@ export class RoadView {
     for (const x of stops) {
       if (x < camLeft - 16 || x > right + 16) continue
       const top = surfaceYAt(segment, x)
-      // A post reaches the ground under it. A fixed length leaves rails hanging
-      // in the air wherever the pavement drops away, such as over a stair set.
       const foot = this.floorUnder(all, x, top)
       const drop = Math.max(0.2, top - foot)
       this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
     }
   }
 
-  /** Slab joints across the plaza. They also give the eye something to clock. */
+  /** Slab joints across the pavement. They give the eye something to clock. */
   private paving(segment: Segment, camLeft: number, right: number): void {
     const spacing = 3.6
     const first = Math.ceil(segment.x0 / spacing) * spacing
@@ -255,83 +242,6 @@ export class RoadView {
       if (x < camLeft - 16 || x > right + 16) continue
       this.place(this.boxes, x, surfaceYAt(segment, x) + 0.005, 0, 0.07, 0.02, BREADTH.flat, PAVING)
     }
-  }
-
-  /**
-   * Palms, benches and parasols along the back of the plaza. None of it is in
-   * the skate plane, so none of it can be hit. It is here because a promenade
-   * made only of concrete and sand is one colour.
-   */
-  private decorate(all: Segment[], camLeft: number, right: number): void {
-    const spacing = 8.2
-    const first = Math.ceil((camLeft - 14) / spacing) * spacing
-    for (let x = first; x < right + 14; x += spacing) {
-      const shape = Math.abs(Math.sin(x * 7.311) * 21374.9) % 1
-      if (shape < 0.22) continue
-      const jitter = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
-      const ground = this.floorHeight(all, x)
-      if (ground === null) continue
-
-      const s = x + jitter * 2.4
-      const lateral = -5.2 - jitter * 1.6
-
-      if (shape < 0.6) {
-        continue
-      } else if (shape < 0.82) {
-        this.place(this.boxes, s, ground + 0.04, lateral, 2.1, 0.08, 0.78, BENCH_LEG)
-        this.place(this.boxes, s, ground + 0.46, lateral, 1.9, 0.12, 0.55, BENCH)
-        this.place(this.boxes, s, ground + 0.72, lateral - 0.22, 1.9, 0.42, 0.1, BENCH)
-        this.place(this.boxes, s - 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
-        this.place(this.boxes, s + 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
-      } else {
-        this.place(this.boxes, s, ground + 0.05, lateral, 0.6, 0.1, 0.6, WALL)
-        this.prop('parasol', s, ground + 0.1, lateral, jitter * 6.3)
-      }
-    }
-  }
-
-  /** Places a loaded model at a point on the road, turned with it. */
-  private prop(name: PropName, s: number, y: number, lateral: number, spin = 0): void {
-    this.path.place(s, lateral, this.point)
-    this.props.place(name, this.point.x, y, this.point.z, this.path.headingAt(s), spin)
-  }
-
-  /** The town behind the promenade. This is the frame the rest sits inside. */
-  private skyline(all: Segment[], camLeft: number, right: number): void {
-    const spacing = 8
-    const first = Math.ceil((camLeft - 34) / spacing) * spacing
-    for (let x = first; x < right + 34; x += spacing) {
-      const ground = this.floorHeight(all, x)
-      if (ground === null) continue
-
-      // One street wall. A second row sits above the top of the frame under
-      // this camera, so it only adds a cropped band and nothing readable.
-      const pick = Math.abs(Math.sin(x * 5.113) * 18431.7) % 1
-      const jitter = Math.abs(Math.sin(x * 8.692) * 27713.1) % 1
-      if (pick < 0.05) continue
-
-      const kinds: PropName[] = ['blockE', 'blockC', 'blockWideA', 'blockL', 'blockA', 'blockH', 'blockJ', 'blockWideB']
-      const name = kinds[Math.floor(pick * kinds.length) % kinds.length]!
-      this.prop(
-        name,
-        x + jitter * 3,
-        ground - 0.14,
-        -19 - jitter * 7,
-        Math.round(jitter * 4) * 1.5708,
-      )
-    }
-  }
-
-  /** Height of the pavement at a point, or null where there is none. */
-  private floorHeight(all: Segment[], x: number): number | null {
-    let best: number | null = null
-    for (const segment of all) {
-      if (!segment.floor) continue
-      if (x < segment.x0 || x > segment.x1) continue
-      const top = surfaceYAt(segment, x)
-      if (best === null || top > best) best = top
-    }
-    return best
   }
 
   private floorUnder(all: Segment[], x: number, below: number): number {

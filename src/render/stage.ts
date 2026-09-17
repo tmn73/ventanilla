@@ -33,14 +33,15 @@ export class Stage {
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
-    this.renderer.setClearColor(0x7cc9e8, 1)
+    this.renderer.setClearColor(0xe9e5dd, 1)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFSoftShadowMap
 
     this.camera = new OrthographicCamera(0, VIEW_WIDTH, 1, -1, -200, 400)
 
-    // Midday on the coast: one hard sun, a cool sky fill, a warm bounce.
-    this.sun = new DirectionalLight(0xfff4dc, 1.15)
+    // One soft sun and a wide fill. Enough to tell two faces of a box apart,
+    // not enough for a badly judged shape to announce itself.
+    this.sun = new DirectionalLight(0xfffaf2, 0.72)
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(2048, 2048)
     this.sun.shadow.camera.left = -VIEW_WIDTH * 0.7
@@ -53,11 +54,7 @@ export class Stage {
     this.scene.add(this.sun)
     this.scene.add(this.sun.target)
 
-    this.scene.add(new AmbientLight(0x9ec9dd, 0.66))
-    const bounce = new DirectionalLight(0xffe3b0, 0.26)
-    bounce.position.set(8, -6, 6)
-    this.scene.add(bounce)
-
+    this.scene.add(new AmbientLight(0xdfe4e6, 0.78))
     this.resize()
     // A window resize is not the only thing that changes the canvas box.
     if (typeof ResizeObserver !== 'undefined') {

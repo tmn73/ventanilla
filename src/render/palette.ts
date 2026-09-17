@@ -1,119 +1,51 @@
 import { Color } from 'three'
 
 /**
- * The coast road between Santa Marta and Tayrona, at midday. The stack runs
- * from the tarmac at your feet to the Sierra Nevada behind the bay, and every
- * band sits at its own value so the ridable surfaces stay readable on top.
+ * Five values and one accent. The accent marks everything the player can ride
+ * and nothing else, so the question "can I get on that" is answered by colour
+ * alone and never depends on the angle or the light.
  */
+export const SKY = '#e9e5dd'
+export const GROUND = '#d6d0c3'
+export const WATER = '#b6c7c4'
+
+export const PAVING = '#b3ac9f'
+
+/** Ridable. The accent, and the one dark for metal. */
+export const SURFACE_COLOR: Record<string, string> = {
+  flat: '#c6c0b4',
+  step: '#bdb6a9',
+  ledge: '#e2603c',
+  hubba: '#d4562f',
+  rail: '#3a4045',
+}
+
+/** The sunlit top of each, which is the edge you actually aim at. */
+export const EDGE_COLOR: Record<string, string> = {
+  flat: '#d2ccc0',
+  step: '#d8d1c3',
+  ledge: '#f6a184',
+  hubba: '#f09878',
+  rail: '#8d979e',
+}
+
+export const KERB = '#cec7ba'
+export const WALL = '#bdb6a9'
+export const CONTACT = '#8f8879'
+export const POST_COLOR: Record<string, string> = { rail: '#4a5157' }
+
+export const SPARK_COLOR = '#ffffff'
+export const SKATER = '#24282b'
+export const BOARD = '#e2603c'
+export const GRIP = '#1a1d1f'
+export const WHEEL_COLOR = '#6f7378'
+
+/** Kept so the sky plane can still carry a faint vertical lift. */
 export const SKY_STOPS: Array<[number, string]> = [
-  [0.0, '#fdf0d0'],
-  [0.16, '#cfe9f2'],
-  [0.42, '#7cc9e8'],
-  [0.72, '#3ba2d8'],
-  [1.0, '#1c7cc0'],
+  [0.0, '#f2eee7'],
+  [1.0, SKY],
 ]
 
-/** Hazed by distance: the snow line of the Sierra sits above the bay. */
-export const SIERRA = '#9dbdd4'
-export const SIERRA_SNOW = '#eef4f8'
-/** Jungle headlands across the water, then the near one. */
-export const HEADLAND = '#5f9c85'
-export const JUNGLE = '#2f6f54'
-
-export const SEA = '#1fbcc4'
-export const SEA_DEEP = '#0f93a4'
-export const FOAM = '#c6f2ec'
-export const SAND = '#ecd7a8'
-/** The street and the ground the town stands on, behind the promenade. */
-export const STREET = '#8e8c93'
-export const TOWN = '#b8ae97'
-export const SAND_WET = '#d8bd85'
-/** Palms along the promenade, between the water and the Sierra. */
-export const PALM_TRUNK = '#6b5335'
-export const PALM_CROWN = '#2f8a4f'
-
-/** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
-/**
- * Everything ridable needs to separate from the pavement it stands on, and
- * value alone does not do it at this camera angle. Blocks are painted
- * concrete, the way they are on a real malecon, and the rails are steel.
- */
-export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#ddd2b4',
-  step: '#c6b391',
-  ledge: '#b8563a',
-  hubba: '#a8492f',
-  rail: '#55636f',
-}
-
-/** The sunlit top, which is the edge the player is actually aiming at. */
-export const EDGE_COLOR: Record<string, string> = {
-  flat: '#e9e0cd',
-  step: '#efe3c8',
-  ledge: '#ffe0bd',
-  hubba: '#ffd9b2',
-  rail: '#ffffff',
-}
-
-/** A dark line where a block meets the ground, so it sits rather than floats. */
-export const CONTACT = '#8a7a5e'
-
-export const POST_COLOR: Record<string, string> = {
-  rail: '#5b6874',
-}
-
-/** Block seams, so a parapet reads as masonry and not as a rectangle. */
-export const JOINT = '#6f6450'
-
-export const SPARK_COLOR = '#fff0c0'
-export const DUST = '#c9b48d'
-
-/**
- * Hazards are not colour coded. You avoid a palm because you recognise a palm.
- * The sign works because it is retroreflective, which is true of the real one.
- */
-export const HYDRANT = '#c2402f'
-export const HYDRANT_CAP = '#8f2b1f'
-export const BIN = '#3f6b4a'
-export const BIN_LID = '#2d4e36'
-export const PROP_BODY = '#5c4633'
-export const LAMP_GLOW = '#4a5560'
-export const SIGN_FACE = '#f4f7f9'
-export const FROND = '#2f8a4f'
-
-/** Everything along the back of the plaza. It exists to break up the sand. */
-export const PALM_TRUNK_NEAR = '#7a5f3c'
-export const PALM_CROWN_NEAR = '#2f9e57'
-export const BENCH = '#b3552f'
-export const BENCH_LEG = '#4a4a52'
-export const UMBRELLA = ['#e8483c', '#f2b23c', '#3aa9c4', '#e8dcc4']
-export const UMBRELLA_POLE = '#d6cdb8'
-/** The joint between paving slabs. */
-export const PAVING = '#b9ab8b'
-/** The kerb that runs each edge of the promenade, and the wall under it. */
-export const KERB = '#efe4c6'
-export const WALL = '#c3b795'
-
-export const WHEEL_COLOR = '#2b2a33'
-export const SKATER = '#fffaf0'
-export const BOARD = '#ff7a3d'
-/** The grip tape side, seen when a kickflip turns the deck over. */
-export const GRIP = '#2b2731'
-
-/** Samples the sky at t, where 0 is the horizon and 1 is the top. */
 export function skyAt(t: number, out: Color): Color {
-  let lower = SKY_STOPS[0]!
-  let upper = SKY_STOPS[SKY_STOPS.length - 1]!
-  for (let i = 0; i < SKY_STOPS.length - 1; i++) {
-    const a = SKY_STOPS[i]!
-    const b = SKY_STOPS[i + 1]!
-    if (t >= a[0] && t <= b[0]) {
-      lower = a
-      upper = b
-      break
-    }
-  }
-  const span = upper[0] - lower[0]
-  const k = span === 0 ? 0 : (t - lower[0]) / span
-  return out.set(lower[1]).lerp(new Color(upper[1]), k)
+  return out.set(SKY_STOPS[0]![1]).lerp(new Color(SKY_STOPS[1]![1]), t)
 }
