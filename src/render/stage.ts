@@ -31,7 +31,7 @@ const HORIZON = 0.34
  */
 const EYE = new Vector3(6, 9.5, 32)
 /** What is left of the one big light once the day has gone. */
-const MOON = 0.16
+const MOON = 0.34
 const SUN_COLOUR = 0xfffaf2
 const MOON_COLOUR = 0x8fa6c8
 /**
@@ -239,11 +239,11 @@ export class Stage {
     this.sun.intensity = 1.15 * (1 - amount) ** 2 + amount * MOON
     this.sun.color.set(SUN_COLOUR).lerp(this.moonTint, amount)
     this.applyEnvironment()
-    this.fill.intensity = 0.12 * (1 - amount) + amount * 0.055
+    this.fill.intensity = 0.12 * (1 - amount) + amount * 0.135
     // Only the lamp heads should bleed, so the threshold sits above anything
     // the lamps put on the ground.
     this.bloom.strength = amount * 0.55
     this.bloom.threshold = 0.85
-    this.renderer.toneMappingExposure = 1 - amount * 0.35
+    this.renderer.toneMappingExposure = 1 - amount * 0.18
   }
 }

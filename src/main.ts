@@ -12,6 +12,7 @@ import { Particles } from './render/particles'
 import { Path } from './render/path'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
+import { Skyline } from './render/skyline'
 import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
@@ -24,8 +25,8 @@ import { TouchTrail } from './render/touchTrail'
 const SKIES: Record<string, { file: string; colour: string; night: number }> = {
   day: { file: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr', colour: '#cdd6db', night: 0 },
   sunset: { file: 'assets/industrial_sunset_puresky.hdr', colour: '#4a3c39', night: 0.5 },
-  dusk: { file: 'assets/evening_road_01_puresky.hdr', colour: '#161d2a', night: 0.85 },
-  night: { file: 'assets/moonless_golf.hdr', colour: '#04060a', night: 1 },
+  dusk: { file: 'assets/evening_road_01_puresky.hdr', colour: '#1c2534', night: 0.85 },
+  night: { file: 'assets/moonless_golf.hdr', colour: '#0a101a', night: 1 },
 }
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
@@ -50,6 +51,9 @@ stage.scene.add(frame)
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const lamps = new Lamps(stage.scene, path)
+const skyline = new Skyline(stage.camera)
+// Children of a camera only render when the camera is itself in the scene.
+stage.scene.add(stage.camera)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 const trail = new TouchTrail(trailCanvas)
@@ -79,6 +83,7 @@ mountHelp(
     stage.setSkyColour(choice.colour)
     stage.setNight(choice.night)
     lamps.setNight(choice.night)
+    skyline.setNight(choice.night)
   },
 )
 
@@ -159,6 +164,7 @@ startLoop(
 
     roadView.update(road.segments, camLeft, stage.visibleWidth)
     lamps.update(camLeft, road)
+    skyline.update(x, stage.visibleWidth, stage.viewHeight)
     skaterView.update({
       x: feet.x,
       y,
