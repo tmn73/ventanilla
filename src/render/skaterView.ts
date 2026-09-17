@@ -6,7 +6,7 @@ import {
   MeshLambertMaterial,
   Scene,
 } from 'three'
-import { BOARD, GRIP, SKATER, WHEEL_COLOR } from './palette'
+import { BOARD, GRIP, SKATER, SKATER_FACE, SKATER_LEAD, WHEEL_COLOR } from './palette'
 
 type Point = [number, number]
 
@@ -187,6 +187,7 @@ export class SkaterView {
   private root = new Group()
   /** The road's heading, then the ramp lean, then the rider's own facing. */
   private leaner = new Group()
+  private face!: Mesh
   private turner = new Group()
   private boardPivot = new Group()
   private board = new Group()
@@ -248,9 +249,14 @@ export class SkaterView {
     }
 
     const skin = Number(SKATER.replace('#', '0x'))
-    for (const name of ['thighBack', 'shinBack', 'thighFront', 'shinFront', 'torso', 'armBack', 'armFront']) {
+    const lead = Number(SKATER_LEAD.replace('#', '0x'))
+    for (const name of ['thighBack', 'shinBack', 'thighFront', 'shinFront', 'torso', 'armBack']) {
       this.bones[name] = limb(this.body, skin, 0.17)
     }
+    // The arm nearest the nose is lighter, which is what tells you which way
+    // he is travelling when the rest of him is one silhouette.
+    this.bones.armFront = limb(this.body, lead, 0.17)
+
     const head = new Mesh(
       new BoxGeometry(0.3, 0.3, 0.27),
       new MeshLambertMaterial({ color: skin, flatShading: true }),
@@ -258,6 +264,16 @@ export class SkaterView {
     head.castShadow = true
     this.body.add(head)
     this.bones.head = head
+
+    // A pale plate on the front of the head. It is the only thing on him that
+    // is not the same from both sides, so it is the whole answer to whether
+    // you are looking at his face or his back.
+    this.face = new Mesh(
+      new BoxGeometry(0.2, 0.13, 0.04),
+      new MeshLambertMaterial({ color: Number(SKATER_FACE.replace('#', '0x')), flatShading: true }),
+    )
+    this.face.position.y = 0.02
+    head.add(this.face)
   }
 
   /**
@@ -389,5 +405,8 @@ export class SkaterView {
     span(this.bones.armBack!, pose.shoulder, pose.handBack, 0.1)
     span(this.bones.armFront!, pose.shoulder, pose.handFront, 0.1)
     this.bones.head!.position.set(pose.head[0], pose.head[1] + 0.12, 0)
+    // Standing regular he has his back to the camera, goofy he faces it. The
+    // yaw turns the rest, so this only has to follow the stance.
+    this.face.position.z = stance > 0 ? -0.16 : 0.16
   }
 }

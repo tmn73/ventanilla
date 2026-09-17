@@ -36,6 +36,13 @@ export const POST_COLOR: Record<string, string> = { rail: '#4a5157' }
 
 export const SPARK_COLOR = '#ffffff'
 export const SKATER = '#24282b'
+/**
+ * The rider is one dark shape, and mirrored he was the same shape. These two
+ * break the symmetry on the axis that matters: the face says which way he
+ * looks, the leading arm says which way he travels.
+ */
+export const SKATER_FACE = '#cfcac1'
+export const SKATER_LEAD = '#4c545c'
 export const BOARD = '#e2603c'
 export const GRIP = '#1a1d1f'
 export const WHEEL_COLOR = '#6f7378'
