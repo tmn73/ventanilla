@@ -7,6 +7,8 @@ export const FRONTSIDE_SHOVE = 1
 
 /** Under this, a touch is a tap and not a flick. */
 const FLICK_PIXELS = 34
+/** How long a foot still counts as on the board after it lifts, in ms. */
+const LOAD_GRACE = 400
 /**
  * Which half of the screen a finger is on. The board is drawn from the side,
  * so the left half is always the end trailing behind him and the right half
@@ -22,7 +24,6 @@ export interface Swipe {
   flip?: number
   shove?: number
   push?: boolean
-  brake?: boolean
   /** Which grind the same flick picks, when he is on something to grind. */
   latch?: number
 }
@@ -37,12 +38,12 @@ export interface Swipe {
  * with it. A scoop and a push are the back foot alone, and a shove-it needs no
  * ollie under it, so the scoop is the whole trick.
  */
-export function swipeAction(angle: number, side: number, restingOther: boolean): Swipe {
-  const up = angle >= 25 && angle < 155
-  const down = angle <= -25 && angle >= -155
+export function swipeAction(angle: number, side: number, loadedOther: boolean): Swipe {
+  const up = angle >= 20 && angle < 160
+  const down = angle <= -20 && angle >= -160
 
   if (up) {
-    if (!restingOther) return {}
+    if (!loadedOther) return {}
     const popEnd = -side
     if (angle < 65) return { popEnd, flip: KICKFLIP, latch: 1 }
     if (angle >= 115) return { popEnd, flip: HEELFLIP, latch: -1 }
@@ -50,13 +51,13 @@ export function swipeAction(angle: number, side: number, restingOther: boolean):
   }
 
   if (down) {
-    if (side !== TRAILING) return { brake: true, latch: 0 }
+    // The foot that scoops is the foot the board pops off, so scooping the
+    // nose is a nollie shove-it and scooping it while turned round is a fakie
+    // one. Leaning the scoop back is the plain shove-it, forward the other.
     return {
-      popEnd: TRAILING,
-      // Scooping back past straight down is the plain shove-it, which is the
-      // backside one. Scooping forward is the other.
+      popEnd: side,
       shove: angle < -90 ? BACKSIDE_SHOVE : FRONTSIDE_SHOVE,
-      latch: -2,
+      latch: side === TRAILING ? -2 : 2,
     }
   }
 
@@ -88,7 +89,6 @@ export class Input {
   private dragRotate = 0
   private pushPulse = false
   private pushPending = false
-  private brakeUntil = 0
   private releasePending = false
   private leadingPending = false
   private flipPending = false
@@ -102,6 +102,8 @@ export class Input {
     number,
     { x: number; y: number; side: number; at: number; spent: boolean }
   >()
+  /** When each half last had a foot on it, so a lift is not instantly gone. */
+  private leftAt = new Map<number, number>()
   /** Which end the current crouch is loading, kept until the pop spends it. */
   private crouchLeading = false
   private detach: Array<() => void> = []
@@ -136,6 +138,16 @@ export class Input {
     return false
   }
 
+  /**
+   * A foot counts as on the board for a moment after it lifts. Pressing one
+   * half and flicking the other is two motions, not one chord, and asking for
+   * them at the same instant is not what a pair of feet does.
+   */
+  private loaded(side: number): boolean {
+    if (this.resting(side)) return true
+    return performance.now() - (this.leftAt.get(side) ?? -Infinity) < LOAD_GRACE
+  }
+
   /** Held, the deck keeps rolling, which is how a double and a triple come out. */
   get flipHeld(): boolean {
     return this.held.has('ArrowLeft') || this.held.has('ArrowRight')
@@ -151,9 +163,12 @@ export class Input {
     return this.held.has('ArrowUp') || this.pushPulse
   }
 
-  /** Held down on the ground, or half a second after a flick down. */
+  /**
+   * Both feet planted and nothing flicking. On a board that is what slowing
+   * down looks like, and it is the one posture no trick starts from.
+   */
   get braking(): boolean {
-    return this.held.has('ArrowDown') || performance.now() < this.brakeUntil
+    return this.held.has('ArrowDown') || (this.resting(TRAILING) && this.resting(LEADING))
   }
 
   get grind(): number {
@@ -243,6 +258,8 @@ export class Input {
     }
 
     const pointerUp = (e: PointerEvent) => {
+      const touch = this.touches.get(e.pointerId)
+      if (touch && !touch.spent) this.leftAt.set(touch.side, performance.now())
       this.touches.delete(e.pointerId)
       if (this.touches.size === 0) {
         this.jumpHeld = false
@@ -254,6 +271,7 @@ export class Input {
       this.held.clear()
       this.jumpHeld = false
       this.touches.clear()
+      this.leftAt.clear()
       this.dragRotate = 0
     }
 
@@ -291,7 +309,7 @@ export class Input {
    * also scoops and pushes; the leading one drags the board to a stop.
    */
   private readSwipe(angle: number, side: number): void {
-    const move = swipeAction(angle, side, this.resting(-side))
+    const move = swipeAction(angle, side, this.loaded(-side))
     if (move.popEnd !== undefined) {
       this.crouchLeading = move.popEnd === LEADING
       this.pop()
@@ -299,7 +317,6 @@ export class Input {
     if (move.flip !== undefined) this.flick(move.flip)
     if (move.shove !== undefined) this.shove(move.shove)
     if (move.push) this.pushPending = true
-    if (move.brake) this.brakeUntil = performance.now() + 420
     if (move.latch !== undefined) this.latched = move.latch
   }
 

@@ -30,10 +30,14 @@ test('a scoop is the whole trick, with no other foot needed', () => {
   expect(swipeAction(-60, TRAILING, ALONE).shove).toBe(FRONTSIDE_SHOVE)
 })
 
-test('the front foot brakes and the back foot pushes', () => {
-  expect(swipeAction(-90, LEADING, ALONE)).toEqual({ brake: true, latch: 0 })
+test('the foot that scoops is the end it pops off', () => {
+  // Scooping the nose is a nollie shove-it, and a fakie one turned round.
+  expect(swipeAction(-120, LEADING, ALONE).popEnd).toBe(LEADING)
+  expect(swipeAction(-120, TRAILING, ALONE).popEnd).toBe(TRAILING)
+})
+
+test('only the back foot pushes, so there is no mongo', () => {
   expect(swipeAction(180, TRAILING, ALONE)).toEqual({ push: true })
-  // Pushing is the back foot's job alone, so the front one never does it.
   expect(swipeAction(180, LEADING, ALONE)).toEqual({})
 })
 

@@ -68,3 +68,14 @@ test('goofy reverses which side a spin is on', () => {
   expect(regular).toBe('frontside 180')
   expect(goofy).toBe('backside 180')
 })
+
+test('a shove-it carries the stance it was scooped in', () => {
+  const shove = (reversed: boolean, nose: boolean, sign: number) =>
+    nameTrick(0, 0, KICK, 1, sign, REGULAR, reversed, nose, '', false)
+
+  expect(shove(FORWARD, TAIL, BS)).toBe('shove-it')
+  expect(shove(FORWARD, TAIL, FS)).toBe('frontside shove-it')
+  expect(shove(FORWARD, NOSE, BS)).toBe('nollie shove-it')
+  expect(shove(REVERSED, NOSE, BS)).toBe('fakie shove-it')
+  expect(shove(REVERSED, TAIL, FS)).toBe('switch frontside shove-it')
+})
