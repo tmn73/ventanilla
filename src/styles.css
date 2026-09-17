@@ -62,3 +62,107 @@ body {
   margin-left: 0.14em;
   color: var(--muted);
 }
+
+/* Help. Out of the way until it is asked for, so the game keeps no text. */
+#help-toggle {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(12, 42, 56, 0.42);
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 130ms ease;
+}
+
+#help-toggle:hover,
+#help-toggle[aria-expanded='true'] {
+  background: rgba(12, 42, 56, 0.72);
+}
+
+#help-toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+#help {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 30, 42, 0.62);
+  overflow-y: auto;
+}
+
+.sheet {
+  width: min(560px, 100%);
+  padding: 22px 24px 24px;
+  border-radius: 12px;
+  background: rgba(14, 38, 50, 0.96);
+  box-shadow: 0 24px 60px rgba(0, 20, 30, 0.5);
+}
+
+.sheet h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sheet h2 + table {
+  margin-bottom: 22px;
+}
+
+.sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.sheet th,
+.sheet td {
+  text-align: left;
+  vertical-align: top;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 250, 240, 0.12);
+}
+
+.sheet th {
+  width: 40%;
+  padding-right: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.sheet td {
+  color: var(--muted);
+}
+
+.sheet kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 250, 240, 0.28);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.aside {
+  margin: 4px 0 0;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+}

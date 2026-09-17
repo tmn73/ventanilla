@@ -7,13 +7,45 @@
     <title>Ventanilla</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Barlow+Condensed:wght@700&display=swap" />
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
     <div id="stage">
       <canvas id="view"></canvas>
       <div id="hud"><span id="distance">0</span><span class="unit">m</span></div>
+    </div>
+    <button id="help-toggle" type="button" aria-expanded="false" aria-controls="help">?</button>
+    <div id="help" hidden>
+      <div class="sheet">
+        <h2>Clavier</h2>
+        <table>
+          <tbody>
+            <tr><th scope="row"><kbd>Espace</kbd></th><td>Ollie. Maintenu, il pope plus haut.</td></tr>
+            <tr><th scope="row"><kbd>Haut</kbd></th><td>Pousser, en roulant.</td></tr>
+            <tr><th scope="row"><kbd>Bas</kbd></th><td>Freiner, en roulant.</td></tr>
+            <tr><th scope="row"><kbd>Gauche</kbd></th><td>Kickflip en l'air. 5-0 sur un rail.</td></tr>
+            <tr><th scope="row"><kbd>Droite</kbd></th><td>Heelflip en l'air. Nosegrind sur un rail.</td></tr>
+            <tr><th scope="row"><kbd>Haut</kbd> <kbd>Bas</kbd></th><td>Smith et feeble, une fois sur le rail.</td></tr>
+            <tr><th scope="row"><kbd>A</kbd> <kbd>D</kbd></th><td>Tourner, backside et frontside. Tu tournes tant que tu tiens.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Tactile</h2>
+        <table>
+          <tbody>
+            <tr><th scope="row">Tap</th><td>Ollie.</td></tr>
+            <tr><th scope="row">Flick haut-droite</th><td>Kickflip.</td></tr>
+            <tr><th scope="row">Flick haut-gauche</th><td>Heelflip.</td></tr>
+            <tr><th scope="row">Flick haut</th><td>Pousser en roulant. Smith sur un rail.</td></tr>
+            <tr><th scope="row">Flick bas</th><td>Freiner en roulant. Feeble sur un rail.</td></tr>
+            <tr><th scope="row">Flick gauche, droite</th><td>5-0 et nosegrind, sur un rail.</td></tr>
+            <tr><th scope="row">Glisser, puis garder le doigt</th><td>Tourner. Il tourne jusqu'a ce que tu leves.</td></tr>
+          </tbody>
+        </table>
+
+        <p class="aside">Une reception loin d'un demi-tour est un bail. Tu ne tombes jamais, mais tu y laisses la moitie de ta vitesse.</p>
+      </div>
     </div>
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -1,6 +1,7 @@
 import { startLoop } from './core/loop'
 import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
+import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
 import { Backdrop } from './render/backdrop'
@@ -20,6 +21,7 @@ const roadView = new RoadView(stage.scene)
 const particles = new Particles(stage.scene)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
+mountHelp()
 
 // A fresh road every run. ?seed=anything pins one road so it can be replayed.
 const game = new Game(new URLSearchParams(location.search).get('seed'))
