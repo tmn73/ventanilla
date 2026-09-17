@@ -1,59 +1,47 @@
-import {
-  CircleGeometry,
-  Color,
-  InstancedMesh,
-  MeshBasicMaterial,
-  Object3D,
-  PlaneGeometry,
-  Scene,
-} from 'three'
+import { Color, InstancedMesh, MeshBasicMaterial, Object3D, PlaneGeometry, Scene } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Obstacle, type Segment, type SurfaceKind } from '../game/road'
 import {
+  BIN,
+  BIN_LID,
   EDGE_COLOR,
   FROND,
+  HYDRANT,
+  HYDRANT_CAP,
   JOINT,
   LAMP_GLOW,
   POST_COLOR,
   PROP_BODY,
   SIGN_FACE,
   SURFACE_COLOR,
-  WHEEL_COLOR,
 } from './palette'
 
 const MAX_SLABS = 500
 const MAX_POSTS = 700
-const MAX_WHEELS = 40
 const MAX_PROPS = 220
 const EDGE_HEIGHT = 0.24
 
 /** How far each surface hangs below its ridable top edge. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  rail: 0.3,
-  wall: 1.8,
-  wire: 0.1,
-  vehicle: 1.5,
+  flat: 6,
+  step: 0.34,
+  ledge: 0.58,
+  hubba: 0.62,
+  rail: 0.11,
 }
 
 const DEPTH: Record<SurfaceKind, number> = {
-  wall: -1,
-  rail: 0,
-  vehicle: 0.3,
-  wire: 0.6,
+  flat: -1.4,
+  step: -1.2,
+  ledge: -0.6,
+  hubba: -0.55,
+  rail: 0.4,
 }
 
-interface PostSpec {
-  spacing: number
-  width: number
-  color: string
-  foot: number
-  crossarm: number
-}
-
-const POSTS: Partial<Record<SurfaceKind, PostSpec>> = {
-  rail: { spacing: 3.2, width: 0.2, color: POST_COLOR.rail!, foot: 0, crossarm: 0 },
-  wire: { spacing: 21, width: 0.26, color: POST_COLOR.wire!, foot: 0, crossarm: 2.2 },
-}
+/** Uprights that hold a handrail up off the ground. */
+const RAIL_POST_SPACING = 2.4
+const RAIL_POST_WIDTH = 0.09
+const RAIL_POST_DROP = 0.95
 
 function slabMesh(scene: Scene, max: number): InstancedMesh {
   const mesh = new InstancedMesh(
@@ -70,7 +58,6 @@ export class RoadView {
   private bodies: InstancedMesh
   private edges: InstancedMesh
   private posts: InstancedMesh
-  private wheels: InstancedMesh
   private props: InstancedMesh
   private proxy = new Object3D()
   private tint = new Color()
@@ -80,20 +67,12 @@ export class RoadView {
     this.edges = slabMesh(scene, MAX_SLABS)
     this.posts = slabMesh(scene, MAX_POSTS)
     this.props = slabMesh(scene, MAX_PROPS)
-    this.wheels = new InstancedMesh(
-      new CircleGeometry(0.5, 12),
-      new MeshBasicMaterial({ color: WHEEL_COLOR }),
-      MAX_WHEELS,
-    )
-    this.wheels.frustumCulled = false
-    scene.add(this.wheels)
   }
 
   update(segments: Segment[], obstacles: Obstacle[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     let slabs = 0
     let posts = 0
-    let wheels = 0
 
     for (const segment of segments) {
       if (segment.x1 < camLeft - 4 || segment.x0 > right + 4) continue
@@ -122,55 +101,44 @@ export class RoadView {
       lit(EDGE_HEIGHT / 2, length, EDGE_HEIGHT, EDGE_COLOR[segment.kind], 0.05)
       slabs++
 
-      if (segment.kind === 'rail') {
-        // The lower rib of a W beam, which is what makes a guardrail a guardrail.
-        along(0.62, length, 0.2, SURFACE_COLOR.rail, -0.05)
-        lit(0.62, length, 0.07, EDGE_COLOR.rail)
-        slabs++
-      } else if (segment.kind === 'wall') {
-        // A coping that overhangs, the way a real parapet does.
-        along(0.13, length + 0.5, 0.26, SURFACE_COLOR.wall, 0.02)
-        lit(0, length + 0.5, EDGE_HEIGHT, EDGE_COLOR.wall, 0.06)
+      if (segment.kind === 'ledge' || segment.kind === 'hubba') {
+        // A lip that overhangs, the way a real block does.
+        along(0.11, length + 0.36, 0.22, SURFACE_COLOR[segment.kind], 0.02)
+        lit(0, length + 0.36, EDGE_HEIGHT, EDGE_COLOR[segment.kind], 0.06)
         slabs++
         posts = this.addJoints(segment, camLeft, right, posts, angle, nx, ny)
-      } else if (segment.kind === 'wire') {
-        // A second cable running below the first.
-        along(0.55, length, 0.08, EDGE_COLOR.wire)
-        lit(0.55, length, 0.05, EDGE_COLOR.wire)
+      } else if (segment.kind === 'step') {
+        // The riser under each tread, so a set reads as stairs and not a slope.
+        along(0.6, length, 1.0, SURFACE_COLOR.step, -0.03)
         slabs++
+      } else if (segment.kind === 'rail') {
+        posts = this.addRailPosts(segment, camLeft, right, posts)
       }
-
-      const spec = POSTS[segment.kind]
-      if (spec) posts = this.addPosts(segment, spec, camLeft, right, posts)
-      if (segment.kind === 'vehicle') wheels = this.addWheels(segment, wheels)
     }
 
     this.finish(this.props, this.drawObstacles(obstacles, camLeft, right))
     this.finish(this.bodies, slabs)
     this.finish(this.edges, slabs)
     this.finish(this.posts, posts)
-    this.wheels.count = wheels
-    this.wheels.instanceMatrix.needsUpdate = true
   }
 
-  private addPosts(
-    segment: Segment,
-    spec: PostSpec,
-    camLeft: number,
-    right: number,
-    cursor: number,
-  ): number {
-    const first = Math.ceil((segment.x0 + 0.6) / spec.spacing) * spec.spacing
-    for (let x = first; x < segment.x1 - 0.6; x += spec.spacing) {
+  /** Uprights holding the handrail up, following its pitch. */
+  private addRailPosts(segment: Segment, camLeft: number, right: number, cursor: number): number {
+    const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
+    for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) {
       if (cursor >= MAX_POSTS) break
       if (x < camLeft - 2 || x > right + 2) continue
       const top = surfaceYAt(segment, x)
-      const height = top - spec.foot
-      if (height <= 0.1) continue
-      this.place(this.posts, cursor++, x, spec.foot + height / 2, -1.5, spec.width, height, spec.color)
-      if (spec.crossarm > 0 && cursor < MAX_POSTS) {
-        this.place(this.posts, cursor++, x, top + 0.5, -1.5, spec.crossarm, spec.width, spec.color)
-      }
+      this.place(
+        this.posts,
+        cursor++,
+        x,
+        top - RAIL_POST_DROP / 2,
+        0.3,
+        RAIL_POST_WIDTH,
+        RAIL_POST_DROP,
+        POST_COLOR.rail,
+      )
     }
     return cursor
   }
@@ -217,6 +185,15 @@ export class RoadView {
         this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.11, item.height, PROP_BODY)
         this.place(this.props, cursor++, item.x, top - 0.52, 0.55, 1.12, 0.92, SIGN_FACE)
         this.place(this.props, cursor++, item.x, top - 0.52, 0.58, 0.88, 0.68, PROP_BODY)
+      } else if (item.kind === 'hydrant') {
+        // Squat body, domed cap, two side outlets. Nobody mistakes one.
+        this.place(this.props, cursor++, item.x, item.base + item.height * 0.45, 0.5, 0.42, item.height * 0.9, HYDRANT)
+        this.place(this.props, cursor++, item.x, top - 0.06, 0.55, 0.3, 0.2, HYDRANT_CAP)
+        this.place(this.props, cursor++, item.x - 0.28, item.base + item.height * 0.5, 0.52, 0.2, 0.22, HYDRANT_CAP)
+        this.place(this.props, cursor++, item.x + 0.28, item.base + item.height * 0.5, 0.52, 0.2, 0.22, HYDRANT_CAP)
+      } else if (item.kind === 'bin') {
+        this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.78, item.height, BIN)
+        this.place(this.props, cursor++, item.x, top + 0.06, 0.55, 0.92, 0.16, BIN_LID)
       } else {
         this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.2, item.height, PROP_BODY, 0.05)
         for (const angle of [2.5, 2.0, 1.571, 1.15, 0.65]) {
@@ -235,20 +212,6 @@ export class RoadView {
           )
         }
       }
-    }
-    return cursor
-  }
-
-  private addWheels(segment: Segment, cursor: number): number {
-    const width = segment.x1 - segment.x0
-    const bottom = segment.y0 - THICKNESS.vehicle
-    for (const fraction of [0.18, 0.8]) {
-      if (cursor >= MAX_WHEELS) break
-      this.proxy.position.set(segment.x0 + width * fraction, bottom + 0.16, 0.4)
-      this.proxy.scale.set(0.9, 0.9, 1)
-      this.proxy.rotation.z = 0
-      this.proxy.updateMatrix()
-      this.wheels.setMatrixAt(cursor++, this.proxy.matrix)
     }
     return cursor
   }

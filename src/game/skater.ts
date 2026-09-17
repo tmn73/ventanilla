@@ -7,9 +7,10 @@ const MANUAL_NAME = ['MANUAL', '', 'NOSE MANUAL']
 
 const LABEL: Record<string, string> = {
   rail: 'RAIL',
-  wall: 'BORDE',
-  wire: 'CABLE',
-  vehicle: 'CHIVA',
+  hubba: 'HUBBA',
+  ledge: 'LEDGE',
+  step: 'STAIRS',
+  flat: '',
 }
 
 export class Skater {
@@ -141,9 +142,10 @@ export class Skater {
         return
       }
     }
-    if (this.y <= C.DEATH_Y) {
+    const floor = road.deathLineAt(this.x)
+    if (this.y <= floor) {
       this.fell = true
-      this.y = C.DEATH_Y
+      this.y = floor
       this.vy = 2.5
     }
   }

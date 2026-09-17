@@ -20,48 +20,49 @@ export const SIERRA_SNOW = '#eef4f8'
 export const HEADLAND = '#5f9c85'
 export const JUNGLE = '#2f6f54'
 
-export const SEA = '#1fbcc4'
-export const SEA_DEEP = '#159aa8'
-export const FOAM = '#b6f0ea'
-export const SAND = '#e9d3a4'
-export const SHOULDER = '#c2ae86'
-export const ROAD_LINE = '#fffaf0'
-export const ASPHALT = '#514f58'
-export const SCRUB = '#4f8a52'
-/** Low painted houses along the coast road. */
-export const HOUSE = '#e8dcc4'
-export const HOUSE_ROOF = '#b4674a'
+export const ASPHALT = '#54525c'
+
+/** Painted colonial facades, the way a Caribbean old town is painted. */
+export const FACADE = ['#e9b64c', '#d9695a', '#5fa9a6', '#e0dac4', '#c98a55', '#7f9ad1']
+export const FACADE_ROOF = '#9c5540'
+export const WINDOW = '#3d4e5c'
+export const AWNING = '#c94f3d'
 
 /** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
 export const SURFACE_COLOR: Record<string, string> = {
-  rail: '#33424c',
-  wall: '#8e8168',
-  wire: '#2f3b46',
-  vehicle: '#c0392b',
+  flat: '#8b8171',
+  step: '#82786a',
+  ledge: '#988d78',
+  hubba: '#8a7f6a',
+  rail: '#49545f',
 }
 
 export const EDGE_COLOR: Record<string, string> = {
-  rail: '#fff4d8',
-  wall: '#fdf3dc',
-  wire: '#ffffff',
-  vehicle: '#ffd86b',
+  flat: '#e6dcc8',
+  step: '#ddd2bd',
+  ledge: '#f1e7d3',
+  hubba: '#ece1cb',
+  rail: '#ffffff',
 }
 
 export const POST_COLOR: Record<string, string> = {
-  rail: '#2a3740',
-  wire: '#27323c',
+  rail: '#3a444e',
 }
 
 /** Block seams, so a parapet reads as masonry and not as a rectangle. */
 export const JOINT = '#6f6450'
 
-export const SPARK_COLOR = ['#fff0c0', '#ffd98a', '#ffffff']
+export const SPARK_COLOR = '#fff0c0'
 export const DUST = '#c9b48d'
 
 /**
  * Hazards are not colour coded. You avoid a palm because you recognise a palm.
  * The sign works because it is retroreflective, which is true of the real one.
  */
+export const HYDRANT = '#c2402f'
+export const HYDRANT_CAP = '#8f2b1f'
+export const BIN = '#3f6b4a'
+export const BIN_LID = '#2d4e36'
 export const PROP_BODY = '#5c4633'
 export const LAMP_GLOW = '#4a5560'
 export const SIGN_FACE = '#f4f7f9'

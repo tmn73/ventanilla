@@ -12,19 +12,14 @@ import {
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
 import {
   ASPHALT,
-  FOAM,
+  AWNING,
+  FACADE,
+  FACADE_ROOF,
   HEADLAND,
-  HOUSE,
-  HOUSE_ROOF,
   JUNGLE,
-  ROAD_LINE,
-  SAND,
-  SCRUB,
-  SEA,
-  SEA_DEEP,
-  SHOULDER,
   SIERRA,
   SIERRA_SNOW,
+  WINDOW,
   skyAt,
 } from './palette'
 
@@ -49,21 +44,15 @@ interface Band {
   z: number
 }
 
+/** Everything under the pavement is the street below, in shade. */
 const BANDS: Array<{ key: string; color: string; top: number; depth: number; z: number }> = [
-  { key: 'asphalt', color: ASPHALT, top: -1.15, depth: 40, z: -2.8 },
-  { key: 'line', color: ROAD_LINE, top: -1.03, depth: 0.12, z: -2.85 },
-  { key: 'shoulder', color: SHOULDER, top: DEATH_Y, depth: DEATH_Y + 1.03, z: -2.9 },
-  { key: 'sand', color: SAND, top: 1.75, depth: 1.75 - DEATH_Y, z: -3.0 },
-  { key: 'foam', color: FOAM, top: 2.05, depth: 0.3, z: -3.05 },
-  { key: 'sea', color: SEA, top: 4.3, depth: 2.25, z: -3.1 },
-  { key: 'seaDeep', color: SEA_DEEP, top: 4.55, depth: 0.25, z: -3.12 },
+  { key: 'street', color: ASPHALT, top: DEATH_Y - 2.4, depth: 60, z: -2.8 },
 ]
 
-const MAX_SCRUB = 130
-const SCRUB_SPACING = 1.05
-const MAX_HOUSES = 40
-const HOUSE_SPACING = 6.5
-const HOUSE_PARALLAX = 0.42
+const MAX_HOUSES = 48
+const HOUSE_SPACING = 5.4
+const HOUSE_PARALLAX = 0.38
+const HOUSE_BASE = 1.4
 
 /**
  * Seamless ridge line. Every wave completes a whole number of cycles over the
@@ -137,7 +126,7 @@ function band(scene: Scene, color: string, z: number): Mesh {
 function instanced(scene: Scene, color: string, max: number, z: number): InstancedMesh {
   const mesh = new InstancedMesh(
     new PlaneGeometry(1, 1),
-    new MeshBasicMaterial({ color: new Color(color) }),
+    new MeshBasicMaterial({ color: new Color(color), vertexColors: color === '#ffffff' }),
     max,
   )
   mesh.frustumCulled = false
@@ -149,9 +138,10 @@ function instanced(scene: Scene, color: string, max: number, z: number): Instanc
 export class Backdrop {
   private sky: Mesh
   private bands: Band[]
-  private scrub: InstancedMesh
   private houses: InstancedMesh
   private roofs: InstancedMesh
+  private windows: InstancedMesh
+  private awnings: InstancedMesh
   private proxy = new Object3D()
   private layers: Layer[]
 
@@ -188,9 +178,10 @@ export class Backdrop {
       z: spec.z,
     }))
 
-    this.houses = instanced(scene, HOUSE, MAX_HOUSES, -3.4)
-    this.roofs = instanced(scene, HOUSE_ROOF, MAX_HOUSES, -3.38)
-    this.scrub = instanced(scene, SCRUB, MAX_SCRUB, -2.6)
+    this.houses = instanced(scene, '#ffffff', MAX_HOUSES, -3.4)
+    this.roofs = instanced(scene, FACADE_ROOF, MAX_HOUSES, -3.38)
+    this.windows = instanced(scene, WINDOW, MAX_HOUSES * 2, -3.36)
+    this.awnings = instanced(scene, AWNING, MAX_HOUSES, -3.34)
   }
 
   update(camLeft: number, viewHeight: number): void {
@@ -204,46 +195,55 @@ export class Backdrop {
       item.mesh.position.set(centre, item.top - item.depth / 2, item.z)
     }
 
-    // Painted houses along the coast road, drifting at their own rate.
+    // Painted colonial facades, drifting at their own rate behind the street.
     let built = 0
+    let panes = 0
     const base = camLeft * HOUSE_PARALLAX
     const lag = camLeft - base
-    const firstHouse = Math.ceil((base - 8) / HOUSE_SPACING) * HOUSE_SPACING
-    for (let hx = firstHouse; hx < base + VIEW_WIDTH + 8 && built < MAX_HOUSES; hx += HOUSE_SPACING) {
+    const firstHouse = Math.ceil((base - 10) / HOUSE_SPACING) * HOUSE_SPACING
+    const tint = new Color()
+    for (let hx = firstHouse; hx < base + VIEW_WIDTH + 10 && built < MAX_HOUSES; hx += HOUSE_SPACING) {
       const hash = Math.abs(Math.sin(hx * 7.311) * 21374.9) % 1
       const spread = Math.abs(Math.sin(hx * 3.117) * 9431.7) % 1
-      if (spread < 0.35) continue
-      const height = 1.3 + hash * 1.5
-      const width = 2.4 + spread * 2.2
-      this.proxy.position.set(hx + lag, 4.3 + height / 2, -3.4)
+      const height = 4.5 + hash * 5.5
+      const width = HOUSE_SPACING + 0.6
+      const wx = hx + lag
+
+      tint.set(FACADE[Math.floor(spread * FACADE.length) % FACADE.length]!)
+      this.proxy.position.set(wx, HOUSE_BASE + height / 2, -3.4)
       this.proxy.scale.set(width, height, 1)
       this.proxy.updateMatrix()
       this.houses.setMatrixAt(built, this.proxy.matrix)
+      this.houses.setColorAt(built, tint)
 
-      this.proxy.position.set(hx + lag, 4.3 + height + 0.16, -3.38)
-      this.proxy.scale.set(width * 1.12, 0.32, 1)
+      this.proxy.position.set(wx, HOUSE_BASE + height + 0.22, -3.38)
+      this.proxy.scale.set(width * 1.08, 0.44, 1)
       this.proxy.updateMatrix()
       this.roofs.setMatrixAt(built, this.proxy.matrix)
+
+      this.proxy.position.set(wx, HOUSE_BASE + 2.1, -3.34)
+      this.proxy.scale.set(width * 0.82, 0.3, 1)
+      this.proxy.updateMatrix()
+      this.awnings.setMatrixAt(built, this.proxy.matrix)
       built++
+
+      for (const [row, side] of [[0.62, -1], [0.62, 1]] as Array<[number, number]>) {
+        if (panes >= MAX_HOUSES * 2) break
+        this.proxy.position.set(wx + side * width * 0.22, HOUSE_BASE + height * row, -3.36)
+        this.proxy.scale.set(0.9, 1.3, 1)
+        this.proxy.updateMatrix()
+        this.windows.setMatrixAt(panes++, this.proxy.matrix)
+      }
     }
     this.houses.count = built
     this.roofs.count = built
+    this.awnings.count = built
+    this.windows.count = panes
     this.houses.instanceMatrix.needsUpdate = true
+    if (this.houses.instanceColor) this.houses.instanceColor.needsUpdate = true
     this.roofs.instanceMatrix.needsUpdate = true
-
-    // Scrub on the shoulder, the last thing between the road and the drop.
-    let planted = 0
-    const firstScrub = Math.ceil((camLeft - 1) / SCRUB_SPACING) * SCRUB_SPACING
-    for (let x = firstScrub; x < camLeft + VIEW_WIDTH + 1 && planted < MAX_SCRUB; x += SCRUB_SPACING) {
-      const hash = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
-      const height = 0.22 + hash * 0.46
-      this.proxy.position.set(x, DEATH_Y + height / 2, -2.6)
-      this.proxy.scale.set(0.16 + hash * 0.2, height, 1)
-      this.proxy.updateMatrix()
-      this.scrub.setMatrixAt(planted++, this.proxy.matrix)
-    }
-    this.scrub.count = planted
-    this.scrub.instanceMatrix.needsUpdate = true
+    this.awnings.instanceMatrix.needsUpdate = true
+    this.windows.instanceMatrix.needsUpdate = true
 
     for (const layer of this.layers) {
       // A layer drifting at `parallax` sits at camLeft * (1 - parallax).

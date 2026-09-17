@@ -26,7 +26,7 @@ export class Game {
   constructor(private fixedSeed: string | null) {
     const draw = () => this.rng()
     this.car = new Car(draw)
-    this.road = new Road(draw, () => this.car.speed)
+    this.road = new Road(draw)
   }
 
   start(): void {
@@ -45,7 +45,6 @@ export class Game {
     if (this.phase !== 'running' && this.phase !== 'falling') return
 
     this.car.step(dt)
-    this.road.step(dt)
     this.road.ensureAhead(this.car.x)
     this.road.prune(this.car.x)
     this.skater.step(dt, this.road, input, this.car.x, this.car.speed)

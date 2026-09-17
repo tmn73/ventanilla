@@ -1,8 +1,8 @@
-import { CAR_SLOWEST, GRAVITY, JUMP_SPEED, LANE_Y, VIEW_WIDTH } from './constants'
+import { LANE_Y, VIEW_WIDTH } from './constants'
 import { range } from '../core/rng'
 
-export type SurfaceKind = 'rail' | 'wall' | 'wire' | 'vehicle'
-export type ObstacleKind = 'post' | 'sign' | 'palm'
+export type SurfaceKind = 'flat' | 'step' | 'ledge' | 'rail' | 'hubba'
+export type ObstacleKind = 'post' | 'sign' | 'palm' | 'hydrant' | 'bin'
 
 export interface Segment {
   x0: number
@@ -10,13 +10,12 @@ export interface Segment {
   /** Height at each end. When they differ the surface is a ramp. */
   y0: number
   y1: number
-  lane: number
   kind: SurfaceKind
-  /** Metres per second. Only vehicles move. */
-  vx: number
+  /** True for the pavement and the steps, which set where a fall becomes fatal. */
+  floor: boolean
 }
 
-/** Something standing on a lane. You cannot land on it, so you jump it. */
+/** Something standing on the street. You cannot land on it, so you jump it. */
 export interface Obstacle {
   x: number
   halfWidth: number
@@ -25,18 +24,17 @@ export interface Obstacle {
   kind: ObstacleKind
 }
 
-const KIND_OF_LANE: SurfaceKind[] = ['rail', 'wall', 'wire']
-
 /**
- * Metal is ground on and throws sparks. Concrete and truck roofs are flat, so
- * you roll on them and the trick becomes a manual. The missing sparks are how
- * the player feels the difference.
+ * Metal is ground on and throws sparks. Concrete is flat, so you roll on it
+ * and the trick becomes a manual. The missing sparks are how the player feels
+ * the difference.
  */
 export const GRINDABLE: Record<SurfaceKind, boolean> = {
   rail: true,
-  wire: true,
-  wall: false,
-  vehicle: false,
+  hubba: false,
+  ledge: false,
+  flat: false,
+  step: false,
 }
 
 /** Height of a surface at a point along it. */
@@ -53,158 +51,158 @@ export function slopeOf(segment: Segment): number {
   return span <= 0 ? 0 : (segment.y1 - segment.y0) / span
 }
 
-/** Air time of a full jump, up and back down to the same height. */
-const HANG = (2 * JUMP_SPEED) / GRAVITY
-/** Gaps are sized against the slowest the car ever goes, so they always clear. */
-const SAFE_REACH = HANG * CAR_SLOWEST
-/** A board will not hold past this. Roughly 20 degrees. */
-const MAX_SLOPE = 0.36
+const RISE = 0.34
+const TREAD = 0.8
+const MAX_STEPS = 16
+/** Without a rail the whole set has to be cleared in one ollie. */
+const MAX_FREE_STEPS = 8
+
+const RAIL_HEIGHT = 0.95
+const LEDGE_HEIGHT = 0.58
+/** How far below the pavement a fall stops being recoverable. */
+const FATAL_DROP = 3
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
-const OBSTACLE_KINDS: ObstacleKind[] = ['post', 'sign', 'palm']
-/** Clear room either side, so the player lands, reads it, and jumps. */
-const OBSTACLE_MARGIN = 7
+const STREET_PROPS: ObstacleKind[] = ['hydrant', 'bin', 'sign', 'post', 'palm']
 
 export class Road {
   segments: Segment[] = []
   obstacles: Obstacle[] = []
 
-  /** The end of the guaranteed route: where it stops and at what height. */
   private headX = 0
-  private headY = LANE_Y[0]!
+  private groundY = LANE_Y[0]!
 
-  constructor(
-    private rng: () => number,
-    private carSpeed: () => number,
-  ) {}
+  constructor(private rng: () => number) {}
 
   reset(startX: number): void {
     this.segments = []
     this.obstacles = []
-    this.headY = LANE_Y[0]!
-    // A guaranteed platform under the spawn, or the run ends before it begins.
-    this.push(startX - 10, startX + 17, this.headY, this.headY, 0)
-    this.headX = startX + 17 + 4
+    this.groundY = LANE_Y[0]!
+    // A guaranteed run-up under the spawn, or the run ends before it begins.
+    this.push(startX - 12, startX + 20, this.groundY, this.groundY, 'flat', true)
+    this.headX = startX + 20
+  }
+
+  /** Modules laid end to end. Each one starts where the last one stopped. */
+  ensureAhead(x: number): void {
+    const limit = x + LOOKAHEAD
+    while (this.headX < limit) this.emit()
+  }
+
+  private emit(): void {
+    const roll = this.rng()
+    if (roll < 0.2) this.flat()
+    else if (roll < 0.44) this.stairs()
+    else if (roll < 0.62) this.railSpot()
+    else if (roll < 0.76) this.ledgeSpot()
+    else if (roll < 0.9) this.bank()
+    else this.gap()
+  }
+
+  /** Plain pavement, with room to set up. */
+  private flat(): void {
+    const length = range(this.rng, 9, 19)
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    this.clutter(this.headX + 2, this.headX + length - 2)
+    this.headX += length
   }
 
   /**
-   * Lays one continuous, always-jumpable route, then scatters optional
-   * surfaces around it. Height now changes two ways: a ramp inside a segment,
-   * or a jump across the gap between two.
+   * A set of steps, each one ridable. Past eight of them a handrail always
+   * runs alongside, so the set can be taken without clearing it in one go.
    */
-  ensureAhead(x: number): void {
-    const limit = x + LOOKAHEAD
-    while (this.headX < limit) {
-      const run = range(this.rng, 11, 30)
-      const x0 = this.headX
-      const startY = this.headY
-      const endY = this.rampTo(startY, run)
+  private stairs(): void {
+    const steps = Math.round(range(this.rng, 3, MAX_STEPS))
+    const hasRail = steps > MAX_FREE_STEPS || this.rng() < 0.55
+    const count = hasRail ? Math.min(steps, MAX_STEPS) : Math.min(steps, MAX_FREE_STEPS)
 
-      this.push(x0, x0 + run, startY, endY, this.laneOf(startY))
-      this.plant(x0, x0 + run, startY, endY)
-      this.scatter(x0, x0 + run, this.laneOf(startY))
-
-      // Where the next surface begins, and how far the gap can be.
-      const landing = this.hopTo(endY)
-      const climb = landing - endY
-      const budget = SAFE_REACH * (climb > 0.4 ? 0.36 : climb < -0.4 ? 0.6 : 0.48)
-      this.headX = x0 + run + range(this.rng, 2.6, Math.max(3.2, budget))
-      this.headY = landing
+    const topX = this.headX
+    const topY = this.groundY
+    for (let i = 0; i < count; i++) {
+      const y = topY - (i + 1) * RISE
+      this.push(topX + i * TREAD, topX + (i + 1) * TREAD, y, y, 'step', true)
     }
+
+    const runX = topX + count * TREAD
+    const bottomY = topY - count * RISE
+
+    if (hasRail) {
+      const kind: SurfaceKind = this.rng() < 0.6 ? 'rail' : 'hubba'
+      const lift = kind === 'rail' ? RAIL_HEIGHT : LEDGE_HEIGHT
+      this.push(topX - 0.6, runX + 0.6, topY + lift, bottomY + lift, kind, false)
+    }
+
+    this.groundY = bottomY
+    this.headX = runX
+    // Landing room at the bottom of every set.
+    const runout = range(this.rng, 7, 13)
+    this.push(this.headX, this.headX + runout, this.groundY, this.groundY, 'flat', true)
+    this.headX += runout
   }
 
-  /** The height this segment climbs or drops to, inside what a board holds. */
-  private rampTo(startY: number, run: number): number {
-    if (this.rng() < 0.45) return startY
-    const step = this.rng() < 0.5 ? -1 : 1
-    const target = this.nearestLane(startY + step * 2.2)
-    if (Math.abs(target - startY) / run > MAX_SLOPE) return startY
-    return target
-  }
+  /** A rail over flat ground: level, uphill or downhill, any length. */
+  private railSpot(): void {
+    const length = range(this.rng, 7, 18)
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
-  /** The height of the next surface across the gap. */
-  private hopTo(endY: number): number {
     const roll = this.rng()
-    let target = endY
-    if (roll < 0.3) target = endY - 2.2
-    else if (roll < 0.6) target = endY + 2.2
-    return this.nearestLane(target)
+    const drop = roll < 0.45 ? 0 : roll < 0.8 ? -range(this.rng, 0.8, 2.4) : range(this.rng, 0.6, 1.6)
+    const y0 = this.groundY + RAIL_HEIGHT + (drop < 0 ? -drop : 0)
+    this.push(this.headX + 0.8, this.headX + length - 0.8, y0, y0 + drop, 'rail', false)
+
+    this.headX += length
   }
 
-  private nearestLane(y: number): number {
-    let best = LANE_Y[0]!
-    for (const lane of LANE_Y) {
-      if (Math.abs(lane - y) < Math.abs(best - y)) best = lane
-    }
-    return best
+  /** A block you roll along. Concrete, so it gives a manual and no sparks. */
+  private ledgeSpot(): void {
+    const length = range(this.rng, 8, 16)
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    const y = this.groundY + LEDGE_HEIGHT
+    this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
+    this.headX += length
   }
 
-  private laneOf(y: number): number {
-    let best = 0
-    for (let i = 0; i < LANE_Y.length; i++) {
-      if (Math.abs(LANE_Y[i]! - y) < Math.abs(LANE_Y[best]! - y)) best = i
-    }
-    return best
+  /** Pavement pitching up or down. A rising lip throws you into the air. */
+  private bank(): void {
+    const length = range(this.rng, 8, 15)
+    const rise = range(this.rng, -1.8, 1.8)
+    const endY = this.groundY + rise
+    this.push(this.headX, this.headX + length, this.groundY, endY, 'flat', true)
+    this.groundY = endY
+    this.headX += length
   }
 
-  /** Drops a blocker in the middle of a long run, never near its edges. */
-  private plant(x0: number, x1: number, y0: number, y1: number): void {
-    const room = x1 - x0 - OBSTACLE_MARGIN * 2
-    if (room < 4) return
-    if (this.rng() > 0.55) return
-    const kind = OBSTACLE_KINDS[Math.floor(this.rng() * OBSTACLE_KINDS.length)]!
-    const x = x0 + OBSTACLE_MARGIN + this.rng() * room
-    const t = (x - x0) / (x1 - x0)
+  /** A hole in the pavement. Sized so it clears at the slowest the car drives. */
+  private gap(): void {
+    const before = range(this.rng, 6, 11)
+    this.push(this.headX, this.headX + before, this.groundY, this.groundY, 'flat', true)
+    this.headX += before + range(this.rng, 2.6, 5.2)
+    const after = range(this.rng, 8, 14)
+    this.push(this.headX, this.headX + after, this.groundY, this.groundY, 'flat', true)
+    this.headX += after
+  }
+
+  /** Street furniture standing on the pavement, never near a landing. */
+  private clutter(from: number, to: number): void {
+    if (to - from < 6) return
+    if (this.rng() > 0.5) return
+    const kind = STREET_PROPS[Math.floor(this.rng() * STREET_PROPS.length)]!
+    const height = kind === 'palm' ? 2.8 : kind === 'sign' ? 2.1 : kind === 'post' ? 1.5 : 0.75
     this.obstacles.push({
-      x,
-      halfWidth: kind === 'palm' ? 0.28 : 0.22,
-      base: y0 + (y1 - y0) * t,
-      height: kind === 'sign' ? 2.1 : kind === 'palm' ? 2.8 : 1.5,
+      x: range(this.rng, from, to),
+      halfWidth: kind === 'bin' ? 0.4 : kind === 'hydrant' ? 0.24 : 0.22,
+      base: this.groundY,
+      height,
       kind,
     })
   }
 
-  /** Optional surfaces beside the route. Riding them is a choice, never a must. */
-  private scatter(x0: number, x1: number, routeLane: number): void {
-    for (let lane = 0; lane < LANE_Y.length; lane++) {
-      if (lane === routeLane) continue
-      if (this.rng() > 0.45) continue
-      const start = x0 + range(this.rng, 0, (x1 - x0) * 0.4)
-      const end = Math.min(x1 + range(this.rng, -2, 8), start + range(this.rng, 8, 24))
-      if (end - start < 6) continue
-      const y = LANE_Y[lane]!
-      const drop = this.rng() < 0.3 ? (this.rng() < 0.5 ? -1.4 : 1.4) : 0
-      const endY = Math.abs(drop) / (end - start) > MAX_SLOPE ? y : y + drop
-      this.push(start, end, y, endY, lane)
-    }
-    if (this.rng() < 0.22) this.spawnVehicle(x1 + range(this.rng, 1, 5))
+  private push(x0: number, x1: number, y0: number, y1: number, kind: SurfaceKind, floor: boolean): void {
+    this.segments.push({ x0, x1, y0, y1, kind, floor })
   }
 
-  private push(x0: number, x1: number, y0: number, y1: number, lane: number): void {
-    this.segments.push({ x0, x1, y0, y1, lane, kind: KIND_OF_LANE[lane]!, vx: 0 })
-  }
-
-  private spawnVehicle(x0: number): void {
-    const y = LANE_Y[0]! - 0.55
-    this.segments.push({
-      x0,
-      x1: x0 + range(this.rng, 8, 15),
-      y0: y,
-      y1: y,
-      lane: 0,
-      kind: 'vehicle',
-      vx: this.carSpeed() * range(this.rng, 0.78, 1.1),
-    })
-  }
-
-  step(dt: number): void {
-    for (const segment of this.segments) {
-      if (segment.vx === 0) continue
-      segment.x0 += segment.vx * dt
-      segment.x1 += segment.vx * dt
-    }
-  }
+  step(): void {}
 
   prune(x: number): void {
     const cutoff = x - TRAIL
@@ -232,7 +230,22 @@ export class Road {
     return x >= segment.x0 && x <= segment.x1
   }
 
-  /** True when this point is inside something standing on a lane. */
+  /** Below this you are in the hole and the run is over. */
+  deathLineAt(x: number): number {
+    let nearest = this.groundY
+    let bestDistance = Infinity
+    for (const segment of this.segments) {
+      if (!segment.floor) continue
+      const distance = x < segment.x0 ? segment.x0 - x : x > segment.x1 ? x - segment.x1 : 0
+      if (distance < bestDistance) {
+        bestDistance = distance
+        nearest = surfaceYAt(segment, Math.min(segment.x1, Math.max(segment.x0, x)))
+      }
+    }
+    return nearest - FATAL_DROP
+  }
+
+  /** True when this point is inside something standing on the pavement. */
   blockedAt(x: number, y: number): boolean {
     for (const obstacle of this.obstacles) {
       if (Math.abs(x - obstacle.x) > obstacle.halfWidth + 0.3) continue

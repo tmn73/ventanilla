@@ -74,9 +74,8 @@ startLoop(
     // Sparks while grinding, brighter the higher the lane. Dust when he lands
     // in the dirt. Nothing else tells the player which surface is worth taking.
     if (skater.support && game.phase === 'running' && GRINDABLE[skater.support.kind]) {
-      const lane = skater.support.lane
       const truck = skater.grind < 0 ? -0.35 : skater.grind > 0 ? 0.35 : -0.45
-      particles.emit(frameDt, x + truck, y, SPARK_RATE[lane] ?? 40, false, SPARK_COLOR[lane] ?? '#ffd9a0')
+      particles.emit(frameDt, x + truck, y, SPARK_RATE, false, SPARK_COLOR)
     } else if (game.phase === 'falling' && skater.fallTime < 0.3) {
       particles.emit(frameDt, x, y, 180, true, DUST)
     }

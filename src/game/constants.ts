@@ -1,8 +1,8 @@
 export const FIXED_DT = 1 / 120
 
-/** Ridable heights, in metres. Touching anything below the lowest one ends the run. */
-export const LANE_Y = [1.4, 3.6, 5.8]
-export const DEATH_Y = 0.35
+/** Where the pavement starts. Everything else is measured from it. */
+export const LANE_Y = [2.2]
+export const DEATH_Y = 0
 
 /** How much road the window shows at once, in metres. */
 export const VIEW_WIDTH = 30
@@ -18,8 +18,8 @@ export const CAR_START = 15
 /** The slowest the car ever goes. Gaps are sized against this, so a jump always clears. */
 export const CAR_SLOWEST = 12
 
-/** Sparks per second while grinding, by lane. Higher lanes throw more. */
-export const SPARK_RATE = [40, 75, 130]
+/** Sparks per second on a rail. Concrete throws none, which is the tell. */
+export const SPARK_RATE = 120
 
 /** One full revolution of a kickflip. */
 export const FLIP_DURATION = 0.42
