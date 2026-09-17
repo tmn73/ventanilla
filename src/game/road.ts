@@ -51,6 +51,8 @@ const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
 /** The pavement never wanders further than this from where it started. */
 const DRIFT_LIMIT = 20
+/** The steepest face the game ever builds. Past this it reads as a wall. */
+const MAX_SLOPE = 0.9
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -124,17 +126,101 @@ export class Road {
     }
 
     const roll = this.rng()
-    if (roll < 0.19) this.stairs(scale)
-    else if (roll < 0.3) this.railSpot(scale)
-    else if (roll < 0.41) this.ledgeSpot(scale)
-    else if (roll < 0.5) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
-    else if (roll < 0.59) this.plaza(scale)
-    else if (roll < 0.67) this.doubleSet(scale)
-    else if (roll < 0.74) this.hip(scale)
-    else if (roll < 0.83) this.funbox(scale)
-    else if (roll < 0.9) this.bumpToBar(scale)
-    else if (roll < 0.96) this.channel(scale)
-    else this.drop(scale)
+    if (roll < 0.13) this.stairs(scale)
+    else if (roll < 0.21) this.railSpot(scale)
+    else if (roll < 0.29) this.ledgeSpot(scale)
+    else if (roll < 0.36) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
+    else if (roll < 0.43) this.plaza(scale)
+    else if (roll < 0.49) this.doubleSet(scale)
+    else if (roll < 0.55) this.hip(scale)
+    else if (roll < 0.62) this.funbox(scale)
+    else if (roll < 0.68) this.bumpToBar(scale)
+    else if (roll < 0.73) this.channel(scale)
+    else if (roll < 0.79) this.drop(scale)
+    else if (roll < 0.85) this.railOverGap(scale)
+    else if (roll < 0.89) this.pit(scale)
+    else if (roll < 0.93) this.stepUp(scale)
+    else if (roll < 0.97) this.padChain(scale)
+    else this.ledgeToBank(scale)
+  }
+
+  /**
+   * A rail spanning an open gap. Grind across, ollie it, or fall in and ride
+   * out the far side. One spot, three answers, which is the whole point.
+   */
+  private railOverGap(scale: number): void {
+    const width = 3 + scale * 7
+    const depth = 1.4 + scale * 3.5
+    const lip = this.headX
+
+    const floorY = this.settle(this.groundY - depth)
+    this.push(lip, lip + width, floorY, floorY, 'flat', true)
+    const out = Math.max(3, (this.groundY - floorY) / 0.28)
+    this.push(lip + width, lip + width + out, floorY, this.groundY, 'flat', true)
+
+    // The rail runs level over the whole thing, from lip to far bank.
+    const railY = this.groundY + RAIL_HEIGHT
+    this.push(lip - 2.5, lip + width + out * 0.5, railY, railY, 'rail', false)
+
+    this.headX = lip + width + out
+  }
+
+  /** A hole. Deep, and there is no rail over this one. */
+  private pit(scale: number): void {
+    const width = 4 + scale * 9
+    const floorY = this.settle(this.groundY - (2.5 + scale * 8))
+
+    this.push(this.headX, this.headX + width, floorY, floorY, 'flat', true)
+    this.headX += width
+
+    const out = Math.max(4, (this.groundY - floorY) / 0.26)
+    this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
+    this.headX += out
+  }
+
+  /** Two rails, the second higher than the first. Pop from one to the other. */
+  private stepUp(scale: number): void {
+    const first = 6 + scale * 9
+    const gap = 3 + scale * 3
+    const second = 6 + scale * 11
+    const lift = 0.5 + scale * 0.9
+
+    this.push(this.headX, this.headX + first + gap + second, this.groundY, this.groundY, 'flat', true)
+    const lowY = this.groundY + RAIL_HEIGHT
+    this.push(this.headX + 0.5, this.headX + first, lowY, lowY, 'rail', false)
+    const highY = lowY + lift
+    this.push(this.headX + first + gap, this.headX + first + gap + second - 0.5, highY, highY, 'rail', false)
+    this.headX += first + gap + second
+  }
+
+  /** Pad, hop, pad, hop. A manual line rather than a single block. */
+  private padChain(scale: number): void {
+    const pads = 2 + Math.floor(scale * 2.4)
+    const y = this.groundY + LEDGE_HEIGHT * 0.6
+
+    for (let i = 0; i < pads; i++) {
+      const length = 5 + scale * 9
+      const gap = 2.2 + scale * 2.6
+      this.push(this.headX, this.headX + length + gap, this.groundY, this.groundY, 'flat', true)
+      this.push(this.headX + 0.5, this.headX + length, y, y, 'ledge', false)
+      this.headX += length + gap
+    }
+  }
+
+  /** A block that runs out over a slope, so the landing is already falling. */
+  private ledgeToBank(scale: number): void {
+    const length = 7 + scale * 14
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    const y = this.groundY + LEDGE_HEIGHT
+    this.push(this.headX + 1, this.headX + length, y, y, 'ledge', false)
+    this.headX += length
+
+    const drop = 2 + scale * 7
+    const run = Math.max(5, drop / range(this.rng, 0.2, 0.32))
+    const endY = this.settle(this.groundY - drop)
+    this.push(this.headX, this.headX + run, this.groundY, endY, 'flat', true)
+    this.groundY = endY
+    this.headX += run
   }
 
   /**
@@ -247,6 +333,11 @@ export class Road {
     const bottomY = topY - count * RISE
 
     if (hasRail) {
+      // A big set sometimes carries both, which turns one spot into a choice.
+      if (count > 9 && this.rng() < 0.3) {
+        this.push(topX - 0.6, runX + 0.6, topY + RAIL_HEIGHT, bottomY + RAIL_HEIGHT, 'rail', false)
+        this.push(topX - 0.4, runX + 0.4, topY + LEDGE_HEIGHT, bottomY + LEDGE_HEIGHT, 'hubba', false)
+      }
       const kind: SurfaceKind = this.rng() < 0.6 ? 'rail' : 'hubba'
       const lift = kind === 'rail' ? RAIL_HEIGHT : LEDGE_HEIGHT
 
@@ -278,8 +369,9 @@ export class Road {
   private hip(scale: number): void {
     const length = range(this.rng, 4.5, 7)
     const lip = this.settle(this.groundY + 1.1 + scale * 1.6)
-    this.push(this.headX, this.headX + length, this.groundY, lip, 'flat', true)
-    this.headX += length
+    const run = this.rampRun(length, lip - this.groundY)
+    this.push(this.headX, this.headX + run, this.groundY, lip, 'flat', true)
+    this.headX += run
 
     // The drop off the back of the lip, and a long flat to land it on.
     const landingY = this.settle(lip - range(this.rng, 1.3, 3.2))
@@ -329,6 +421,14 @@ export class Road {
   }
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
+  /**
+   * How long a ramp has to be to carry a given rise. settle() can stretch a
+   * rise after the module chose its length, and a wall is never rideable.
+   */
+  private rampRun(length: number, rise: number): number {
+    return Math.max(length, Math.abs(rise) / MAX_SLOPE)
+  }
+
   private bank(force: number, scale: number): void {
     // A bank is either a long gentle drift or a short sharp pitch, and the
     // roll decides which rather than averaging the two.
@@ -342,9 +442,10 @@ export class Road {
           ? -range(this.rng, swing * 0.5, swing * 0.8)
           : range(this.rng, -swing * 0.8, swing)
     const endY = this.settle(this.groundY + rise)
-    this.push(this.headX, this.headX + length, this.groundY, endY, 'flat', true)
+    const run = this.rampRun(length, endY - this.groundY)
+    this.push(this.headX, this.headX + run, this.groundY, endY, 'flat', true)
     this.groundY = endY
-    this.headX += length
+    this.headX += run
   }
 
   private push(x0: number, x1: number, y0: number, y1: number, kind: SurfaceKind, floor: boolean): void {

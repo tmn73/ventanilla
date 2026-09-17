@@ -36,3 +36,23 @@ test('the pavement stays within reach of where it started', () => {
     }
   }
 })
+
+test('you can always ride out of a hollow', () => {
+  // A hole is only fun if the far side is a ramp. A wall traps the player,
+  // and a bank at 45 degrees is already the steepest thing we build.
+  // and this game never traps the player.
+  const walls: string[] = []
+
+  for (let trial = 0; trial < TRIALS; trial++) {
+    for (const s of laid(trial).segments) {
+      if (!s.floor) continue
+      const run = s.x1 - s.x0
+      const climb = s.y1 - s.y0
+      if (climb > 0.05 && climb / run > 1) {
+        walls.push(`trial ${trial}: climbs ${climb.toFixed(1)} m over ${run.toFixed(1)} m`)
+      }
+    }
+  }
+
+  expect(walls).toEqual([])
+})
