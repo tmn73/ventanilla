@@ -1,73 +1,77 @@
 import { Color } from 'three'
 
 /**
- * One value ladder, from the haze at the back to the dead floor at the front.
- * Nothing is pure black: depth comes from separation, not from darkness.
+ * The coast road between Santa Marta and Tayrona, at midday. The stack runs
+ * from the tarmac at your feet to the Sierra Nevada behind the bay, and every
+ * band sits at its own value so the ridable surfaces stay readable on top.
  */
 export const SKY_STOPS: Array<[number, string]> = [
-  [0.0, '#f7c98a'],
-  [0.12, '#e08a4e'],
-  [0.34, '#b8566a'],
-  [0.62, '#45356b'],
-  [1.0, '#1a1b3a'],
+  [0.0, '#fdf0d0'],
+  [0.16, '#cfe9f2'],
+  [0.42, '#7cc9e8'],
+  [0.72, '#3ba2d8'],
+  [1.0, '#1c7cc0'],
 ]
 
-export const RIDGE_FAR = '#4a4378'
-export const RIDGE_MID = '#332c58'
-export const RIDGE_NEAR = '#231d3e'
+/** Hazed by distance: the snow line of the Sierra sits above the bay. */
+export const SIERRA = '#9dbdd4'
+export const SIERRA_SNOW = '#eef4f8'
+/** Jungle headlands across the water, then the near one. */
+export const HEADLAND = '#5f9c85'
+export const JUNGLE = '#2f6f54'
 
-/** The floor is the darkest thing on screen, because touching it ends the run. */
-export const VERGE = '#191428'
-export const TUFT = '#241c3c'
-/** The road itself: gravel shoulder, painted edge line, then asphalt. */
-export const ROAD_LINE = '#c9bfa6'
-export const ASPHALT = '#0e0d16'
-/** Buildings between the hills and the roadside, for one more depth step. */
-export const BUILDING = '#1d1833'
+export const SEA = '#1fbcc4'
+export const SEA_DEEP = '#159aa8'
+export const FOAM = '#b6f0ea'
+export const SAND = '#e9d3a4'
+export const SHOULDER = '#c2ae86'
+export const ROAD_LINE = '#fffaf0'
+export const ASPHALT = '#514f58'
+export const SCRUB = '#4f8a52'
+/** Low painted houses along the coast road. */
+export const HOUSE = '#e8dcc4'
+export const HOUSE_ROOF = '#b4674a'
 
-/** Ridable bodies sit above the floor in value, so they read as objects. */
+/** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
 export const SURFACE_COLOR: Record<string, string> = {
-  rail: '#2b2442',
-  wall: '#262039',
-  wire: '#332b4e',
-  vehicle: '#342744',
+  rail: '#33424c',
+  wall: '#8e8168',
+  wire: '#2f3b46',
+  vehicle: '#c0392b',
 }
 
-/** The lit top edge is the affordance. It brightens with the lane. */
 export const EDGE_COLOR: Record<string, string> = {
-  rail: '#dba073',
-  wall: '#f0bf8e',
-  wire: '#ffe4b8',
-  vehicle: '#c98a5e',
+  rail: '#fff4d8',
+  wall: '#fdf3dc',
+  wire: '#ffffff',
+  vehicle: '#ffd86b',
 }
 
 export const POST_COLOR: Record<string, string> = {
-  rail: '#1d1830',
-  wire: '#211b36',
+  rail: '#2a3740',
+  wire: '#27323c',
 }
 
 /** Block seams, so a parapet reads as masonry and not as a rectangle. */
-export const JOINT = '#3a3159'
+export const JOINT = '#6f6450'
 
-/** Sparks brighten with the lane too, which is the only hint the player needs. */
-export const SPARK_COLOR = ['#ffd9a0', '#ffc879', '#fff3d2']
-export const DUST = '#6b5a52'
+export const SPARK_COLOR = ['#fff0c0', '#ffd98a', '#ffffff']
+export const DUST = '#c9b48d'
 
 /**
- * Hazards are not colour coded. You avoid a lamppost because you recognise a
- * lamppost. What makes them legible is that the lamp is lit and the sign is
- * retroreflective, which is true of the real things.
+ * Hazards are not colour coded. You avoid a palm because you recognise a palm.
+ * The sign works because it is retroreflective, which is true of the real one.
  */
-export const PROP_BODY = '#1a1530'
-export const LAMP_GLOW = '#ffd18a'
-export const SIGN_FACE = '#cec3dc'
-export const FROND = '#241d3c'
+export const PROP_BODY = '#5c4633'
+export const LAMP_GLOW = '#4a5560'
+export const SIGN_FACE = '#f4f7f9'
+export const FROND = '#2f8a4f'
 
-export const WHEEL_COLOR = '#6d5f80'
-export const SKATER = '#fff4dd'
-export const BOARD = '#ffb45e'
+export const WHEEL_COLOR = '#2b2a33'
+export const SKATER = '#fffaf0'
+export const BOARD = '#ff7a3d'
 /** The grip tape side, seen when a kickflip turns the deck over. */
-export const GRIP = '#2f2438'
+export const GRIP = '#2b2731'
 
 /** Samples the sky at t, where 0 is the horizon and 1 is the top. */
 export function skyAt(t: number, out: Color): Color {

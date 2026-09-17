@@ -1,11 +1,12 @@
 :root {
-  --interior: #08070d;
-  --door: #141019;
-  --door-hi: #2a2233;
-  --sill: #5a4c6e;
-  --ink: #ffe9c4;
-  --muted: #9b8fa8;
-  --alarm: #e2564f;
+  /* Sun bleached plastic, in the shade of the cabin. */
+  --interior: #16130f;
+  --door: #3b332a;
+  --door-hi: #5b4f41;
+  --sill: #c9b48c;
+  --ink: #fffaf0;
+  --muted: #cbbba0;
+  --alarm: #e2453a;
 }
 
 * {
@@ -21,7 +22,7 @@ body {
 body {
   display: grid;
   place-items: center;
-  background: radial-gradient(120% 90% at 50% 0%, #15111d 0%, var(--interior) 70%);
+  background: radial-gradient(120% 90% at 50% 0%, #2a241c 0%, var(--interior) 72%);
   color: var(--ink);
   font-family: 'Archivo', system-ui, sans-serif;
   overflow: hidden;
@@ -36,8 +37,8 @@ body {
   aspect-ratio: 16 / 9.6;
   border-radius: 14px 40px 12px 12px;
   overflow: hidden;
-  background: linear-gradient(170deg, #201a2a 0%, var(--door) 44%, #0a0810 100%);
-  box-shadow: 0 0 0 2px #241f30, 0 36px 84px rgba(0, 0, 0, 0.72);
+  background: linear-gradient(170deg, #6b5c49 0%, var(--door) 42%, #241e18 100%);
+  box-shadow: 0 0 0 2px #4a4034, 0 36px 84px rgba(0, 0, 0, 0.55);
 }
 
 /* Rear door glass: a rectangle whose rear top corner is heavily rounded. */
@@ -48,7 +49,7 @@ body {
   right: 2%;
   height: 84%;
   border-radius: 10px 52px 16px 10px;
-  background: linear-gradient(180deg, #4a4058 0%, #191322 55%);
+  background: linear-gradient(180deg, #8f7d62 0%, #2a2319 58%);
   padding: 7px;
   box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
 }
@@ -86,7 +87,7 @@ body {
   top: 26%;
   height: 46%;
   border-radius: 4px 10px 10px 4px;
-  background: linear-gradient(180deg, #2c2438 0%, #171121 70%, #0c0913 100%);
+  background: linear-gradient(180deg, #6a5b48 0%, #362e25 68%, #1d1813 100%);
   box-shadow: 0 -1px 0 rgba(255, 233, 196, 0.12), 0 5px 12px rgba(0, 0, 0, 0.55);
 }
 
@@ -102,7 +103,7 @@ body {
   width: 13px;
   height: 5px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #4a4058 0%, #17121f 100%);
+  background: linear-gradient(180deg, #8a7962 0%, #2a2319 100%);
 }
 
 /* The seatbelt, crossing the near edge. Foreground is what sells an interior. */
@@ -114,7 +115,7 @@ body {
   height: 112%;
   transform: rotate(9deg);
   transform-origin: top center;
-  background: linear-gradient(90deg, #120e1c 0%, #2b2236 45%, #100c18 100%);
+  background: linear-gradient(90deg, #241d15 0%, #55483a 45%, #201a13 100%);
   box-shadow: 3px 0 14px rgba(0, 0, 0, 0.7);
   pointer-events: none;
 }
@@ -125,8 +126,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(104deg, transparent 36%, rgba(255, 233, 196, 0.05) 41%, transparent 47%),
-    radial-gradient(135% 115% at 50% 45%, transparent 52%, rgba(4, 3, 10, 0.8) 100%);
+    linear-gradient(104deg, transparent 34%, rgba(255, 255, 255, 0.11) 40%, transparent 48%),
+    radial-gradient(135% 118% at 50% 45%, transparent 58%, rgba(24, 18, 10, 0.5) 100%);
 }
 
 #danger {
@@ -184,7 +185,7 @@ body {
   gap: 6px;
   padding: 22px;
   text-align: center;
-  background: rgba(8, 7, 13, 0.66);
+  background: rgba(20, 16, 11, 0.62);
   backdrop-filter: blur(3px);
   opacity: 0;
   visibility: hidden;

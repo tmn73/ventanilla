@@ -2,14 +2,31 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  InstancedMesh,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   PlaneGeometry,
   Scene,
 } from 'three'
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
-import { Color as ThreeColor, InstancedMesh, Object3D } from 'three'
-import { ASPHALT, BUILDING, RIDGE_FAR, RIDGE_MID, RIDGE_NEAR, ROAD_LINE, TUFT, VERGE, skyAt } from './palette'
+import {
+  ASPHALT,
+  FOAM,
+  HEADLAND,
+  HOUSE,
+  HOUSE_ROOF,
+  JUNGLE,
+  ROAD_LINE,
+  SAND,
+  SCRUB,
+  SEA,
+  SEA_DEEP,
+  SHOULDER,
+  SIERRA,
+  SIERRA_SNOW,
+  skyAt,
+} from './palette'
 
 const RIDGE_SPAN = 240
 const RIDGE_SAMPLES = 200
@@ -21,6 +38,34 @@ interface Layer {
 }
 
 /**
+ * Flat bands, stacked by distance. Nearest is lowest in the window, because
+ * that is what a side window shows: tarmac at your feet, then the shoulder,
+ * the sand, the bay, and the headlands across it.
+ */
+interface Band {
+  mesh: Mesh
+  top: number
+  depth: number
+  z: number
+}
+
+const BANDS: Array<{ key: string; color: string; top: number; depth: number; z: number }> = [
+  { key: 'asphalt', color: ASPHALT, top: -1.15, depth: 40, z: -2.8 },
+  { key: 'line', color: ROAD_LINE, top: -1.03, depth: 0.12, z: -2.85 },
+  { key: 'shoulder', color: SHOULDER, top: DEATH_Y, depth: DEATH_Y + 1.03, z: -2.9 },
+  { key: 'sand', color: SAND, top: 1.75, depth: 1.75 - DEATH_Y, z: -3.0 },
+  { key: 'foam', color: FOAM, top: 2.05, depth: 0.3, z: -3.05 },
+  { key: 'sea', color: SEA, top: 4.3, depth: 2.25, z: -3.1 },
+  { key: 'seaDeep', color: SEA_DEEP, top: 4.55, depth: 0.25, z: -3.12 },
+]
+
+const MAX_SCRUB = 130
+const SCRUB_SPACING = 1.05
+const MAX_HOUSES = 40
+const HOUSE_SPACING = 6.5
+const HOUSE_PARALLAX = 0.42
+
+/**
  * Seamless ridge line. Every wave completes a whole number of cycles over the
  * span, so the tile joins itself without a visible seam.
  */
@@ -30,9 +75,10 @@ function ridgeGeometry(amplitude: number, baseline: number, phase: number): Buff
     const t = i / RIDGE_SAMPLES
     profile[i] =
       baseline +
-      amplitude * (0.55 * Math.sin(2 * Math.PI * (t + phase)) +
-        0.28 * Math.sin(2 * Math.PI * (3 * t + phase * 2)) +
-        0.17 * Math.sin(2 * Math.PI * (7 * t + phase * 3)))
+      amplitude *
+        (0.55 * Math.sin(2 * Math.PI * (t + phase)) +
+          0.28 * Math.sin(2 * Math.PI * (3 * t + phase * 2)) +
+          0.17 * Math.sin(2 * Math.PI * (7 * t + phase * 3)))
   }
 
   const floor = -40
@@ -46,14 +92,12 @@ function ridgeGeometry(amplitude: number, baseline: number, phase: number): Buff
   for (let i = 0; i < RIDGE_SAMPLES; i++) {
     const x0 = (i / RIDGE_SAMPLES) * RIDGE_SPAN
     const x1 = ((i + 1) / RIDGE_SAMPLES) * RIDGE_SPAN
-    const y0 = profile[i]!
-    const y1 = profile[i + 1]!
     push(x0, floor)
     push(x1, floor)
-    push(x1, y1)
+    push(x1, profile[i + 1]!)
     push(x0, floor)
-    push(x1, y1)
-    push(x0, y0)
+    push(x1, profile[i + 1]!)
+    push(x0, profile[i]!)
   }
 
   const geometry = new BufferGeometry()
@@ -61,7 +105,15 @@ function ridgeGeometry(amplitude: number, baseline: number, phase: number): Buff
   return geometry
 }
 
-function ridgeLayer(scene: Scene, color: string, amplitude: number, baseline: number, phase: number, parallax: number, depth: number): Layer {
+function ridgeLayer(
+  scene: Scene,
+  color: string,
+  amplitude: number,
+  baseline: number,
+  phase: number,
+  parallax: number,
+  depth: number,
+): Layer {
   const geometry = ridgeGeometry(amplitude, baseline, phase)
   const material = new MeshBasicMaterial({ color })
   const near = new Mesh(geometry, material)
@@ -74,23 +126,32 @@ function ridgeLayer(scene: Scene, color: string, amplitude: number, baseline: nu
   return { near, far, parallax }
 }
 
-const MAX_TUFTS = 120
-const TUFT_SPACING = 1.15
-const MAX_BUILDINGS = 60
-const BUILDING_SPACING = 4.2
-const BUILDING_PARALLAX = 0.45
+function band(scene: Scene, color: string, z: number): Mesh {
+  const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color }))
+  mesh.position.z = z
+  mesh.frustumCulled = false
+  scene.add(mesh)
+  return mesh
+}
 
-/** The shoulder the skater dies on, then the painted line, then the tarmac. */
-const SHOULDER_DEPTH = 1.1
-const LINE_HEIGHT = 0.12
+function instanced(scene: Scene, color: string, max: number, z: number): InstancedMesh {
+  const mesh = new InstancedMesh(
+    new PlaneGeometry(1, 1),
+    new MeshBasicMaterial({ color: new Color(color) }),
+    max,
+  )
+  mesh.frustumCulled = false
+  mesh.position.z = z
+  scene.add(mesh)
+  return mesh
+}
 
 export class Backdrop {
   private sky: Mesh
-  private verge: Mesh
-  private line: Mesh
-  private asphalt: Mesh
-  private buildings: InstancedMesh
-  private tufts: InstancedMesh
+  private bands: Band[]
+  private scrub: InstancedMesh
+  private houses: InstancedMesh
+  private roofs: InstancedMesh
   private proxy = new Object3D()
   private layers: Layer[]
 
@@ -100,8 +161,7 @@ export class Backdrop {
     const colors = new Float32Array(position.count * 3)
     const shade = new Color()
     for (let i = 0; i < position.count; i++) {
-      const t = position.getY(i) + 0.5
-      skyAt(t, shade)
+      skyAt(position.getY(i) + 0.5, shade)
       colors[i * 3] = shade.r
       colors[i * 3 + 1] = shade.g
       colors[i * 3 + 2] = shade.b
@@ -113,97 +173,82 @@ export class Backdrop {
     this.sky.frustumCulled = false
     scene.add(this.sky)
 
-    this.verge = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: VERGE }))
-    this.verge.position.z = -3
-    this.verge.frustumCulled = false
-    scene.add(this.verge)
-
-    this.line = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: ROAD_LINE }))
-    this.line.position.z = -2.9
-    this.line.frustumCulled = false
-    scene.add(this.line)
-
-    this.asphalt = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: ASPHALT }))
-    this.asphalt.position.z = -2.8
-    this.asphalt.frustumCulled = false
-    scene.add(this.asphalt)
-
-    this.buildings = new InstancedMesh(
-      new PlaneGeometry(1, 1),
-      new MeshBasicMaterial({ color: new ThreeColor(BUILDING) }),
-      MAX_BUILDINGS,
-    )
-    this.buildings.frustumCulled = false
-    scene.add(this.buildings)
-
-    this.tufts = new InstancedMesh(
-      new PlaneGeometry(1, 1),
-      new MeshBasicMaterial({ color: new ThreeColor(TUFT) }),
-      MAX_TUFTS,
-    )
-    this.tufts.frustumCulled = false
-    scene.add(this.tufts)
-
+    // Headlands rise out of the bay, so they are drawn before the water bands.
     this.layers = [
-      ridgeLayer(scene, RIDGE_FAR, 8.2, 7.5, 0.21, 0.07, -50),
-      ridgeLayer(scene, RIDGE_MID, 5.4, 4.2, 0.44, 0.15, -45),
-      ridgeLayer(scene, RIDGE_NEAR, 3.4, 1.9, 0.67, 0.27, -40),
+      ridgeLayer(scene, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -52),
+      ridgeLayer(scene, SIERRA, 6.4, 7.6, 0.24, 0.07, -50),
+      ridgeLayer(scene, HEADLAND, 3.8, 5.2, 0.44, 0.14, -45),
+      ridgeLayer(scene, JUNGLE, 2.4, 4.1, 0.67, 0.26, -40),
     ]
+
+    this.bands = BANDS.map((spec) => ({
+      mesh: band(scene, spec.color, spec.z),
+      top: spec.top,
+      depth: spec.depth,
+      z: spec.z,
+    }))
+
+    this.houses = instanced(scene, HOUSE, MAX_HOUSES, -3.4)
+    this.roofs = instanced(scene, HOUSE_ROOF, MAX_HOUSES, -3.38)
+    this.scrub = instanced(scene, SCRUB, MAX_SCRUB, -2.6)
   }
 
   update(camLeft: number, viewHeight: number): void {
     const top = viewHeight * 0.76
-
-    // Gravel shoulder, the painted edge line, then the tarmac below it.
     const centre = camLeft + VIEW_WIDTH / 2
-    this.verge.scale.set(VIEW_WIDTH * 1.1, SHOULDER_DEPTH, 1)
-    this.verge.position.set(centre, DEATH_Y - SHOULDER_DEPTH / 2, -3)
+    this.sky.scale.set(VIEW_WIDTH * 1.05, top, 1)
+    this.sky.position.set(centre, top / 2, -60)
 
-    const lineY = DEATH_Y - SHOULDER_DEPTH
-    this.line.scale.set(VIEW_WIDTH * 1.1, LINE_HEIGHT, 1)
-    this.line.position.set(centre, lineY - LINE_HEIGHT / 2, -2.9)
+    for (const item of this.bands) {
+      item.mesh.scale.set(VIEW_WIDTH * 1.1, item.depth, 1)
+      item.mesh.position.set(centre, item.top - item.depth / 2, item.z)
+    }
 
-    this.asphalt.scale.set(VIEW_WIDTH * 1.1, 40, 1)
-    this.asphalt.position.set(centre, lineY - LINE_HEIGHT - 20, -2.8)
-
-    // Low buildings between the hills and the road, at their own drift rate.
+    // Painted houses along the coast road, drifting at their own rate.
     let built = 0
-    const base = camLeft * BUILDING_PARALLAX
-    const firstBuilding = Math.ceil((base - 4) / BUILDING_SPACING) * BUILDING_SPACING
-    for (let bx = firstBuilding; bx < base + VIEW_WIDTH + 4 && built < MAX_BUILDINGS; bx += BUILDING_SPACING) {
-      const hash = Math.abs(Math.sin(bx * 7.311) * 21374.9) % 1
-      const hash2 = Math.abs(Math.sin(bx * 3.117) * 9431.7) % 1
-      if (hash2 < 0.25) continue
-      const height = 1.6 + hash * 3.4
-      const width = 2.2 + hash2 * 2.6
-      this.proxy.position.set(bx + (camLeft - base), DEATH_Y + height / 2, -3.4)
+    const base = camLeft * HOUSE_PARALLAX
+    const lag = camLeft - base
+    const firstHouse = Math.ceil((base - 8) / HOUSE_SPACING) * HOUSE_SPACING
+    for (let hx = firstHouse; hx < base + VIEW_WIDTH + 8 && built < MAX_HOUSES; hx += HOUSE_SPACING) {
+      const hash = Math.abs(Math.sin(hx * 7.311) * 21374.9) % 1
+      const spread = Math.abs(Math.sin(hx * 3.117) * 9431.7) % 1
+      if (spread < 0.35) continue
+      const height = 1.3 + hash * 1.5
+      const width = 2.4 + spread * 2.2
+      this.proxy.position.set(hx + lag, 4.3 + height / 2, -3.4)
       this.proxy.scale.set(width, height, 1)
       this.proxy.updateMatrix()
-      this.buildings.setMatrixAt(built++, this.proxy.matrix)
-    }
-    this.buildings.count = built
-    this.buildings.instanceMatrix.needsUpdate = true
+      this.houses.setMatrixAt(built, this.proxy.matrix)
 
-    let planted = 0
-    const first = Math.ceil((camLeft - 1) / TUFT_SPACING) * TUFT_SPACING
-    for (let x = first; x < camLeft + VIEW_WIDTH + 1 && planted < MAX_TUFTS; x += TUFT_SPACING) {
-      // A position hash keeps every tuft in the same place from frame to frame.
-      const hash = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
-      const height = 0.2 + hash * 0.42
-      this.proxy.position.set(x, DEATH_Y + height / 2, -2.5)
-      this.proxy.scale.set(0.1, height, 1)
+      this.proxy.position.set(hx + lag, 4.3 + height + 0.16, -3.38)
+      this.proxy.scale.set(width * 1.12, 0.32, 1)
       this.proxy.updateMatrix()
-      this.tufts.setMatrixAt(planted++, this.proxy.matrix)
+      this.roofs.setMatrixAt(built, this.proxy.matrix)
+      built++
     }
-    this.tufts.count = planted
-    this.tufts.instanceMatrix.needsUpdate = true
-    this.sky.scale.set(VIEW_WIDTH * 1.05, top, 1)
-    this.sky.position.set(camLeft + VIEW_WIDTH / 2, top / 2, -60)
+    this.houses.count = built
+    this.roofs.count = built
+    this.houses.instanceMatrix.needsUpdate = true
+    this.roofs.instanceMatrix.needsUpdate = true
+
+    // Scrub on the shoulder, the last thing between the road and the drop.
+    let planted = 0
+    const firstScrub = Math.ceil((camLeft - 1) / SCRUB_SPACING) * SCRUB_SPACING
+    for (let x = firstScrub; x < camLeft + VIEW_WIDTH + 1 && planted < MAX_SCRUB; x += SCRUB_SPACING) {
+      const hash = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1
+      const height = 0.22 + hash * 0.46
+      this.proxy.position.set(x, DEATH_Y + height / 2, -2.6)
+      this.proxy.scale.set(0.16 + hash * 0.2, height, 1)
+      this.proxy.updateMatrix()
+      this.scrub.setMatrixAt(planted++, this.proxy.matrix)
+    }
+    this.scrub.count = planted
+    this.scrub.instanceMatrix.needsUpdate = true
 
     for (const layer of this.layers) {
       // A layer drifting at `parallax` sits at camLeft * (1 - parallax).
-      const base = camLeft * (1 - layer.parallax)
-      const start = base + Math.floor((camLeft - base) / RIDGE_SPAN) * RIDGE_SPAN
+      const anchor = camLeft * (1 - layer.parallax)
+      const start = anchor + Math.floor((camLeft - anchor) / RIDGE_SPAN) * RIDGE_SPAN
       layer.near.position.x = start
       layer.far.position.x = start + RIDGE_SPAN
     }
