@@ -31,11 +31,11 @@ export const PALM_CROWN = '#2f8a4f'
 
 /** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#8b8171',
-  step: '#82786a',
-  ledge: '#988d78',
-  hubba: '#8a7f6a',
-  rail: '#49545f',
+  flat: '#d6c9a8',
+  step: '#cabd9c',
+  ledge: '#e0d4b4',
+  hubba: '#dbcfae',
+  rail: '#6a7783',
 }
 
 export const EDGE_COLOR: Record<string, string> = {
@@ -47,7 +47,7 @@ export const EDGE_COLOR: Record<string, string> = {
 }
 
 export const POST_COLOR: Record<string, string> = {
-  rail: '#3a444e',
+  rail: '#5b6874',
 }
 
 /** Block seams, so a parapet reads as masonry and not as a rectangle. */

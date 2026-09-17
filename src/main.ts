@@ -26,7 +26,6 @@ const game = new Game(new URLSearchParams(location.search).get('seed'))
 const input = new Input()
 input.attach(surface)
 
-hud.showReady()
 
 const launch = () => {
   if (game.phase === 'running' || game.phase === 'falling') return
@@ -34,6 +33,9 @@ const launch = () => {
   game.start()
   hud.hideOverlay()
 }
+
+// No start screen. The run is already going when you get there.
+launch()
 
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Space' || event.code === 'Enter') launch()
@@ -62,7 +64,7 @@ startLoop(
 
     if (game.phase !== announced) {
       announced = game.phase
-      if (game.phase === 'dead') hud.showDead(game.distance, game.best)
+      if (game.phase === 'dead') hud.showDead(game.distance)
     }
 
     const { car, skater, road } = game

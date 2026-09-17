@@ -6,22 +6,14 @@
     <title>Ventanilla</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Barlow+Condensed:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap" />
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
     <div id="stage">
       <canvas id="view"></canvas>
-      <div id="hud">
-        <div class="readout"><span id="distance">0</span><span class="unit">m</span></div>
-        <div id="trick"></div>
-      </div>
-      <div id="overlay">
-        <p class="kicker">Ventanilla</p>
-        <h1 id="overlay-title">Ne touche pas le sol</h1>
-        <p id="overlay-body">Enchaine les rails jusqu'au bout du malecon.</p>
-        <p class="keys"><kbd>Espace</kbd> sauter &middot; en l'air <kbd>Gauche</kbd> kickflip &middot; sur un rail <kbd>Gauche</kbd> 5-0, <kbd>Droite</kbd> nosegrind, <kbd>Bas</kbd> feeble, <kbd>Haut</kbd> smith</p>
-      </div>
+      <div id="hud"><span id="distance">0</span><span class="unit">m</span></div>
+      <div id="overlay"><span id="final">0</span><span class="unit">m</span></div>
     </div>
     <script type="module" src="./src/main.ts"></script>
   </body>

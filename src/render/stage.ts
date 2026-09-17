@@ -10,14 +10,14 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
-const HORIZON = 0.3
+const HORIZON = 0.34
 
 /**
  * A small three quarter offset. Enough to show the top of a ledge and which
  * side of a rail the board hangs over, not enough to stop reading as a
  * side-scroller.
  */
-const EYE = new Vector3(4.2, 6.4, 30)
+const EYE = new Vector3(5.5, 7.2, 26)
 
 export class Stage {
   readonly renderer: WebGLRenderer
@@ -56,6 +56,10 @@ export class Stage {
     this.scene.add(bounce)
 
     this.resize()
+    // A window resize is not the only thing that changes the canvas box.
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => this.resize()).observe(canvas)
+    }
   }
 
   resize(): void {

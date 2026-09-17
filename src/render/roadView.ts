@@ -29,7 +29,7 @@ const MAX_RODS = 500
 
 /** How far each surface hangs below its ridable top edge, and how deep it runs. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  flat: 2.6,
+  flat: 1.5,
   step: 1.0,
   ledge: 0.58,
   hubba: 0.62,
@@ -55,7 +55,10 @@ class Pool {
   private tint = new Color()
 
   constructor(scene: Scene, geometry: BufferGeometry, max: number) {
-    const material: Material = new MeshLambertMaterial({ vertexColors: true, flatShading: true })
+    // No vertexColors here. instanceColor alone defines USE_INSTANCING_COLOR;
+    // adding USE_COLOR makes the shader read a colour attribute the geometry
+    // does not have, and every instance comes out black.
+    const material: Material = new MeshLambertMaterial({ flatShading: true })
     this.mesh = new InstancedMesh(geometry, material, max)
     this.mesh.frustumCulled = false
     this.mesh.castShadow = true

@@ -6,34 +6,18 @@ function element(id: string): HTMLElement {
   return found
 }
 
+/** The distance, and nothing else. The player works the rest out by playing. */
 export class Hud {
   private distance = element('distance')
-  private trick = element('trick')
   private overlay = element('overlay')
-  private title = element('overlay-title')
-  private body = element('overlay-body')
+  private final = element('final')
 
   update(game: Game): void {
     this.distance.textContent = Math.floor(game.distance).toString()
-
-    const age = game.skater.trickAge
-    if (age < 1.1 && game.skater.trick) {
-      this.trick.textContent = game.skater.trick
-      this.trick.style.opacity = (1 - age / 1.1).toFixed(2)
-    } else {
-      this.trick.style.opacity = '0'
-    }
   }
 
-  showReady(): void {
-    this.title.textContent = 'Ne touche pas le sol'
-    this.body.textContent = 'Enchaine les rails jusqu au bout du malecon.'
-    this.overlay.dataset.visible = 'true'
-  }
-
-  showDead(distance: number, best: number): void {
-    this.title.textContent = `${Math.floor(distance)} m`
-    this.body.textContent = best > distance ? `Record ${Math.floor(best)} m` : 'Nouveau record'
+  showDead(distance: number): void {
+    this.final.textContent = Math.floor(distance).toString()
     this.overlay.dataset.visible = 'true'
   }
 

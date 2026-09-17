@@ -27,7 +27,7 @@ export class Particles {
   constructor(scene: Scene) {
     this.mesh = new InstancedMesh(
       new PlaneGeometry(1, 1),
-      new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 }),
+      new MeshBasicMaterial({ transparent: true, opacity: 0.95 }),
       POOL,
     )
     this.mesh.frustumCulled = false

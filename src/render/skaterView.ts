@@ -33,7 +33,6 @@ const DECK_THICK = 0.055
 const DECK_BREADTH = 0.22
 const KICK_IN = 0.15
 const KICK_RISE = 0.06
-const KICK_PITCH = 0.38
 const TRUCK_X = 0.24
 const TRUCK_DROP = 0.075
 const WHEEL_RADIUS = 0.045
@@ -99,6 +98,8 @@ export class SkaterView {
   private root = new Group()
   private boardPivot = new Group()
   private board = new Group()
+  /** Origin on the deck centreline, so a kickflip turns the board on its axis. */
+  private deckAxis = new Group()
   private body = new Group()
 
   private deck: Mesh
@@ -112,29 +113,31 @@ export class SkaterView {
     scene.add(this.root)
     this.root.add(this.boardPivot)
     this.boardPivot.add(this.board)
+    this.board.add(this.deckAxis)
+    this.deckAxis.position.y = DECK_Y
     this.root.add(this.body)
 
     const deckColor = Number(BOARD.replace('#', '0x'))
     const gripColor = Number(GRIP.replace('#', '0x'))
-    this.deck = limb(this.board, deckColor, DECK_BREADTH)
-    this.tail = limb(this.board, deckColor, DECK_BREADTH)
-    this.nose = limb(this.board, deckColor, DECK_BREADTH)
+    this.deck = limb(this.deckAxis, deckColor, DECK_BREADTH)
+    this.tail = limb(this.deckAxis, deckColor, DECK_BREADTH)
+    this.nose = limb(this.deckAxis, deckColor, DECK_BREADTH)
 
     // The grip side, so a kickflip shows a face change and not just a rotation.
     const grip = new Mesh(
       new BoxGeometry(DECK_HALF * 2 - KICK_IN * 2, 0.014, DECK_BREADTH * 0.96),
       new MeshLambertMaterial({ color: gripColor, flatShading: true }),
     )
-    grip.position.set(0, DECK_Y + DECK_THICK / 2 + 0.008, 0)
-    this.board.add(grip)
+    grip.position.set(0, DECK_THICK / 2 + 0.008, 0)
+    this.deckAxis.add(grip)
 
     for (const x of [-TRUCK_X, TRUCK_X]) {
       const truck = new Mesh(
         new CylinderGeometry(0.03, 0.03, TRUCK_DROP, 8),
         new MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true }),
       )
-      truck.position.set(x, DECK_Y - TRUCK_DROP / 2, 0)
-      this.board.add(truck)
+      truck.position.set(x, -TRUCK_DROP / 2, 0)
+      this.deckAxis.add(truck)
       this.trucks.push(truck)
 
       for (const z of [-WHEEL_Z, WHEEL_Z]) {
@@ -143,9 +146,9 @@ export class SkaterView {
           new MeshLambertMaterial({ color: Number(WHEEL_COLOR.replace('#', '0x')), flatShading: true }),
         )
         wheel.rotation.x = Math.PI / 2
-        wheel.position.set(x, DECK_Y - TRUCK_DROP, z)
+        wheel.position.set(x, -TRUCK_DROP, z)
         wheel.castShadow = true
-        this.board.add(wheel)
+        this.deckAxis.add(wheel)
         this.wheels.push(wheel)
       }
     }
@@ -217,18 +220,12 @@ export class SkaterView {
     this.boardPivot.rotation.set(roll, 0, pitch)
     this.boardPivot.position.z = hang
 
-    // A kickflip rolls the deck around its long axis, on top of any grind roll.
-    this.board.rotation.x = flip
+    // A kickflip rolls the deck around its own long axis, not around the rider.
+    this.deckAxis.rotation.x = flip
 
-    span(this.deck, [-DECK_HALF + KICK_IN, DECK_Y], [DECK_HALF - KICK_IN, DECK_Y], DECK_THICK)
-    span(
-      this.tail,
-      [-DECK_HALF + KICK_IN, DECK_Y],
-      [-DECK_HALF, DECK_Y + KICK_RISE],
-      DECK_THICK,
-    )
-    this.tail.rotation.z = Math.PI - KICK_PITCH
-    span(this.nose, [DECK_HALF - KICK_IN, DECK_Y], [DECK_HALF, DECK_Y + KICK_RISE], DECK_THICK)
+    span(this.deck, [-DECK_HALF + KICK_IN, 0], [DECK_HALF - KICK_IN, 0], DECK_THICK)
+    span(this.tail, [-DECK_HALF + KICK_IN, 0], [-DECK_HALF, KICK_RISE], DECK_THICK)
+    span(this.nose, [DECK_HALF - KICK_IN, 0], [DECK_HALF, KICK_RISE], DECK_THICK)
 
     span(this.bones.thighBack!, pose.hip, pose.kneeBack, 0.13)
     span(this.bones.shinBack!, pose.kneeBack, pose.footBack, 0.11)

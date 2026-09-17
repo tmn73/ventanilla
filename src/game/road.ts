@@ -113,7 +113,7 @@ export class Road {
       else this.stairs()
     } else if (roll < 0.62) this.railSpot()
     else if (roll < 0.76) this.ledgeSpot()
-    else if (roll < 0.9) this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
+    else if (roll < 0.95) this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
     else this.gap()
   }
 
