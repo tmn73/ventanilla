@@ -23,7 +23,7 @@ const EDGE_HEIGHT = 0.24
 
 /** How far each surface hangs below its ridable top edge. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  flat: 6,
+  flat: 2.6,
   step: 0.34,
   ledge: 0.58,
   hubba: 0.62,

@@ -32,9 +32,9 @@ export class Stage {
     this.camera.updateProjectionMatrix()
   }
 
-  render(camLeft: number, shakeX = 0, shakeY = 0): void {
+  render(camLeft: number, camY: number, shakeX = 0, shakeY = 0): void {
     this.camera.position.x = camLeft + shakeX
-    this.camera.position.y = shakeY
+    this.camera.position.y = camY + shakeY
     this.renderer.render(this.scene, this.camera)
   }
 }

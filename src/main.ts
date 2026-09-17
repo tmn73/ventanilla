@@ -1,5 +1,5 @@
 import { startLoop } from './core/loop'
-import { ANCHOR, FIXED_DT, SPARK_RATE, VIEW_WIDTH } from './game/constants'
+import { ANCHOR, FIXED_DT, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
@@ -45,6 +45,9 @@ window.addEventListener('resize', () => stage.resize())
 let announced: string = game.phase
 let grounded = 1
 let lastFrame = performance.now() / 1000
+/** The pavement height the camera rests on. It eases so jumps do not move it. */
+let camY = 0
+let groundRef = LANE_Y[0]!
 
 const mix = (from: number, to: number, alpha: number) => from + (to - from) * alpha
 
@@ -87,7 +90,12 @@ startLoop(
       (Math.sin(now * 27.3) * 0.5 + Math.sin(now * 41.7) * 0.3 + Math.sin(now * 13.1) * 0.2) * 0.1 * jolt
     const shakeX = Math.sin(now * 19.4) * 0.04 * jolt
 
-    backdrop.update(camLeft, stage.viewHeight)
+    // The camera follows the pavement, never the jump.
+    if (skater.support) groundRef = skater.y
+    if (game.phase === 'ready') groundRef = LANE_Y[0]!
+    camY += (groundRef - LANE_Y[0]! - camY) * 0.06
+
+    backdrop.update(camLeft, stage.viewHeight, groundRef)
     roadView.update(road.segments, road.obstacles, camLeft)
     // He jumps straight. On a ramp he leans with it, and he tumbles when he falls.
     const spin =
@@ -99,7 +107,7 @@ startLoop(
     skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind, skater.flipAngle)
     hud.update(game)
     danger.style.opacity = game.phase === 'falling' ? '0.85' : '0'
-    stage.render(camLeft, shakeX, shakeY)
+    stage.render(camLeft, camY, shakeX, shakeY)
   },
   FIXED_DT,
 )

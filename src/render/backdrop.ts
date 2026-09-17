@@ -11,15 +11,17 @@ import {
 } from 'three'
 import { DEATH_Y, VIEW_WIDTH } from '../game/constants'
 import {
-  ASPHALT,
-  AWNING,
-  FACADE,
-  FACADE_ROOF,
+  FOAM,
   HEADLAND,
   JUNGLE,
+  PALM_CROWN,
+  PALM_TRUNK,
+  SAND,
+  SAND_WET,
+  SEA,
+  SEA_DEEP,
   SIERRA,
   SIERRA_SNOW,
-  WINDOW,
   skyAt,
 } from './palette'
 
@@ -44,15 +46,22 @@ interface Band {
   z: number
 }
 
-/** Everything under the pavement is the street below, in shade. */
-const BANDS: Array<{ key: string; color: string; top: number; depth: number; z: number }> = [
-  { key: 'street', color: ASPHALT, top: DEATH_Y - 2.4, depth: 60, z: -2.8 },
+/**
+ * The promenade runs along the sand, the sand meets the water, and the
+ * headlands close the bay. Every band is offset by the pavement height, so
+ * the composition holds while the street climbs and drops.
+ */
+const BANDS: Array<{ color: string; top: number; depth: number; z: number }> = [
+  { color: SAND, top: 1.6, depth: 60, z: -3.0 },
+  { color: SAND_WET, top: 1.75, depth: 0.28, z: -3.02 },
+  { color: FOAM, top: 1.95, depth: 0.22, z: -3.04 },
+  { color: SEA, top: 4.6, depth: 2.65, z: -3.1 },
+  { color: SEA_DEEP, top: 4.9, depth: 0.3, z: -3.12 },
 ]
 
-const MAX_HOUSES = 48
-const HOUSE_SPACING = 5.4
-const HOUSE_PARALLAX = 0.38
-const HOUSE_BASE = 1.4
+const MAX_PALMS = 26
+const PALM_SPACING = 7.4
+const PALM_PARALLAX = 0.52
 
 /**
  * Seamless ridge line. Every wave completes a whole number of cycles over the
@@ -126,7 +135,7 @@ function band(scene: Scene, color: string, z: number): Mesh {
 function instanced(scene: Scene, color: string, max: number, z: number): InstancedMesh {
   const mesh = new InstancedMesh(
     new PlaneGeometry(1, 1),
-    new MeshBasicMaterial({ color: new Color(color), vertexColors: color === '#ffffff' }),
+    new MeshBasicMaterial({ color: new Color(color) }),
     max,
   )
   mesh.frustumCulled = false
@@ -138,10 +147,8 @@ function instanced(scene: Scene, color: string, max: number, z: number): Instanc
 export class Backdrop {
   private sky: Mesh
   private bands: Band[]
-  private houses: InstancedMesh
-  private roofs: InstancedMesh
-  private windows: InstancedMesh
-  private awnings: InstancedMesh
+  private trunks: InstancedMesh
+  private crowns: InstancedMesh
   private proxy = new Object3D()
   private layers: Layer[]
 
@@ -178,79 +185,69 @@ export class Backdrop {
       z: spec.z,
     }))
 
-    this.houses = instanced(scene, '#ffffff', MAX_HOUSES, -3.4)
-    this.roofs = instanced(scene, FACADE_ROOF, MAX_HOUSES, -3.38)
-    this.windows = instanced(scene, WINDOW, MAX_HOUSES * 2, -3.36)
-    this.awnings = instanced(scene, AWNING, MAX_HOUSES, -3.34)
+    this.trunks = instanced(scene, PALM_TRUNK, MAX_PALMS, -3.3)
+    this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -3.28)
   }
 
-  update(camLeft: number, viewHeight: number): void {
+  update(camLeft: number, viewHeight: number, ground: number): void {
+    const lift = ground - DEATH_Y
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
-    this.sky.scale.set(VIEW_WIDTH * 1.05, top, 1)
-    this.sky.position.set(centre, top / 2, -60)
+    this.sky.scale.set(VIEW_WIDTH * 1.05, top + 40, 1)
+    this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -60)
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 1.1, item.depth, 1)
-      item.mesh.position.set(centre, item.top - item.depth / 2, item.z)
+      item.mesh.position.set(centre, lift + item.top - item.depth / 2, item.z)
     }
 
-    // Painted colonial facades, drifting at their own rate behind the street.
-    let built = 0
-    let panes = 0
-    const base = camLeft * HOUSE_PARALLAX
+    // Palms along the promenade, drifting at their own rate.
+    let planted = 0
+    let fronds = 0
+    const base = camLeft * PALM_PARALLAX
     const lag = camLeft - base
-    const firstHouse = Math.ceil((base - 10) / HOUSE_SPACING) * HOUSE_SPACING
-    const tint = new Color()
-    for (let hx = firstHouse; hx < base + VIEW_WIDTH + 10 && built < MAX_HOUSES; hx += HOUSE_SPACING) {
-      const hash = Math.abs(Math.sin(hx * 7.311) * 21374.9) % 1
-      const spread = Math.abs(Math.sin(hx * 3.117) * 9431.7) % 1
-      const height = 4.5 + hash * 5.5
-      const width = HOUSE_SPACING + 0.6
-      const wx = hx + lag
+    const firstPalm = Math.ceil((base - 8) / PALM_SPACING) * PALM_SPACING
+    for (let px = firstPalm; px < base + VIEW_WIDTH + 8 && planted < MAX_PALMS; px += PALM_SPACING) {
+      const hash = Math.abs(Math.sin(px * 7.311) * 21374.9) % 1
+      const spread = Math.abs(Math.sin(px * 3.117) * 9431.7) % 1
+      if (spread < 0.3) continue
+      const height = 3.4 + hash * 2.8
+      const wx = px + lag
+      const footY = lift + 1.5
 
-      tint.set(FACADE[Math.floor(spread * FACADE.length) % FACADE.length]!)
-      this.proxy.position.set(wx, HOUSE_BASE + height / 2, -3.4)
-      this.proxy.scale.set(width, height, 1)
+      this.proxy.position.set(wx, footY + height / 2, -3.3)
+      this.proxy.scale.set(0.26, height, 1)
+      this.proxy.rotation.z = (hash - 0.5) * 0.16
       this.proxy.updateMatrix()
-      this.houses.setMatrixAt(built, this.proxy.matrix)
-      this.houses.setColorAt(built, tint)
+      this.proxy.rotation.z = 0
+      this.trunks.setMatrixAt(planted++, this.proxy.matrix)
 
-      this.proxy.position.set(wx, HOUSE_BASE + height + 0.22, -3.38)
-      this.proxy.scale.set(width * 1.08, 0.44, 1)
-      this.proxy.updateMatrix()
-      this.roofs.setMatrixAt(built, this.proxy.matrix)
-
-      this.proxy.position.set(wx, HOUSE_BASE + 2.1, -3.34)
-      this.proxy.scale.set(width * 0.82, 0.3, 1)
-      this.proxy.updateMatrix()
-      this.awnings.setMatrixAt(built, this.proxy.matrix)
-      built++
-
-      for (const [row, side] of [[0.62, -1], [0.62, 1]] as Array<[number, number]>) {
-        if (panes >= MAX_HOUSES * 2) break
-        this.proxy.position.set(wx + side * width * 0.22, HOUSE_BASE + height * row, -3.36)
-        this.proxy.scale.set(0.9, 1.3, 1)
+      for (const angle of [2.55, 2.0, 1.571, 1.14, 0.6]) {
+        if (fronds >= MAX_PALMS * 5) break
+        const reach = 1.5
+        this.proxy.position.set(
+          wx + Math.cos(angle) * reach * 0.5,
+          footY + height + Math.sin(angle) * reach * 0.3,
+          -3.28,
+        )
+        this.proxy.scale.set(reach * 1.4, 0.2, 1)
+        this.proxy.rotation.z = angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55)
         this.proxy.updateMatrix()
-        this.windows.setMatrixAt(panes++, this.proxy.matrix)
+        this.proxy.rotation.z = 0
+        this.crowns.setMatrixAt(fronds++, this.proxy.matrix)
       }
     }
-    this.houses.count = built
-    this.roofs.count = built
-    this.awnings.count = built
-    this.windows.count = panes
-    this.houses.instanceMatrix.needsUpdate = true
-    if (this.houses.instanceColor) this.houses.instanceColor.needsUpdate = true
-    this.roofs.instanceMatrix.needsUpdate = true
-    this.awnings.instanceMatrix.needsUpdate = true
-    this.windows.instanceMatrix.needsUpdate = true
+    this.trunks.count = planted
+    this.crowns.count = fronds
+    this.trunks.instanceMatrix.needsUpdate = true
+    this.crowns.instanceMatrix.needsUpdate = true
 
     for (const layer of this.layers) {
       // A layer drifting at `parallax` sits at camLeft * (1 - parallax).
       const anchor = camLeft * (1 - layer.parallax)
       const start = anchor + Math.floor((camLeft - anchor) / RIDGE_SPAN) * RIDGE_SPAN
-      layer.near.position.x = start
-      layer.far.position.x = start + RIDGE_SPAN
+      layer.near.position.set(start, lift, layer.near.position.z)
+      layer.far.position.set(start + RIDGE_SPAN, lift, layer.far.position.z)
     }
   }
 }

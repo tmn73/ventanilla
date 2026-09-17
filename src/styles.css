@@ -1,9 +1,4 @@
 :root {
-  /* Sun bleached plastic, in the shade of the cabin. */
-  --interior: #16130f;
-  --door: #3b332a;
-  --door-hi: #5b4f41;
-  --sill: #c9b48c;
   --ink: #fffaf0;
   --muted: #cbbba0;
   --alarm: #e2453a;
@@ -20,9 +15,7 @@ body {
 }
 
 body {
-  display: grid;
-  place-items: center;
-  background: radial-gradient(120% 90% at 50% 0%, #2a241c 0%, var(--interior) 72%);
+  background: #1c7cc0;
   color: var(--ink);
   font-family: 'Archivo', system-ui, sans-serif;
   overflow: hidden;
@@ -31,33 +24,9 @@ body {
   user-select: none;
 }
 
-#cabin {
-  position: relative;
-  width: min(100vw - 20px, (100vh - 20px) * 16 / 9.6);
-  aspect-ratio: 16 / 9.6;
-  border-radius: 14px 40px 12px 12px;
-  overflow: hidden;
-  background: linear-gradient(170deg, #6b5c49 0%, var(--door) 42%, #241e18 100%);
-  box-shadow: 0 0 0 2px #4a4034, 0 36px 84px rgba(0, 0, 0, 0.55);
-}
-
-/* Rear door glass: a rectangle whose rear top corner is heavily rounded. */
-#seal {
-  position: absolute;
-  top: 2.4%;
-  left: 2%;
-  right: 2%;
-  height: 84%;
-  border-radius: 10px 52px 16px 10px;
-  background: linear-gradient(180deg, #8f7d62 0%, #2a2319 58%);
-  padding: 7px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
-}
-
 #stage {
-  position: absolute;
-  inset: 7px;
-  border-radius: 6px 46px 12px 6px;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   cursor: pointer;
 }
@@ -68,84 +37,22 @@ body {
   height: 100%;
 }
 
-/* The door card. A thin band, not a wall. */
-#door {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 13.5%;
-  pointer-events: none;
-  background: linear-gradient(180deg, var(--door-hi) 0%, var(--door) 40%, #09070f 100%);
-  border-top: 2px solid var(--sill);
-}
-
-#armrest {
-  position: absolute;
-  left: 7%;
-  width: 34%;
-  top: 26%;
-  height: 46%;
-  border-radius: 4px 10px 10px 4px;
-  background: linear-gradient(180deg, #6a5b48 0%, #362e25 68%, #1d1813 100%);
-  box-shadow: 0 -1px 0 rgba(255, 233, 196, 0.12), 0 5px 12px rgba(0, 0, 0, 0.55);
-}
-
-#switches {
-  position: absolute;
-  left: 9%;
-  top: 28%;
-  display: flex;
-  gap: 5px;
-}
-
-#switches span {
-  width: 13px;
-  height: 5px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #8a7962 0%, #2a2319 100%);
-}
-
-/* The seatbelt, crossing the near edge. Foreground is what sells an interior. */
-#belt {
-  position: absolute;
-  top: -10%;
-  left: -1.5%;
-  width: 3.4%;
-  height: 112%;
-  transform: rotate(9deg);
-  transform-origin: top center;
-  background: linear-gradient(90deg, #241d15 0%, #55483a 45%, #201a13 100%);
-  box-shadow: 3px 0 14px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-}
-
-/* Glass: a vignette plus one low reflection streak. */
-#glass {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(104deg, transparent 34%, rgba(255, 255, 255, 0.11) 40%, transparent 48%),
-    radial-gradient(135% 118% at 50% 45%, transparent 58%, rgba(24, 18, 10, 0.5) 100%);
-}
-
 #danger {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  width: 34%;
+  width: 28%;
   pointer-events: none;
   opacity: 0;
   transition: opacity 120ms linear;
-  background: linear-gradient(90deg, rgba(226, 86, 79, 0.6), rgba(226, 86, 79, 0));
+  background: linear-gradient(90deg, rgba(226, 69, 58, 0.55), rgba(226, 69, 58, 0));
 }
 
 #hud {
   position: absolute;
-  top: 14px;
-  left: 20px;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  left: 22px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -158,7 +65,7 @@ body {
   font-size: clamp(28px, 4.6vw, 50px);
   line-height: 0.86;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
 }
 
 .readout .unit {
@@ -185,7 +92,7 @@ body {
   gap: 6px;
   padding: 22px;
   text-align: center;
-  background: rgba(20, 16, 11, 0.62);
+  background: rgba(10, 30, 45, 0.55);
   backdrop-filter: blur(3px);
   opacity: 0;
   visibility: hidden;

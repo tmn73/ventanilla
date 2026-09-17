@@ -20,13 +20,14 @@ export const SIERRA_SNOW = '#eef4f8'
 export const HEADLAND = '#5f9c85'
 export const JUNGLE = '#2f6f54'
 
-export const ASPHALT = '#54525c'
-
-/** Painted colonial facades, the way a Caribbean old town is painted. */
-export const FACADE = ['#e9b64c', '#d9695a', '#5fa9a6', '#e0dac4', '#c98a55', '#7f9ad1']
-export const FACADE_ROOF = '#9c5540'
-export const WINDOW = '#3d4e5c'
-export const AWNING = '#c94f3d'
+export const SEA = '#1fbcc4'
+export const SEA_DEEP = '#0f93a4'
+export const FOAM = '#c6f2ec'
+export const SAND = '#ecd7a8'
+export const SAND_WET = '#d8bd85'
+/** Palms along the promenade, between the water and the Sierra. */
+export const PALM_TRUNK = '#6b5335'
+export const PALM_CROWN = '#2f8a4f'
 
 /** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
 export const SURFACE_COLOR: Record<string, string> = {

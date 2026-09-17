@@ -61,6 +61,8 @@ const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
 /** How far below the pavement a fall stops being recoverable. */
 const FATAL_DROP = 3
+/** The pavement never wanders further than this from where it started. */
+const DRIFT_LIMIT = 3.2
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -70,8 +72,10 @@ export class Road {
   segments: Segment[] = []
   obstacles: Obstacle[] = []
 
+  /** The pavement the camera rests on, so it can be followed. */
+  groundY = LANE_Y[0]!
+
   private headX = 0
-  private groundY = LANE_Y[0]!
 
   constructor(private rng: () => number) {}
 
@@ -90,13 +94,26 @@ export class Road {
     while (this.headX < limit) this.emit()
   }
 
+  /**
+   * Stairs only ever go down, so without a counterweight the pavement walks
+   * off the bottom of the world. A low street is climbed back with a bank.
+   */
   private emit(): void {
+    const base = LANE_Y[0]!
+    const drift = this.groundY - base
+    if (drift < -DRIFT_LIMIT) {
+      this.bank(1)
+      return
+    }
+
     const roll = this.rng()
     if (roll < 0.2) this.flat()
-    else if (roll < 0.44) this.stairs()
-    else if (roll < 0.62) this.railSpot()
+    else if (roll < 0.44) {
+      if (drift < -DRIFT_LIMIT * 0.5) this.bank(1)
+      else this.stairs()
+    } else if (roll < 0.62) this.railSpot()
     else if (roll < 0.76) this.ledgeSpot()
-    else if (roll < 0.9) this.bank()
+    else if (roll < 0.9) this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
     else this.gap()
   }
 
@@ -113,7 +130,8 @@ export class Road {
    * runs alongside, so the set can be taken without clearing it in one go.
    */
   private stairs(): void {
-    const steps = Math.round(range(this.rng, 3, MAX_STEPS))
+    const headroom = Math.floor((this.groundY - (LANE_Y[0]! - DRIFT_LIMIT)) / RISE)
+    const steps = Math.max(3, Math.min(Math.round(range(this.rng, 3, MAX_STEPS)), headroom))
     const hasRail = steps > MAX_FREE_STEPS || this.rng() < 0.55
     const count = hasRail ? Math.min(steps, MAX_STEPS) : Math.min(steps, MAX_FREE_STEPS)
 
@@ -164,9 +182,14 @@ export class Road {
   }
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
-  private bank(): void {
+  private bank(force: number): void {
     const length = range(this.rng, 8, 15)
-    const rise = range(this.rng, -1.8, 1.8)
+    const rise =
+      force > 0
+        ? range(this.rng, 1.1, 2.4)
+        : force < 0
+          ? -range(this.rng, 1.1, 2.4)
+          : range(this.rng, -1.8, 1.8)
     const endY = this.groundY + rise
     this.push(this.headX, this.headX + length, this.groundY, endY, 'flat', true)
     this.groundY = endY
