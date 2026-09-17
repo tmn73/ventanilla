@@ -40,9 +40,14 @@ const hud = new Hud()
 
 // One interruption, one screen: the controls sheet is also the pause screen.
 let paused = false
-mountHelp((open) => {
-  paused = open
-})
+mountHelp(
+  (open) => {
+    paused = open
+  },
+  (stance) => {
+    game.skater.stance = stance
+  },
+)
 
 window.addEventListener('resize', () => stage.resize())
 
@@ -124,8 +129,11 @@ startLoop(
       skater.flipAngle * skater.flipSign,
       rise,
       skater.absorb,
-      Math.min(1, skater.pushTime / 0.18),
+      Math.min(1, skater.pushTime / 0.22),
+      skater.switched,
+      skater.stance,
     )
+    hud.setSwitched(skater.switched)
     hud.update()
     stage.render(eye.x, camY, eye.z, camHeading)
   },

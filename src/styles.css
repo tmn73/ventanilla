@@ -1,6 +1,7 @@
 :root {
-  --ink: #fffaf0;
-  --muted: #cbbba0;
+  --ink: #2a2d30;
+  --muted: #7b7f83;
+  --accent: #e2603c;
 }
 
 * {
@@ -17,7 +18,7 @@ body {
 }
 
 body {
-  background: #7cc9e8;
+  background: #dfe3e4;
   color: var(--ink);
   font-family: 'Barlow Condensed', 'Archivo Narrow', system-ui, sans-serif;
   overflow: hidden;
@@ -54,13 +55,69 @@ body {
   font-size: clamp(30px, 4.4vw, 54px);
   line-height: 0.86;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 18px rgba(0, 40, 60, 0.45);
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.55);
 }
 
 .unit {
   font-size: 0.4em;
   margin-left: 0.14em;
   color: var(--muted);
+}
+
+/* The one other thing the player has to know: which way round they are. */
+#switch {
+  margin-top: 2px;
+  font-size: clamp(13px, 1.5vw, 18px);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+#switch[hidden] {
+  display: none;
+}
+
+.stance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stance-label {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stance-pick {
+  display: flex;
+  gap: 6px;
+}
+
+.stance-pick button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 250, 240, 0.08);
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.stance-pick button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #1a1a1a;
+}
+
+.stance-pick button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* Help. Out of the way until it is asked for, so the game keeps no text. */
@@ -73,7 +130,7 @@ body {
   height: 34px;
   border: 0;
   border-radius: 50%;
-  background: rgba(12, 42, 56, 0.4);
+  background: rgba(42, 45, 48, 0.32);
   color: var(--ink);
   font: inherit;
   font-size: 19px;
@@ -85,7 +142,7 @@ body {
 
 #help-toggle:hover,
 #help-toggle[aria-expanded='true'] {
-  background: rgba(12, 42, 56, 0.72);
+  background: rgba(42, 45, 48, 0.6);
 }
 
 #help-toggle:focus-visible {
@@ -100,7 +157,7 @@ body {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(8, 30, 42, 0.5);
+  background: rgba(20, 22, 24, 0.42);
 }
 
 /* An explicit display beats the browser rule for [hidden], so say it again. */
@@ -109,10 +166,13 @@ body {
 }
 
 .sheet {
+  --ink: #f4f6f7;
+  --muted: #a9b0b4;
+  color: var(--ink);
   width: min(390px, 100%);
   padding: 14px 16px 15px;
   border-radius: 10px;
-  background: rgba(14, 38, 50, 0.97);
+  background: rgba(30, 33, 35, 0.97);
   box-shadow: 0 18px 44px rgba(0, 20, 30, 0.5);
 }
 

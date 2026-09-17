@@ -13,11 +13,22 @@
   <body>
     <div id="stage">
       <canvas id="view"></canvas>
-      <div id="hud"><span id="fps">--</span><span class="unit">fps</span></div>
+      <div id="hud">
+        <div><span id="fps">--</span><span class="unit">fps</span></div>
+        <div id="switch" hidden>switch</div>
+      </div>
     </div>
     <button id="help-toggle" type="button" aria-expanded="false" aria-controls="help">?</button>
     <div id="help" hidden>
       <div class="sheet">
+        <div class="stance">
+          <span class="stance-label">Stance</span>
+          <div class="stance-pick">
+            <button id="stance-regular" type="button" aria-pressed="true">Regular</button>
+            <button id="stance-goofy" type="button" aria-pressed="false">Goofy</button>
+          </div>
+        </div>
+
         <div class="tabs" role="tablist">
           <button id="tab-keys" type="button" role="tab" aria-controls="panel-keys" aria-selected="true">Keyboard</button>
           <button id="tab-touch" type="button" role="tab" aria-controls="panel-touch" aria-selected="false">Touch</button>
@@ -44,7 +55,7 @@
           </tbody>
         </table>
 
-        <p class="aside">Land far from a half turn and you bail: half your speed, never a fall.<br />Escape pauses and brings this back.</p>
+        <p class="aside">Land far from a half turn and you bail: half your speed, never a fall.<br />Land a 180 and you ride switch until the next one brings you round.<br />Escape pauses and brings this back.</p>
       </div>
     </div>
     <script type="module" src="./src/main.ts"></script>

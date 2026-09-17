@@ -94,7 +94,12 @@ const REACH: Joints = {
   handFront: [0.54, 0.44],
 }
 
-/** Mid push: the back foot is off the board and driving behind him. */
+/**
+ * Mid push: the trailing foot is off the board and driving behind him, and
+ * the body opens over it. Nobody pushes mongo, so in switch this whole pose
+ * is mirrored rather than reused, because the rig is turned round by then and
+ * reusing it would put the leading foot on the ground.
+ */
 const PUSH: Joints = {
   hip: [0.05, -0.05],
   shoulder: [0.14, 0.41],
@@ -103,11 +108,30 @@ const PUSH: Joints = {
   footBack: [-0.74, -0.66],
   kneeFront: [0.23, -0.45],
   footFront: [0.2, -0.79],
-  handBack: [-0.46, 0.28],
-  handFront: [0.64, 0.3],
+  handBack: [-0.52, 0.3],
+  handFront: [0.7, 0.34],
 }
 
+/** The same push with the roles swapped, for when the rig is riding switch. */
+const PUSH_SWITCH: Joints = mirror(PUSH)
+
 const JOINT_KEYS = Object.keys(GRIND) as Array<keyof Joints>
+
+/** Flips a pose front to back, so the other foot leads and the other pushes. */
+function mirror(pose: Joints): Joints {
+  const flip = (p: Point): Point => [-p[0], p[1]]
+  return {
+    hip: flip(pose.hip),
+    shoulder: flip(pose.shoulder),
+    head: flip(pose.head),
+    kneeBack: flip(pose.kneeFront),
+    footBack: flip(pose.footFront),
+    kneeFront: flip(pose.kneeBack),
+    footFront: flip(pose.footBack),
+    handBack: flip(pose.handFront),
+    handFront: flip(pose.handBack),
+  }
+}
 
 function mix(a: Point, b: Point, k: number): Point {
   return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]
@@ -223,6 +247,8 @@ export class SkaterView {
    * @param rise vertical speed over the pop speed, 1 at the pop and -1 falling
    * @param absorb 0 to 1, how hard the last landing has to be soaked up
    * @param push 0 to 1, how far through a kick he is
+   * @param switched true when the rig is turned round, so the push mirrors
+   * @param stance 1 for regular, -1 for goofy, which swaps the leading foot
    */
   update(
     x: number,
@@ -238,6 +264,8 @@ export class SkaterView {
     rise: number,
     absorb: number,
     push: number,
+    switched: boolean,
+    stance: number,
   ): void {
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
@@ -246,11 +274,19 @@ export class SkaterView {
       air[key] = rise >= 0 ? mix(AIR[key], POP[key], rise) : mix(AIR[key], REACH[key], -rise)
     }
 
+    // Riding switch turns the rig round, so the foot that was at the back is
+    // now at the front. Pushing with it would be mongo, which nobody does.
+    const kick = switched ? PUSH_SWITCH : PUSH
     const ride = {} as Joints
-    for (const key of JOINT_KEYS) ride[key] = mix(GRIND[key], PUSH[key], push)
+    for (const key of JOINT_KEYS) ride[key] = mix(GRIND[key], kick[key], push)
 
     const pose = {} as Joints
     for (const key of JOINT_KEYS) pose[key] = mix(air[key], ride[key], grounded)
+    // Goofy is the mirror of regular: the other foot leads, on the same board.
+    if (stance < 0) {
+      const flipped = mirror(pose)
+      for (const key of JOINT_KEYS) pose[key] = flipped[key]
+    }
 
     const squat = pump * 0.06 * grounded - absorb * 0.2 * grounded
     const shift = Math.sign(grind) * 0.1 * grounded

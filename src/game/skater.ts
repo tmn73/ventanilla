@@ -37,6 +37,11 @@ export class Skater {
    */
   yaw = 0
 
+  /** True while the board's nose points back down the road. */
+  get switched(): boolean {
+    return Math.abs(Math.round(this.yaw / Math.PI)) % 2 === 1
+  }
+
   airTime = 0
   grindTime = 0
   spin = 0
@@ -44,6 +49,8 @@ export class Skater {
   absorb = 0
   /** Counts down a push, which drives the kick in the animation. */
   pushTime = 0
+  /** Which way the stance is set, so the rig can pick the right pushing foot. */
+  stance: 1 | -1 = 1
   trick = ''
   trickAge = 99
 
@@ -125,7 +132,7 @@ export class Skater {
       if (input.pushing && this.pushCooldown <= 0) {
         this.vx += C.PUSH_IMPULSE
         this.pushCooldown = C.PUSH_COOLDOWN
-        this.pushTime = 0.26
+        this.pushTime = 0.34
       }
       if (input.braking) this.vx -= C.BRAKE_ACCEL * dt
     }

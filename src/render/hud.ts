@@ -1,13 +1,24 @@
 /** Frames per second, averaged over a short window so the number holds still. */
 export class Hud {
   private readout: HTMLElement
+  private switchMark: HTMLElement
+  private wasSwitched = false
   private frames = 0
   private since = performance.now()
 
   constructor() {
     const found = document.getElementById('fps')
-    if (!found) throw new Error('missing element #fps')
+    const mark = document.getElementById('switch')
+    if (!found || !mark) throw new Error('missing readout')
     this.readout = found
+    this.switchMark = mark
+  }
+
+  /** Which way round the rider is. Everything else they can see for themselves. */
+  setSwitched(switched: boolean): void {
+    if (switched === this.wasSwitched) return
+    this.wasSwitched = switched
+    this.switchMark.hidden = !switched
   }
 
   update(): void {
