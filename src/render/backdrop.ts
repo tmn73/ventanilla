@@ -5,7 +5,9 @@ import {
   MeshBasicMaterial,
   Object3D,
   PlaneGeometry,
+  type Texture,
 } from 'three'
+import { ClampToEdgeWrapping, RepeatWrapping } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
 import { GROUND, WATER, skyAt } from './palette'
 
@@ -42,10 +44,9 @@ export class Backdrop {
     }
     geometry.setAttribute('color', new BufferAttribute(colors, 3))
 
-    // Kept but not added: a real sky is behind everything now, and this one
-    // would stand in front of it.
     this.sky = new Mesh(geometry, new MeshBasicMaterial({ vertexColors: true }))
-    this.sky.visible = false
+    this.sky.frustumCulled = false
+    scene.add(this.sky)
 
     this.bands = BANDS.map((spec) => {
       const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: spec.color }))
@@ -57,12 +58,29 @@ export class Backdrop {
     })
   }
 
+  /**
+   * Paint the real sky onto the plane. The gradient stays underneath as the
+   * fallback, so the game still has a sky before the file arrives and if it
+   * never does.
+   */
+  setTexture(texture: Texture): void {
+    texture.wrapS = RepeatWrapping
+    texture.wrapT = ClampToEdgeWrapping
+    // The upper half of an equirectangular image is the sky above the horizon.
+    texture.repeat.set(0.34, 0.42)
+    texture.offset.set(0, 0.5)
+    this.sky.material = new MeshBasicMaterial({ map: texture, toneMapped: true })
+  }
+
   update(camLeft: number, viewHeight: number): void {
     const centre = camLeft + VIEW_WIDTH / 2
     const top = viewHeight * 0.76
 
     this.sky.scale.set(VIEW_WIDTH * 9, top + 40, 1)
     this.sky.position.set(centre, WORLD_FLOOR + (top + 40) / 2, HORIZON_LATERAL - 2)
+    const map = (this.sky.material as MeshBasicMaterial).map
+    // A fraction of the camera's travel, which is what reads as distance.
+    if (map) map.offset.x = (centre * 0.0016) % 1
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)

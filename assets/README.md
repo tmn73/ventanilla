@@ -7,6 +7,7 @@ in the image, because the game draws its own.
 - `kloofendal_48d_partly_cloudy_puresky.hdr` — bright day, broken cloud
 - `industrial_sunset_puresky.hdr` — low warm sun
 - `evening_road_01_puresky.hdr` — dusk
+- `moonless_golf.hdr` — night, no moon, which is why the lamps have work to do
 
 1k each, about 1.3 MB. They are used both as the sky behind everything and as
 the light that falls on it, which is the part that matters: a flat grey box

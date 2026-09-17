@@ -7,6 +7,7 @@ import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
 import { Backdrop } from './render/backdrop'
 import { Hud } from './render/hud'
+import { Lamps } from './render/lamps'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
 import { Path } from './render/path'
@@ -16,10 +17,11 @@ import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
 /** Three skies from Poly Haven, public domain. See assets/README.md. */
-const SKIES: Record<string, string> = {
-  day: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr',
-  sunset: 'assets/industrial_sunset_puresky.hdr',
-  dusk: 'assets/evening_road_01_puresky.hdr',
+const SKIES: Record<string, { file: string; night: number }> = {
+  day: { file: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr', night: 0 },
+  sunset: { file: 'assets/industrial_sunset_puresky.hdr', night: 0.35 },
+  dusk: { file: 'assets/evening_road_01_puresky.hdr', night: 0.6 },
+  night: { file: 'assets/moonless_golf.hdr', night: 1 },
 }
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
@@ -44,6 +46,7 @@ stage.scene.add(frame)
 const backdrop = new Backdrop(frame)
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
+const lamps = new Lamps(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 const trail = new TouchTrail(trailCanvas)
@@ -67,7 +70,12 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
-  (sky) => stage.setSky(SKIES[sky] ?? SKIES.day!),
+  (sky) => {
+    const choice = SKIES[sky] ?? SKIES.day!
+    stage.setSky(choice.file, (texture) => backdrop.setTexture(texture))
+    stage.setNight(choice.night)
+    lamps.setNight(choice.night)
+  },
 )
 
 window.addEventListener('resize', () => {
@@ -147,6 +155,7 @@ startLoop(
 
     backdrop.update(camLeft, stage.viewHeight)
     roadView.update(road.segments, camLeft, stage.visibleWidth)
+    lamps.update(camLeft, road)
     skaterView.update({
       x: feet.x,
       y,

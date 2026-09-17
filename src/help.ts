@@ -185,7 +185,7 @@ export function mountHelp(
   }
 
   // Which sky, which is also which light. Remembered per browser.
-  const skies = ['day', 'sunset', 'dusk']
+  const skies = ['day', 'sunset', 'dusk', 'night']
   const skyButtons = skies.map((name) => document.getElementById(`sky-${name}`))
   if (skyButtons.every(Boolean)) {
     const applySky = (value: string, remember: boolean) => {

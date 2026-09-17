@@ -12,6 +12,10 @@ import {
   WebGLRenderer,
 } from 'three'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { Vector2 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
@@ -50,7 +54,10 @@ export class Stage {
   private eye = new Vector3()
   private point = new Vector3()
   private sky: Texture | null = null
+  private composer: EffectComposer
+  private bloom: UnrealBloomPass
   private sun: DirectionalLight
+  private fill: AmbientLight
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
@@ -80,7 +87,16 @@ export class Stage {
     this.scene.add(this.sun.target)
 
     // The sky does the filling now, so this is only a floor under the shadows.
-    this.scene.add(new AmbientLight(0xdfe4e6, 0.12))
+    this.fill = new AmbientLight(0xdfe4e6, 0.12)
+    this.scene.add(this.fill)
+    // A lamp only reads as a light when it spills past its own edges, and
+    // that is what this does. It is the difference between a bright box and a
+    // bulb, and at night it is most of the look.
+    this.composer = new EffectComposer(this.renderer)
+    this.composer.addPass(new RenderPass(this.scene, this.camera))
+    this.bloom = new UnrealBloomPass(new Vector2(1, 1), 0, 0.5, 0.92)
+    this.composer.addPass(this.bloom)
+
     this.resize()
     // A window resize is not the only thing that changes the canvas box.
     if (typeof ResizeObserver !== 'undefined') {
@@ -115,20 +131,25 @@ export class Stage {
    * by one lamp and a fill looks like a flat grey box; lit by a whole sky it
    * picks up the colour of the day.
    */
-  setSky(url: string): void {
+  setSky(url: string, onTexture: (texture: Texture) => void): void {
     new RGBELoader().load(url, (texture) => {
       texture.mapping = EquirectangularReflectionMapping
       const pmrem = new PMREMGenerator(this.renderer)
       const environment = pmrem.fromEquirectangular(texture).texture
-      // The old pair are released by hand: swapping skies otherwise leaves
-      // every previous one on the graphics card.
+      // Released by hand: swapping skies otherwise leaves every previous one
+      // sitting on the graphics card.
       this.scene.environment?.dispose()
+      this.scene.environment = environment
+      pmrem.dispose()
+
+      // The sky itself is painted onto a plane rather than handed to
+      // scene.background. An equirectangular background is unrolled using the
+      // camera's projection, and this camera is orthographic: there is no
+      // perspective to unroll it with, so it lands as a small patch of image
+      // instead of a sky.
       if (this.sky) this.sky.dispose()
       this.sky = texture
-      this.scene.environment = environment
-      this.scene.background = texture
-      this.scene.backgroundBlurriness = 0.06
-      pmrem.dispose()
+      onTexture(texture)
     })
   }
 
@@ -138,6 +159,8 @@ export class Stage {
     const height = canvas.clientHeight || 1
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(width, height, false)
+    this.composer?.setSize(width, height)
+    this.bloom?.resolution.set(width, height)
 
     this.visibleWidth = VIEW_WIDTH * this.zoom
     this.viewHeight = this.visibleWidth * (height / width)
@@ -166,6 +189,17 @@ export class Stage {
     this.sun.target.position.copy(this.target)
     this.sun.target.updateMatrixWorld()
 
-    this.renderer.render(this.scene, this.camera)
+    this.composer.render()
+  }
+
+  /**
+   * How dark the day is. The sun goes out, the fill goes with it, and the
+   * glow comes up, because a bulb only looks bright against something dark.
+   */
+  setNight(amount: number): void {
+    this.sun.intensity = 1.15 * (1 - amount)
+    this.fill.intensity = 0.12 + (1 - amount) * 0
+    this.bloom.strength = amount * 0.9
+    this.renderer.toneMappingExposure = 1 - amount * 0.25
   }
 }
