@@ -5,8 +5,10 @@ export class Input {
   dive = false
   /** -1 leans back for a 5-0, +1 leans forward for a nosegrind. */
   lean = 0
+  flipPressed = false
 
   private pending = false
+  private flipPending = false
   private detach: Array<() => void> = []
 
   attach(surface: HTMLElement): void {
@@ -21,6 +23,10 @@ export class Input {
       if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault()
         this.dive = true
+      }
+      if (e.code === 'ArrowUp') {
+        e.preventDefault()
+        this.flipPending = true
       }
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = -1
       if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = 1
@@ -66,6 +72,8 @@ export class Input {
   beginStep(): void {
     this.jumpPressed = this.pending
     this.pending = false
+    this.flipPressed = this.flipPending
+    this.flipPending = false
   }
 
   release(): void {

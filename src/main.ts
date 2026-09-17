@@ -91,7 +91,7 @@ startLoop(
     roadView.update(road.segments, road.obstacles, camLeft, 0.5 + 0.5 * Math.sin(now * 5.2))
     // He jumps straight. Rotation is for the fall, and later for tricks.
     const spin = game.phase === 'falling' ? skater.spin : 0
-    skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind)
+    skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind, skater.flipAngle)
     hud.update(game)
     danger.style.opacity = game.phase === 'falling' ? '0.85' : '0'
     stage.render(camLeft, shakeX, shakeY)

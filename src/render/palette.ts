@@ -58,6 +58,8 @@ export const FROND = '#241d3c'
 export const WHEEL_COLOR = '#6d5f80'
 export const SKATER = '#fff4dd'
 export const BOARD = '#ffb45e'
+/** The grip tape side, seen when a kickflip turns the deck over. */
+export const GRIP = '#2f2438'
 
 /** Samples the sky at t, where 0 is the horizon and 1 is the top. */
 export function skyAt(t: number, out: Color): Color {

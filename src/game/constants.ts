@@ -22,5 +22,8 @@ export const CAR_SLOWEST = 12
 /** Sparks per second while grinding, by lane. Higher lanes throw more. */
 export const SPARK_RATE = [40, 75, 130]
 
+/** One full revolution of a kickflip. */
+export const FLIP_DURATION = 0.42
+
 /** How long the fall plays before the run is called. */
 export const FALL_GRACE = 1.15

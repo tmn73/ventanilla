@@ -22,6 +22,11 @@ export class Skater {
   support: Segment | null = null
   /** -1 is a 5-0, 0 is a 50-50, 1 is a nosegrind. */
   grind = 0
+  /** Radians through the current kickflip. Zero when the board is flat. */
+  flipAngle = 0
+
+  private flipping = false
+  private flipsThisJump = 0
   airTime = 0
   grindTime = 0
   spin = 0
@@ -41,6 +46,9 @@ export class Skater {
     this.vy = 0
     this.support = null
     this.grind = 0
+    this.flipAngle = 0
+    this.flipping = false
+    this.flipsThisJump = 0
     this.airTime = 0
     this.grindTime = 0
     this.spin = 0
@@ -95,6 +103,7 @@ export class Skater {
       this.vy = C.JUMP_SPEED
       this.support = null
       this.grind = 0
+      this.flipsThisJump = 0
       this.cutApplied = false
       this.grindTime = 0
     }
@@ -102,6 +111,17 @@ export class Skater {
 
   private fly(dt: number, road: Road, input: Input): void {
     this.airTime += dt
+
+    if (input.flipPressed && !this.flipping) this.flipping = true
+    if (this.flipping) {
+      this.flipAngle += ((Math.PI * 2) / C.FLIP_DURATION) * dt
+      if (this.flipAngle >= Math.PI * 2) {
+        this.flipAngle = 0
+        this.flipping = false
+        this.flipsThisJump++
+      }
+    }
+
     this.vy -= C.GRAVITY * dt
     if (input.dive) this.vy -= C.DIVE_ACCEL * dt
     if (!input.jumpHeld && this.vy > 0 && !this.cutApplied) {
@@ -131,12 +151,19 @@ export class Skater {
   }
 
   private land(seg: Segment): void {
+    const flips = this.flipsThisJump
     this.y = seg.y
     this.vy = 0
     this.support = seg
     this.spin = 0
     this.grind = 0
-    this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
+    this.flipAngle = 0
+    this.flipping = false
+    this.flipsThisJump = 0
+
+    if (flips > 1) this.trick = `${flips}x KICKFLIP`
+    else if (flips === 1) this.trick = 'KICKFLIP'
+    else this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
     this.trickAge = 0
     this.airTime = 0
   }

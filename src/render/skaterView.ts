@@ -9,7 +9,7 @@ import {
   Object3D,
   Scene,
 } from 'three'
-import { BOARD, SKATER, WHEEL_COLOR } from './palette'
+import { BOARD, GRIP, SKATER, WHEEL_COLOR } from './palette'
 
 type Point = [number, number]
 
@@ -131,8 +131,17 @@ export class SkaterView {
   /**
    * @param grounded blends the tucked pose into the crouched one
    * @param grind -1 for a 5-0, 0 for a 50-50, 1 for a nosegrind
+   * @param flip radians through a kickflip, which rolls the deck edge on
    */
-  update(x: number, y: number, spin: number, grounded: number, pump: number, grind: number): void {
+  update(
+    x: number,
+    y: number,
+    spin: number,
+    grounded: number,
+    pump: number,
+    grind: number,
+    flip: number,
+  ): void {
     const pose = {} as Joints
     for (const key of JOINT_KEYS) pose[key] = mix(AIR[key], GRIND[key], grounded)
 
@@ -173,10 +182,17 @@ export class SkaterView {
     const sin = Math.sin(-spin)
     const originY = y + FEET_TO_HIP
 
+    // A kickflip rolls the deck around its long axis. Side on, that is not a
+    // rotation: the deck thins to its edge, then shows its other face.
+    const facing = Math.cos(flip)
+    const deckThickness = DECK_THICK * Math.max(0.14, Math.abs(facing))
+    const boardMaterial = this.board.mesh.material as MeshBasicMaterial
+    boardMaterial.color.set(facing >= 0 ? BOARD : GRIP)
+
     this.begin(this.board, cos, sin, x, originY)
-    this.limb(tailBase, noseBase, DECK_THICK)
-    this.limb(tailBase, tailTip, DECK_THICK)
-    this.limb(noseBase, noseTip, DECK_THICK)
+    this.limb(tailBase, noseBase, deckThickness)
+    this.limb(tailBase, tailTip, deckThickness)
+    this.limb(noseBase, noseTip, deckThickness)
     this.limb([axleBack[0], axleBack[1] + TRUCK_DROP], axleBack, 0.055)
     this.limb([axleFront[0], axleFront[1] + TRUCK_DROP], axleFront, 0.055)
     this.end(this.board)
