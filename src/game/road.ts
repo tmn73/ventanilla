@@ -86,16 +86,21 @@ export class Road {
    */
   private emit(): void {
     const scale = this.rollScale()
-    this.runUp(9 + scale * 19)
+    this.runUp(6 + scale * 32)
     this.spot(scale)
   }
 
-  /** 0 is a small feature, 1 is a landmark. Most spots sit in between. */
+  /**
+   * 0 is a small feature, 1 is a landmark, and one in twenty goes past 1 into
+   * something outsized. The tails matter more than the middle: a rail you can
+   * barely pop onto and a rail that runs half a block have to both be possible.
+   */
   private rollScale(): number {
     const roll = this.rng()
-    if (roll < 0.32) return this.rng() * 0.32
-    if (roll < 0.84) return 0.32 + this.rng() * 0.38
-    return 0.7 + this.rng() * 0.3
+    if (roll < 0.05) return 1 + this.rng() * 0.45
+    if (roll < 0.34) return this.rng() * 0.3
+    if (roll < 0.83) return 0.3 + this.rng() * 0.42
+    return 0.72 + this.rng() * 0.28
   }
 
   private runUp(length: number): void {
@@ -136,10 +141,10 @@ export class Road {
    * bottom if you stay low.
    */
   private funbox(scale: number): void {
-    const rise = 1.1 + scale * 1.1
-    const ramp = rise / 0.3
+    const rise = 0.7 + scale * 2.1
+    const ramp = rise / range(this.rng, 0.22, 0.34)
     const top = this.groundY + rise
-    const deck = 9 + scale * 9
+    const deck = 5 + scale * 22
 
     this.push(this.headX, this.headX + ramp, this.groundY, top, 'flat', true)
     this.headX += ramp
@@ -164,7 +169,7 @@ export class Road {
     this.push(this.headX, this.headX + ramp * 0.7, crest, this.groundY, 'flat', true)
     this.headX += ramp * 0.7
 
-    const length = 10 + scale * 12
+    const length = 5 + scale * 26
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + RAIL_HEIGHT
     this.push(this.headX + 0.5, this.headX + length - 1, y, y, 'rail', false)
@@ -176,8 +181,8 @@ export class Road {
    * back out, which costs you the line but never the run.
    */
   private channel(scale: number): void {
-    const width = 3.4 + scale * 3
-    const depth = 1.2 + scale * 0.5
+    const width = 2.2 + scale * 5
+    const depth = 0.8 + scale * 1.6
     const floorY = this.groundY - depth
 
     // A sheer near wall, so the edge reads as something to leave the ground at.
@@ -192,14 +197,14 @@ export class Road {
 
   /** A raised platform ending in a sheer edge, with a landing well below. */
   private drop(scale: number): void {
-    const height = 1.6 + scale * 2
-    const climb = height / 0.3
+    const height = 0.9 + scale * 3.4
+    const climb = height / range(this.rng, 0.24, 0.34)
     const top = this.settle(this.groundY + height)
 
     this.push(this.headX, this.headX + climb, this.groundY, top, 'flat', true)
     this.headX += climb
 
-    const deck = 10 + scale * 8
+    const deck = 6 + scale * 18
     this.push(this.headX, this.headX + deck, top, top, 'flat', true)
     const ledgeY = top + LEDGE_HEIGHT
     this.push(this.headX + 1.5, this.headX + deck - 1.5, ledgeY, ledgeY, 'ledge', false)
@@ -222,8 +227,8 @@ export class Road {
       this.bank(1, scale)
       return
     }
-    const wish = Math.round(4 + scale * (MAX_STEPS - 4) + range(this.rng, -2, 3))
-    const wanted = Math.max(4, Math.min(wish, MAX_STEPS, headroom))
+    const wish = Math.round(3 + scale * (MAX_STEPS - 3) + range(this.rng, -3, 4))
+    const wanted = Math.max(3, Math.min(wish, MAX_STEPS, headroom))
     const hasRail = wanted > MAX_FREE_STEPS || this.rng() < 0.5
     const count = hasRail ? wanted : Math.min(wanted, MAX_FREE_STEPS)
 
@@ -282,7 +287,7 @@ export class Road {
 
   /** An open square with a block and a rail side by side. Pick your line. */
   private plaza(scale: number): void {
-    const length = range(this.rng, 16, 22 + scale * 18)
+    const length = range(this.rng, 12, 20 + scale * 36)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const ledgeY = this.groundY + LEDGE_HEIGHT
@@ -300,7 +305,7 @@ export class Road {
    * belongs to a rail that has a stair set descending under it.
    */
   private railSpot(scale: number): void {
-    const length = 7 + scale * range(this.rng, 8, 20)
+    const length = 3.5 + scale * range(this.rng, 12, 34)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const y = this.groundY + RAIL_HEIGHT
@@ -311,7 +316,7 @@ export class Road {
   /** A block you roll along. Concrete, so it gives a manual and no sparks. */
   private ledgeSpot(scale: number): void {
     // Small is a block to pop onto. Big is a manual pad you can ride forever.
-    const length = 7 + scale * range(this.rng, 10, 30)
+    const length = 3.5 + scale * range(this.rng, 14, 40)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + (scale > 0.6 ? LEDGE_HEIGHT * 0.55 : LEDGE_HEIGHT)
     this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
@@ -321,8 +326,11 @@ export class Road {
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
   private bank(force: number, scale: number): void {
-    const length = 8 + scale * range(this.rng, 8, 26)
-    const swing = 1.2 + scale * 3.4
+    // A bank is either a long gentle drift or a short sharp pitch, and the
+    // roll decides which rather than averaging the two.
+    const steep = this.rng() < 0.4
+    const length = steep ? 5 + scale * 9 : 10 + scale * 34
+    const swing = steep ? 1.4 + scale * 3.2 : 0.8 + scale * 5.4
     const rise =
       force > 0
         ? range(this.rng, swing * 0.6, swing)

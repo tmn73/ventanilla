@@ -1,9 +1,5 @@
 import { Box3, Group, Object3D, Vector3 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import palmTallUrl from '../models/tree_palmDetailedTall.glb'
-import rockLargeUrl from '../models/rock_largeB.glb'
-import rockSmallUrl from '../models/rock_smallC.glb'
-import grassUrl from '../models/grass_large.glb'
 import parasolUrl from '../models/detail-parasol-a.glb'
 import blockAUrl from '../models/low-detail-building-a.glb'
 import blockCUrl from '../models/low-detail-building-c.glb'
@@ -22,10 +18,6 @@ import blockWideBUrl from '../models/low-detail-building-wide-b.glb'
  * runs off the top of the frame, which is what a street does.
  */
 const CATALOGUE = {
-  palmTall: { url: palmTallUrl, height: 4.6, copies: 14 },
-  rockLarge: { url: rockLargeUrl, height: 0.5, copies: 8 },
-  rockSmall: { url: rockSmallUrl, height: 0.2, copies: 12 },
-  grass: { url: grassUrl, height: 0.5, copies: 24 },
   parasol: { url: parasolUrl, height: 2.6, copies: 8 },
   blockA: { url: blockAUrl, width: 5, height: 7, copies: 7 },
   blockC: { url: blockCUrl, width: 5, height: 6, copies: 7 },

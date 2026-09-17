@@ -39,7 +39,7 @@ bun run typecheck
 
 ## Credits
 
-The palms, rocks and grass are from Kenney's Nature Kit, released under CC0.
+The buildings and the parasols are from Kenney's City Kit, released under CC0.
 The licence sits next to them in `src/models/`.
 
 ## Not built yet

@@ -147,7 +147,6 @@ export class RoadView {
     }
 
     this.decorate(segments, camLeft, right)
-    this.beach(segments, camLeft, right)
     this.skyline(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
@@ -276,19 +275,14 @@ export class RoadView {
       const s = x + jitter * 2.4
       const lateral = -5.2 - jitter * 1.6
 
-      if (shape < 0.58) {
-        // A planter ring, so the trunk grows out of something.
-        this.place(this.boxes, s, ground + 0.11, lateral, 1.5, 0.22, 1.5, KERB)
-        const kind: PropName = 'palmTall'
-        this.prop(kind, s, ground + 0.2, lateral, jitter * 6.3)
+      if (shape < 0.6) {
+        continue
       } else if (shape < 0.82) {
         this.place(this.boxes, s, ground + 0.04, lateral, 2.1, 0.08, 0.78, BENCH_LEG)
         this.place(this.boxes, s, ground + 0.46, lateral, 1.9, 0.12, 0.55, BENCH)
         this.place(this.boxes, s, ground + 0.72, lateral - 0.22, 1.9, 0.42, 0.1, BENCH)
         this.place(this.boxes, s - 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
         this.place(this.boxes, s + 0.75, ground + 0.25, lateral, 0.11, 0.46, 0.5, BENCH_LEG)
-        // Rocks and grass out on the sand, where the promenade stops.
-        this.prop('rockSmall', s + 2.4, ground - 1.3, -9 - jitter * 3.5, jitter * 6.3)
       } else {
         this.place(this.boxes, s, ground + 0.05, lateral, 0.6, 0.1, 0.6, WALL)
         this.prop('parasol', s, ground + 0.1, lateral, jitter * 6.3)
@@ -325,22 +319,6 @@ export class RoadView {
         -19 - jitter * 7,
         Math.round(jitter * 4) * 1.5708,
       )
-    }
-  }
-
-  /** Loose ground cover on the sand, so the beach is not a flat expanse. */
-  private beach(all: Segment[], camLeft: number, right: number): void {
-    const spacing = 5.6
-    const first = Math.ceil((camLeft - 10) / spacing) * spacing
-    for (let x = first; x < right + 10; x += spacing) {
-      const pick = Math.abs(Math.sin(x * 4.117) * 12983.4) % 1
-      if (pick < 0.4) continue
-      const jitter = Math.abs(Math.sin(x * 9.731) * 33471.2) % 1
-      const ground = this.floorHeight(all, x)
-      if (ground === null) continue
-      const name: PropName = pick < 0.62 ? 'grass' : pick < 0.84 ? 'rockSmall' : 'rockLarge'
-      const side = 7.2 + jitter * 6.5
-      this.prop(name, x + jitter * 3, ground - 1.3, side, jitter * 6.3)
     }
   }
 

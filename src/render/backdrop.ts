@@ -2,7 +2,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  InstancedMesh,
+
   Mesh,
   MeshBasicMaterial,
   Object3D,
@@ -15,8 +15,6 @@ import {
   TOWN,
   HEADLAND,
   JUNGLE,
-  PALM_CROWN,
-  PALM_TRUNK,
   SAND,
   SAND_WET,
   SEA,
@@ -75,9 +73,6 @@ const GROUND: Array<{ color: string; y: number; from: number; to: number }> = [
 /** Where the flat ground stops and the upright backdrop takes over. */
 const HORIZON_LATERAL = -34
 
-const MAX_PALMS = 26
-const PALM_SPACING = 7.4
-const PALM_PARALLAX = 0.52
 
 /**
  * Seamless ridge line. Every wave completes a whole number of cycles over the
@@ -148,24 +143,9 @@ function band(scene: Object3D, color: string, z: number): Mesh {
   return mesh
 }
 
-function instanced(scene: Object3D, color: string, max: number, z: number): InstancedMesh {
-  const mesh = new InstancedMesh(
-    new PlaneGeometry(1, 1),
-    new MeshBasicMaterial({ color: new Color(color) }),
-    max,
-  )
-  mesh.frustumCulled = false
-  mesh.position.z = z
-  scene.add(mesh)
-  return mesh
-}
-
 export class Backdrop {
   private sky: Mesh
   private bands: Band[]
-  private trunks: InstancedMesh
-  private crowns: InstancedMesh
-  private proxy = new Object3D()
   private layers: Layer[]
 
   constructor(scene: Object3D, world: Object3D) {
@@ -203,8 +183,6 @@ export class Backdrop {
       return { mesh, y: spec.y, from: spec.from, to: spec.to }
     })
 
-    this.trunks = instanced(scene, PALM_TRUNK, MAX_PALMS, -13)
-    this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -12.8)
   }
 
   update(camLeft: number, viewHeight: number, worldX: number, worldZ: number): void {
@@ -217,49 +195,6 @@ export class Backdrop {
       item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)
       item.mesh.position.set(centre, item.y, (item.from + item.to) / 2)
     }
-
-    // Palms along the promenade, drifting at their own rate.
-    let planted = 0
-    let fronds = 0
-    const base = camLeft * PALM_PARALLAX
-    const lag = camLeft - base
-    const firstPalm = Math.ceil((base - 8) / PALM_SPACING) * PALM_SPACING
-    for (let px = firstPalm; px < base + VIEW_WIDTH + 8 && planted < MAX_PALMS; px += PALM_SPACING) {
-      const hash = Math.abs(Math.sin(px * 7.311) * 21374.9) % 1
-      const spread = Math.abs(Math.sin(px * 3.117) * 9431.7) % 1
-      if (spread < 0.3) continue
-      const height = 3.4 + hash * 2.8
-      const wx = px + lag
-      const footY = WORLD_FLOOR + 0.16
-      // Scattered back across the sand rather than all on one line.
-      const back = 8 + spread * 5
-
-      this.proxy.position.set(wx, footY + height / 2, back)
-      this.proxy.scale.set(0.26, height, 1)
-      this.proxy.rotation.z = (hash - 0.5) * 0.16
-      this.proxy.updateMatrix()
-      this.proxy.rotation.z = 0
-      this.trunks.setMatrixAt(planted++, this.proxy.matrix)
-
-      for (const angle of [2.55, 2.0, 1.571, 1.14, 0.6]) {
-        if (fronds >= MAX_PALMS * 5) break
-        const reach = 1.5
-        this.proxy.position.set(
-          wx + Math.cos(angle) * reach * 0.5,
-          footY + height + Math.sin(angle) * reach * 0.3,
-          back + Math.cos(angle) * 0.6,
-        )
-        this.proxy.scale.set(reach * 1.4, 0.2, 1)
-        this.proxy.rotation.z = angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55)
-        this.proxy.updateMatrix()
-        this.proxy.rotation.z = 0
-        this.crowns.setMatrixAt(fronds++, this.proxy.matrix)
-      }
-    }
-    this.trunks.count = planted
-    this.crowns.count = fronds
-    this.trunks.instanceMatrix.needsUpdate = true
-    this.crowns.instanceMatrix.needsUpdate = true
 
     for (const layer of this.layers) {
       // Tiled against the camera's world position, since these sit outside the
