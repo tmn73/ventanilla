@@ -32,7 +32,7 @@ export const SLOPE_PULL = 18
 export const SPARK_RATE = 120
 
 /** Radians per second of spin while the rotate input is held. */
-export const SPIN_RATE = 7.5
+export const SPIN_RATE = 11.5
 /** Past this far from a half turn, the landing is a bail. */
 export const LANDING_TOLERANCE = 0.42
 /** What a bail costs. Nothing is fatal, so speed is the price. */

@@ -135,6 +135,8 @@ function span(mesh: Mesh, from: Point, to: Point, width: number): void {
 
 export class SkaterView {
   private root = new Group()
+  /** Carries the facing, under the node that carries the ramp lean. */
+  private turner = new Group()
   private boardPivot = new Group()
   private board = new Group()
   /** Origin on the deck centreline, so a kickflip turns the board on its axis. */
@@ -150,11 +152,12 @@ export class SkaterView {
 
   constructor(scene: Scene) {
     scene.add(this.root)
-    this.root.add(this.boardPivot)
+    this.root.add(this.turner)
+    this.turner.add(this.boardPivot)
     this.boardPivot.add(this.board)
     this.board.add(this.deckAxis)
     this.deckAxis.position.y = DECK_Y
-    this.root.add(this.body)
+    this.turner.add(this.body)
 
     const deckColor = Number(BOARD.replace('#', '0x'))
     const gripColor = Number(GRIP.replace('#', '0x'))
@@ -262,7 +265,8 @@ export class SkaterView {
         : (pose.footBack[1] + pose.footFront[1]) / 2 - 0.09
 
     this.root.position.set(x, y + FEET_TO_HIP, 0)
-    this.root.rotation.set(0, yaw, lean)
+    this.root.rotation.z = lean
+    this.turner.rotation.y = yaw
 
     const onRail = grounded > 0.5 && grind !== 0
     const backTruck = grind === 1

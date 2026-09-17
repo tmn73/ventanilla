@@ -31,7 +31,10 @@ export class Skater {
   flipAngle = 0
   /** Which way the deck is turning: a kickflip one way, a heelflip the other. */
   flipSign = 1
-  /** Radians he has turned. Held input spins it; the landing judges it. */
+  /**
+   * Which way he is facing, and it persists. Land a 180 and you ride switch
+   * until the next one brings you back round.
+   */
   yaw = 0
 
   airTime = 0
@@ -44,6 +47,8 @@ export class Skater {
   trick = ''
   trickAge = 99
 
+  /** Where the yaw stood when he left the ground, so a trick names its own turn. */
+  private takeoffYaw = 0
   private flipping = false
   private flipsThisJump = 0
   private cutApplied = false
@@ -61,6 +66,7 @@ export class Skater {
     this.flipAngle = 0
     this.flipSign = 1
     this.yaw = 0
+    this.takeoffYaw = 0
     this.flipping = false
     this.flipsThisJump = 0
     this.airTime = 0
@@ -137,18 +143,12 @@ export class Skater {
       this.trickAge = 0
     }
 
-    // A turn eases back to straight once he is rolling again.
-    if (this.yaw !== 0) {
-      const settle = Math.min(Math.abs(this.yaw), dt * 6)
-      this.yaw -= Math.sign(this.yaw) * settle
-    }
-
     if (input.jumpPressed) {
       // A ramp adds its own rise, so an uphill launch goes higher.
       this.vy = C.JUMP_SPEED + Math.max(0, slope * this.vx)
       this.support = null
       this.grind = 0
-      this.yaw = 0
+      this.takeoffYaw = this.yaw
       this.flipsThisJump = 0
       this.cutApplied = false
       this.grindTime = 0
@@ -204,12 +204,13 @@ export class Skater {
   private land(seg: Segment): void {
     const flips = this.flipsThisJump
 
-    // A landing is judged on the angle he stopped at. Half turns are clean,
-    // anything between them is a bail: he keeps rolling, but not the speed.
-    const halves = Math.round(this.yaw / Math.PI)
-    const error = Math.abs(this.yaw - halves * Math.PI)
-    const bailed = error > C.LANDING_TOLERANCE
-    this.yaw = halves * Math.PI
+    // Judged on how far he turned during this jump, not on where he started.
+    // The facing itself is kept, so a 180 leaves him riding switch.
+    const spun = this.yaw - this.takeoffYaw
+    const halves = Math.round(spun / Math.PI)
+    const bailed = Math.abs(spun - halves * Math.PI) > C.LANDING_TOLERANCE
+    this.yaw = this.takeoffYaw + halves * Math.PI
+    this.takeoffYaw = this.yaw
 
     // The harder he arrives, the deeper he soaks it up.
     this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
