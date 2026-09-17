@@ -91,6 +91,7 @@ startLoop(
     // the same flick pops a different end depending on which way round he is.
     input.reversed = game.skater.reversed
     input.airborne = game.skater.support === null
+    input.balancing = game.skater.balancing
     input.beginStep()
     if (!paused) game.step(dt, input)
   },

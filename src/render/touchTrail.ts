@@ -35,7 +35,7 @@ export class TouchTrail {
     const ctx = this.ctx
     if (!ctx || !active) return
 
-    const radius = 26
+    const radius = 30
     const spread = Math.PI * 0.62
     const middle = -Math.PI / 2
     const edge = Math.min(1, Math.abs(value))
@@ -45,7 +45,7 @@ export class TouchTrail {
 
     ctx.strokeStyle = SKATER_CAP
     ctx.globalAlpha = 0.5
-    ctx.lineWidth = 3
+    ctx.lineWidth = 6
     ctx.beginPath()
     ctx.arc(at.x, at.y, radius, middle - spread, middle + spread)
     ctx.stroke()
@@ -54,10 +54,10 @@ export class TouchTrail {
     // before it is over rather than only once it is.
     ctx.strokeStyle = TRAIL_COLOR.took
     ctx.globalAlpha = 0.45 + edge * 0.55
-    ctx.lineWidth = 3 + edge * 2
+    ctx.lineWidth = 7 + edge * 3
     const angle = middle + spread * Math.max(-1, Math.min(1, value))
     ctx.beginPath()
-    ctx.arc(at.x, at.y, radius, angle - 0.06, angle + 0.06)
+    ctx.arc(at.x, at.y, radius, angle - 0.09, angle + 0.09)
     ctx.stroke()
     ctx.restore()
   }

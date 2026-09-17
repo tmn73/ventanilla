@@ -64,3 +64,11 @@ test('a pop is labelled with the stance it goes out in', () => {
   expect(pop(TRAILING, true)).toBe('switch ollie')
   expect(pop(LEADING, true)).toBe('fakie ollie')
 })
+
+test('nothing scoops out of a manual', () => {
+  const BALANCING = true
+  // The foot that would scoop is the one holding the board on its end.
+  expect(swipeAction(-120, TRAILING, ALONE, BALANCING)).toEqual({})
+  // Popping out of it still works, which is the way out.
+  expect(swipeAction(90, LEADING, HELD, BALANCING).popEnd).toBe(TRAILING)
+})

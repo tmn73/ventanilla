@@ -391,12 +391,23 @@ export class Skater {
     this.balance += this.balanceVel * dt
 
     if (Math.abs(this.balance) >= 1) {
-      // Off the end of it. Nothing is fatal, so it costs the trick and no more.
+      // Which way it went out decides what it costs. Toward the end already
+      // in the air, the raised wheels simply come back down and he rolls on.
+      // Toward the end he is standing on, he has gone over it.
+      const overCooked = Math.sign(this.balance) === Math.sign(this.grind)
       this.balance = 0
       this.balanceVel = 0
       this.balancing = false
       this.grind = 0
-      this.trick = 'off'
+      if (overCooked) {
+        this.vx *= C.BAIL_SPEED_KEEP
+        if (this.vx < C.MIN_SPEED) this.vx = C.MIN_SPEED
+        this.absorb = 1
+        this.trick = 'slam'
+      } else {
+        this.absorb = 0.45
+        this.trick = ''
+      }
       this.trickAge = 0
     }
   }

@@ -11,6 +11,9 @@ const FLICK_PIXELS = 34
 const LOAD_GRACE = 400
 /** How far the foot still on the board slides before he starts turning. */
 const SPIN_PIXELS = 24
+/** How far it slides for a full lean, which is wider than a flick so the two
+ * can never be mistaken for one another. */
+const LEAN_REACH = 90
 /**
  * Which half of the screen a finger is on. The board is drawn from the side,
  * so the left half is always the end trailing behind him and the right half
@@ -71,7 +74,12 @@ export interface Swipe {
  * with it. A scoop and a push are the back foot alone, and a shove-it needs no
  * ollie under it, so the scoop is the whole trick.
  */
-export function swipeAction(angle: number, side: number, loadedOther: boolean): Swipe {
+export function swipeAction(
+  angle: number,
+  side: number,
+  loadedOther: boolean,
+  balancing = false,
+): Swipe {
   const up = angle >= 20 && angle < 160
   const down = angle <= -20 && angle >= -160
 
@@ -84,6 +92,9 @@ export function swipeAction(angle: number, side: number, loadedOther: boolean): 
   }
 
   if (down) {
+    // Nothing scoops out of a manual: the board is already on one end and the
+    // foot that would do it is the one holding it there.
+    if (balancing) return {}
     // The foot that scoops is the foot the board pops off, so scooping the
     // nose is a nollie shove-it and scooping it while turned round is a fakie
     // one. Leaning the scoop back is the plain shove-it, forward the other.
@@ -152,6 +163,7 @@ export class Input {
    */
   reversed = false
   airborne = false
+  balancing = false
   /** Which end the current crouch is loading, kept until the pop spends it. */
   private crouchLeading = false
   private detach: Array<() => void> = []
@@ -209,7 +221,7 @@ export class Input {
       if (touch.spent) continue
       const across = touch.stroke.x1 - touch.x
       if (Math.abs(across) < 4) continue
-      return Math.max(-1, Math.min(1, across / FLICK_PIXELS))
+      return Math.max(-1, Math.min(1, across / LEAN_REACH))
     }
     return 0
   }
@@ -318,6 +330,18 @@ export class Input {
       // In the air, the foot that stayed on the board is the one that turns
       // him. The foot that flicked has done its job, so a flip and a spin are
       // never the same finger and can never be confused for one another.
+      // While he is balancing, the foot on the board is steering and nothing
+      // else. Sliding it sideways is what holds the manual up, so it must
+      // never turn into a flick however far it goes.
+      if (this.balancing && !touch.spent) {
+        const across = Math.abs(e.clientX - touch.x)
+        const down = Math.abs(e.clientY - touch.y)
+        if (across >= down) {
+          touch.stroke.label = 'balance'
+          return
+        }
+      }
+
       if (this.airborne && !touch.spent) {
         const across = e.clientX - touch.x
         if (touch.steering || Math.abs(across) >= SPIN_PIXELS) {
@@ -426,7 +450,7 @@ export class Input {
 
   private readSwipe(angle: number, side: number): { label: string; failed: boolean } {
     const loaded = this.loaded(-side)
-    const move = swipeAction(angle, side, loaded)
+    const move = swipeAction(angle, side, loaded, this.balancing)
     if (move.popEnd !== undefined) {
       this.crouchLeading = move.popEnd === LEADING
       this.pop()
