@@ -95,8 +95,11 @@ export class Skater {
     this.airTime = 0
     this.spin = 0
 
-    if (input.grind !== this.grind) {
-      this.grind = input.grind
+    // Plain pavement always rolls flat. A latched flick belongs to the block
+    // or the rail it was aimed at, and must not follow him onto the ground.
+    const wanted = seg.kind === 'flat' || seg.kind === 'step' ? 0 : input.grind
+    if (wanted !== this.grind) {
+      this.grind = wanted
       const names = GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
       this.trick = names[this.grind + 2] ?? ''
       this.trickAge = 0

@@ -14,9 +14,9 @@ export const JUMP_SPEED = 8.6
 /** Releasing the jump key early cuts the rise short. */
 export const JUMP_CUT = 0.52
 
-export const CAR_START = 10
+export const CAR_START = 12.5
 /** The slowest the car ever goes. Gaps are sized against this, so a jump always clears. */
-export const CAR_SLOWEST = 8
+export const CAR_SLOWEST = 10
 
 /** Sparks per second on a rail. Concrete throws none, which is the tell. */
 export const SPARK_RATE = 120

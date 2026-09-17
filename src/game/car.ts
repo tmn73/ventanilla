@@ -11,9 +11,9 @@ interface Mood {
 /** The road the driver is on. The player never picks this. */
 /** A cruise, not a chase. The pace only breathes; it never rushes. */
 const MOODS: Mood[] = [
-  { name: 'roll', speed: 8.5, hold: [6, 11], weight: 2 },
-  { name: 'cruise', speed: 10.5, hold: [9, 16], weight: 3 },
-  { name: 'push', speed: 13, hold: [6, 11], weight: 2 },
+  { name: 'roll', speed: 10.5, hold: [6, 11], weight: 2 },
+  { name: 'cruise', speed: 13, hold: [9, 16], weight: 3 },
+  { name: 'push', speed: 16, hold: [6, 11], weight: 2 },
 ]
 
 const TOTAL_WEIGHT = MOODS.reduce((sum, m) => sum + m.weight, 0)

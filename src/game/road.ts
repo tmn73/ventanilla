@@ -80,46 +80,68 @@ export class Road {
   }
 
   /**
-   * One spot at a time, each with a long clean run-up in front of it. The
-   * run-up is the point: you see the set coming and you decide what to send.
+   * One spot at a time. The size is rolled first and the run-up is sized from
+   * it, so a small feature arrives quickly and a landmark is visible from far
+   * enough away to decide what to send at it.
    */
   private emit(): void {
-    this.runUp()
-    this.spot()
+    const scale = this.rollScale()
+    this.runUp(13 + scale * 27)
+    this.spot(scale)
   }
 
-  /** Open pavement. Long enough to read what is ahead and commit to it. */
-  private runUp(): void {
-    const length = range(this.rng, 22, 38)
+  /** 0 is a small feature, 1 is a landmark. Most spots sit in between. */
+  private rollScale(): number {
+    const roll = this.rng()
+    if (roll < 0.32) return this.rng() * 0.32
+    if (roll < 0.84) return 0.32 + this.rng() * 0.38
+    return 0.7 + this.rng() * 0.3
+  }
+
+  private runUp(length: number): void {
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     this.headX += length
   }
 
-  private spot(): void {
+  /** Keeps a module's exit height inside the band the pavement may wander in. */
+  private settle(y: number): number {
+    const base = LANE_Y[0]!
+    return Math.max(base - DRIFT_LIMIT, Math.min(base + DRIFT_LIMIT, y))
+  }
+
+  private spot(scale: number): void {
     const drift = this.groundY - LANE_Y[0]!
     if (drift < -DRIFT_LIMIT * 0.55) {
-      this.bank(1)
+      this.bank(1, scale)
       return
     }
 
     const roll = this.rng()
-    if (roll < 0.38) this.stairs()
-    else if (roll < 0.62) this.railSpot()
-    else if (roll < 0.82) this.ledgeSpot()
-    else this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0)
+    if (roll < 0.28) this.stairs(scale)
+    else if (roll < 0.44) this.railSpot(scale)
+    else if (roll < 0.6) this.ledgeSpot(scale)
+    else if (roll < 0.72) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
+    else if (roll < 0.84) this.plaza(scale)
+    else if (roll < 0.94) this.doubleSet(scale)
+    else this.hip(scale)
   }
 
   /**
    * A set of steps, each one ridable. Past eight of them a handrail always
    * runs alongside, so the set can be taken without clearing it in one go.
    */
-  private stairs(): void {
+  private stairs(scale: number): void {
     const headroom = Math.floor((this.groundY - (LANE_Y[0]! - DRIFT_LIMIT)) / RISE)
-    // Weighted toward the big sets, because the big set is the thing you want.
-    const wish = Math.round(range(this.rng, 4, MAX_STEPS + 6))
-    const steps = Math.max(4, Math.min(wish, MAX_STEPS, headroom))
-    const hasRail = steps > MAX_FREE_STEPS || this.rng() < 0.55
-    const count = hasRail ? Math.min(steps, MAX_STEPS) : Math.min(steps, MAX_FREE_STEPS)
+    // Math.max below would have floored this back to four and walked past the
+    // limit, so a street with no room left gets a climb instead of a set.
+    if (headroom < 4) {
+      this.bank(1, scale)
+      return
+    }
+    const wish = Math.round(4 + scale * (MAX_STEPS - 4) + range(this.rng, -2, 3))
+    const wanted = Math.max(4, Math.min(wish, MAX_STEPS, headroom))
+    const hasRail = wanted > MAX_FREE_STEPS || this.rng() < 0.5
+    const count = hasRail ? wanted : Math.min(wanted, MAX_FREE_STEPS)
 
     const topX = this.headX
     const topY = this.groundY
@@ -140,18 +162,53 @@ export class Road {
     this.groundY = bottomY
     this.headX = runX
     // Landing room at the bottom of every set.
-    const runout = range(this.rng, 12, 20)
-    this.push(this.headX, this.headX + runout, this.groundY, this.groundY, 'flat', true)
-    this.headX += runout
+    this.runUp(range(this.rng, 10, 16))
+  }
+
+  /** Two sets with a landing between them. The second one is the surprise. */
+  private doubleSet(scale: number): void {
+    this.stairs(scale * 0.6)
+    this.runUp(range(this.rng, 6, 11))
+    this.stairs(scale)
+  }
+
+  /** A short steep kicker. It throws you, and there is nothing to grind. */
+  private hip(scale: number): void {
+    const length = range(this.rng, 4.5, 7)
+    const lip = this.settle(this.groundY + 1.1 + scale * 1.6)
+    this.push(this.headX, this.headX + length, this.groundY, lip, 'flat', true)
+    this.headX += length
+
+    // The drop off the back of the lip, and a long flat to land it on.
+    const landingY = this.settle(lip - range(this.rng, 1.3, 3.2))
+    const landing = range(this.rng, 14, 22)
+    this.push(this.headX, this.headX + landing, landingY, landingY, 'flat', true)
+    this.groundY = landingY
+    this.headX += landing
+  }
+
+  /** An open square with a block and a rail side by side. Pick your line. */
+  private plaza(scale: number): void {
+    const length = range(this.rng, 16, 22 + scale * 18)
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+
+    const ledgeY = this.groundY + LEDGE_HEIGHT
+    this.push(this.headX + 1.5, this.headX + length * 0.48, ledgeY, ledgeY, 'ledge', false)
+
+    const railY = this.groundY + RAIL_HEIGHT
+    this.push(this.headX + length * 0.56, this.headX + length - 1.5, railY, railY, 'rail', false)
+
+    this.headX += length
   }
 
   /** A rail over flat ground: level, uphill or downhill, any length. */
-  private railSpot(): void {
-    const length = range(this.rng, 7, 18)
+  private railSpot(scale: number): void {
+    const length = 7 + scale * range(this.rng, 8, 20)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const roll = this.rng()
-    const drop = roll < 0.45 ? 0 : roll < 0.8 ? -range(this.rng, 0.8, 2.4) : range(this.rng, 0.6, 1.6)
+    const swing = 0.8 + scale * 2.6
+    const drop = roll < 0.4 ? 0 : roll < 0.78 ? -range(this.rng, 0.6, swing) : range(this.rng, 0.5, swing * 0.7)
     const y0 = this.groundY + RAIL_HEIGHT + (drop < 0 ? -drop : 0)
     this.push(this.headX + 0.8, this.headX + length - 0.8, y0, y0 + drop, 'rail', false)
 
@@ -161,28 +218,27 @@ export class Road {
   }
 
   /** A block you roll along. Concrete, so it gives a manual and no sparks. */
-  private ledgeSpot(): void {
-    const length = range(this.rng, 8, 16)
+  private ledgeSpot(scale: number): void {
+    // Small is a block to pop onto. Big is a manual pad you can ride forever.
+    const length = 7 + scale * range(this.rng, 10, 30)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
-    const y = this.groundY + LEDGE_HEIGHT
+    const y = this.groundY + (scale > 0.6 ? LEDGE_HEIGHT * 0.55 : LEDGE_HEIGHT)
     this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
     this.headX += length
-    // A short flat after the block, with room for one hazard.
-    const after = range(this.rng, 8, 13)
-    this.push(this.headX, this.headX + after, this.groundY, this.groundY, 'flat', true)
-    this.headX += after
+    this.runUp(range(this.rng, 8, 13))
   }
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
-  private bank(force: number): void {
-    const length = range(this.rng, 12, 22)
+  private bank(force: number, scale: number): void {
+    const length = 8 + scale * range(this.rng, 8, 26)
+    const swing = 1.2 + scale * 3.4
     const rise =
       force > 0
-        ? range(this.rng, 2.2, 4.2)
+        ? range(this.rng, swing * 0.6, swing)
         : force < 0
-          ? -range(this.rng, 1.4, 2.6)
-          : range(this.rng, -1.8, 2.2)
-    const endY = this.groundY + rise
+          ? -range(this.rng, swing * 0.5, swing * 0.8)
+          : range(this.rng, -swing * 0.8, swing)
+    const endY = this.settle(this.groundY + rise)
     this.push(this.headX, this.headX + length, this.groundY, endY, 'flat', true)
     this.groundY = endY
     this.headX += length

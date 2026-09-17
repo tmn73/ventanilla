@@ -3,7 +3,7 @@ export const KICKFLIP = 1
 export const HEELFLIP = -1
 
 /** Under this, a touch is a tap and not a flick. */
-const FLICK_PIXELS = 26
+const FLICK_PIXELS = 34
 
 export class Input {
   jumpHeld = false
