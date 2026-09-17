@@ -9,8 +9,8 @@ export const FRONTSIDE_SHOVE = 1
 const FLICK_PIXELS = 34
 /** How long a foot still counts as on the board after it lifts, in ms. */
 const LOAD_GRACE = 400
-/** How far a finger carries on sideways in the air before he starts turning. */
-const SPIN_PIXELS = 26
+/** How far the foot still on the board slides before he starts turning. */
+const SPIN_PIXELS = 24
 /**
  * Which half of the screen a finger is on. The board is drawn from the side,
  * so the left half is always the end trailing behind him and the right half
@@ -141,8 +141,8 @@ export class Input {
       side: number
       at: number
       spent: boolean
-      /** Where the flick ended, so a spin after it is measured from there. */
-      spentAt?: { x: number; y: number }
+      /** True once this finger has taken over the turning. */
+      steering?: boolean
       stroke: Stroke
     }
   >()
@@ -296,20 +296,19 @@ export class Input {
       touch.stroke.x1 = e.clientX
       touch.stroke.y1 = e.clientY
 
-      // In the air, carrying the finger on sideways turns him, and it keeps
-      // turning while it is held. It is measured from wherever the flick that
-      // sent him ended, so a flip and the spin after it are one motion.
-      if (this.airborne) {
-        const from = touch.spentAt ?? touch
-        const across = e.clientX - from.x
-        if (Math.abs(across) >= SPIN_PIXELS) {
+      // In the air, the foot that stayed on the board is the one that turns
+      // him. The foot that flicked has done its job, so a flip and a spin are
+      // never the same finger and can never be confused for one another.
+      if (this.airborne && !touch.spent) {
+        const across = e.clientX - touch.x
+        if (touch.steering || Math.abs(across) >= SPIN_PIXELS) {
+          touch.steering = true
           this.dragRotate = across > 0 ? 1 : -1
-          if (touch.spent) touch.stroke.label = 'spin'
+          touch.stroke.label = 'spin'
+          return
         }
-        if (touch.spent) return
-      } else if (touch.spent) {
-        return
       }
+      if (touch.spent) return
 
       const dx = e.clientX - touch.x
       const dy = e.clientY - touch.y
@@ -327,7 +326,6 @@ export class Input {
       }
 
       touch.spent = true
-      touch.spentAt = { x: e.clientX, y: e.clientY }
       const read = this.readSwipe(angle, touch.side)
       touch.stroke.label = read.label
       touch.stroke.failed = read.failed
