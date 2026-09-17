@@ -266,7 +266,6 @@ export class SkaterView {
     push: number,
     switched: boolean,
     stance: number,
-    carve: number,
   ): void {
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
@@ -314,8 +313,6 @@ export class SkaterView {
     this.root.position.set(x, y + FEET_TO_HIP, z)
     this.root.rotation.y = -heading
     this.leaner.rotation.z = lean
-    // He tips into the direction he is crossing, the way a carve looks.
-    this.leaner.rotation.x = carve
     this.turner.rotation.y = yaw
 
     const onRail = grounded > 0.5 && grind !== 0

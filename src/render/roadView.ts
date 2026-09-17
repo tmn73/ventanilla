@@ -11,20 +11,12 @@ import {
   type Texture,
 } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
-import {
-  coversZ,
-  LANE_MAX,
-  LANE_WIDTH,
-  ROAD_HALF,
-  surfaceYAt,
-  type Segment,
-  type SurfaceKind,
-} from '../game/road'
+import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
 import { makeConcrete } from './concrete'
-import { LANE_COLOR, POST_COLOR, SURFACE_COLOR } from './palette'
+import { POST_COLOR, SURFACE_COLOR } from './palette'
 
-const MAX_BOXES = 2400
+const MAX_BOXES = 1400
 const MAX_RODS = 500
 
 /** No piece of a surface is longer than this, so a corner never gets chorded. */
@@ -41,7 +33,13 @@ const THICKNESS: Record<SurfaceKind, number> = {
   rail: 0.11,
 }
 
-
+const BREADTH: Record<SurfaceKind, number> = {
+  flat: 11,
+  step: 11,
+  ledge: 1.7,
+  hubba: 1.7,
+  rail: 0.11,
+}
 
 const RAIL_RADIUS = 0.055
 const RAIL_POST_SPACING = 2.4
@@ -104,7 +102,7 @@ export class RoadView {
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
   }
 
-  update(segments: Segment[], camLeft: number, lane: number): void {
+  update(segments: Segment[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
@@ -120,19 +118,12 @@ export class RoadView {
 
       // The pavement is one solid mass from the surface down to the ground,
       // rather than a slab on legs. Nothing sits under it and nothing edges it.
-      // The road itself is one solid mass down to the ground. A platform set
-      // on top of it is a slab, not a second cliff, so it keeps a thickness.
-      const narrow = segment.halfWidth < ROAD_HALF * 0.9
       const depth =
-        segment.kind === 'flat' && !narrow
+        segment.kind === 'flat'
           ? Math.min(9, Math.max(1.2, surfaceYAt(segment, segment.x0) - WORLD_FLOOR))
-          : segment.kind === 'flat'
-            ? 1.1
-            : THICKNESS[segment.kind]
+          : THICKNESS[segment.kind]
 
-      // Drawn exactly as wide as it carries. What you see is what holds you.
-      this.slab(segment, depth, segment.halfWidth * 2, SURFACE_COLOR[segment.kind])
-      if (segment.kind === 'flat') this.laneMarks(segment, lane)
+      this.slab(segment, depth, BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
     }
 
     this.boxes.finish()
@@ -161,41 +152,13 @@ export class RoadView {
         this.boxes,
         s + nx * (depth / 2),
         top + ny * (depth / 2) + (i % 2) * 0.0015,
-        segment.z,
+        0,
         length,
         depth,
         breadth,
         color,
         slope,
       )
-    }
-  }
-
-  /** A line down the middle of every lane this surface carries. */
-  private laneMarks(segment: Segment, lane: number): void {
-    const span = segment.x1 - segment.x0
-    const pieces = Math.max(1, Math.ceil(span / PIECE))
-    const step = span / pieces
-    const slope = Math.atan2(segment.y1 - segment.y0, span)
-
-    for (let i = -LANE_MAX; i <= LANE_MAX; i++) {
-      const z = i * LANE_WIDTH
-      if (Math.abs(z - segment.z) > segment.halfWidth - 0.2) continue
-      const here = i === lane
-      for (let piece = 0; piece < pieces; piece++) {
-        const s = segment.x0 + step * (piece + 0.5)
-        this.place(
-          this.boxes,
-          s,
-          surfaceYAt(segment, s) + 0.012,
-          z,
-          (step / Math.cos(slope)) * OVERLAP,
-          0.02,
-          here ? 0.2 : 0.1,
-          here ? LANE_COLOR.on : LANE_COLOR.off,
-          slope,
-        )
-      }
     }
   }
 
@@ -208,7 +171,7 @@ export class RoadView {
     for (let i = 0; i < pieces; i++) {
       const s = segment.x0 + step * (i + 0.5)
       const length = (step / Math.cos(slope)) * OVERLAP
-      this.rod(s, surfaceYAt(segment, s) - radius, segment.z, length, radius, slope, color)
+      this.rod(s, surfaceYAt(segment, s) - radius, 0, length, radius, slope, color)
     }
   }
 
@@ -221,16 +184,16 @@ export class RoadView {
     for (const x of stops) {
       if (x < camLeft - 16 || x > right + 16) continue
       const top = surfaceYAt(segment, x)
-      const foot = this.floorUnder(all, x, segment.z, top)
+      const foot = this.floorUnder(all, x, top)
       const drop = Math.max(0.2, top - foot)
-      this.rod(x, top - drop / 2, segment.z, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
+      this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
     }
   }
 
-  private floorUnder(all: Segment[], x: number, z: number, below: number): number {
+  private floorUnder(all: Segment[], x: number, below: number): number {
     let best = below - RAIL_POST_DROP
     for (const segment of all) {
-      if (!segment.floor || !coversZ(segment, z)) continue
+      if (!segment.floor) continue
       if (x < segment.x0 || x > segment.x1) continue
       const top = surfaceYAt(segment, x)
       if (top <= below && top > best) best = top

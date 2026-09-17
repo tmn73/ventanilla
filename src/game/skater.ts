@@ -1,14 +1,6 @@
 import * as C from './constants'
 import type { Input } from '../input'
-import {
-  GRINDABLE,
-  LANE_MAX,
-  LANE_WIDTH,
-  slopeOf,
-  surfaceYAt,
-  type Road,
-  type Segment,
-} from './road'
+import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
 const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
@@ -67,18 +59,12 @@ const LABEL: Record<string, string> = {
 export class Skater {
   x = 0
   y = C.LANE_Y[0]!
-  /** Which lane he is on. A press changes it by one, and never by less. */
-  lane = 0
-  /** Where he is across the road, on its way to the middle of that lane. */
-  z = 0
   /** His own speed now. Nothing else carries him forward. */
   vx = C.START_SPEED
   vy = 0
-  vz = 0
 
   prevX = 0
   prevY = 0
-  prevZ = 0
 
   support: Segment | null = null
   /** -1 is a 5-0, 0 is a 50-50, 1 is a nosegrind. */
@@ -120,14 +106,10 @@ export class Skater {
   reset(x: number): void {
     this.x = x
     this.y = C.LANE_Y[0]!
-    this.lane = 0
-    this.z = 0
     this.prevX = x
     this.prevY = this.y
-    this.prevZ = 0
     this.vx = C.START_SPEED
     this.vy = 0
-    this.vz = 0
     this.support = null
     this.grind = 0
     this.flipAngle = 0
@@ -150,17 +132,14 @@ export class Skater {
   step(dt: number, road: Road, input: Input): void {
     this.prevX = this.x
     this.prevY = this.y
-    this.prevZ = this.z
     this.trickAge += dt
     if (this.absorb > 0) this.absorb = Math.max(0, this.absorb - dt * 5.5)
     if (this.pushTime > 0) this.pushTime = Math.max(0, this.pushTime - dt)
     if (this.pushCooldown > 0) this.pushCooldown = Math.max(0, this.pushCooldown - dt)
 
-    this.lean(dt, input)
-
-    if (this.support && !road.stillCarries(this.support, this.x, this.z)) {
+    if (this.support && !road.stillCarries(this.support, this.x)) {
       // Hand over to whatever continues at this height before calling it a fall.
-      const next = road.continuationAt(this.x, this.z, this.y)
+      const next = road.continuationAt(this.x, this.y)
       if (next) {
         this.support = next
       } else {
@@ -175,29 +154,6 @@ export class Skater {
     else this.fly(dt, road, input)
 
     this.x += this.vx * dt
-  }
-
-  /**
-   * Sideways. He carries his own momentum across the road, so a line is
-   * chosen a moment before it arrives rather than snapped to on the spot.
-   */
-  private lean(dt: number, input: Input): void {
-    if (input.laneStep !== 0) {
-      this.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, this.lane + input.laneStep))
-    }
-
-    // A fixed speed and an exact stop. Arriving short of the middle is what
-    // makes lining up with a rail a matter of aim, and it must not happen.
-    const target = this.lane * LANE_WIDTH
-    const gap = target - this.z
-    const step = C.LANE_SPEED * dt
-    if (Math.abs(gap) <= step) {
-      this.z = target
-      this.vz = 0
-    } else {
-      this.vz = Math.sign(gap) * C.LANE_SPEED
-      this.z += this.vz * dt
-    }
   }
 
   private ride(dt: number, seg: Segment, input: Input): void {
@@ -275,7 +231,7 @@ export class Skater {
     this.y += this.vy * dt
 
     if (this.vy <= 0) {
-      const hit = road.landingAt(this.x, this.z, this.prevY, this.y)
+      const hit = road.landingAt(this.x, this.prevY, this.y)
       if (hit) {
         this.land(hit)
         return
@@ -283,9 +239,9 @@ export class Skater {
     }
 
     // Nothing is fatal. If he ever ends up under the pavement, put him back on.
-    const floor = road.floorAt(this.x, this.z)
+    const floor = road.floorAt(this.x)
     if (this.y < floor) {
-      const landing = road.continuationAt(this.x, this.z, floor, 0.1, 0.1)
+      const landing = road.continuationAt(this.x, floor, 0.1, 0.1)
       if (landing) this.land(landing)
       else {
         this.y = floor
@@ -316,12 +272,6 @@ export class Skater {
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg
-    // Catching a narrow surface puts him on its lane, not merely near it.
-    if (seg.halfWidth < 1.2) {
-      this.lane = Math.round(seg.z / LANE_WIDTH)
-      this.z = seg.z
-      this.vz = 0
-    }
     this.spin = 0
     this.grind = 0
     this.flipAngle = 0

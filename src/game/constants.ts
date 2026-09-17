@@ -51,9 +51,3 @@ export const BAIL_SPEED_KEEP = 0.5
 /** One full revolution of a kickflip. */
 export const FLIP_DURATION = 0.42
 
-
-/**
- * How fast a lane change crosses. It runs at a fixed speed and stops exactly
- * on the lane, so every change puts him on a middle rather than near one.
- */
-export const LANE_SPEED = 15

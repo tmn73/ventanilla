@@ -1,15 +1,6 @@
 import { expect, test } from 'bun:test'
 import { mulberry32, seedFrom } from '../core/rng'
-import {
-  coversZ,
-  JUMP_REACH,
-  LANE_MAX,
-  LANE_WIDTH,
-  ROAD_HALF,
-  Road,
-  surfaceYAt,
-  type Segment,
-} from './road'
+import { JUMP_REACH, Road, surfaceYAt, type Segment } from './road'
 
 const TRIALS = 60
 const LENGTH = 1500
@@ -66,69 +57,11 @@ test('you can always ride out of a hollow', () => {
   expect(walls).toEqual([])
 })
 
-test('there is ground under every point of the road', () => {
-  // A hole is ground at a lower height. A place with nothing under it at all
-  // would drop the player out of the world, and that must not exist.
-  const empty: string[] = []
-
-  for (let trial = 0; trial < 12; trial++) {
-    const floors = laid(trial).segments.filter((s) => s.floor)
-    for (let x = 40; x < LENGTH - 40; x += 1.7) {
-      for (let z = -ROAD_HALF; z <= ROAD_HALF; z += 1.35) {
-        const over = floors.some((s) => x >= s.x0 && x <= s.x1 && coversZ(s, z))
-        if (!over) empty.push(`trial ${trial}: nothing at x=${x.toFixed(0)} z=${z.toFixed(1)}`)
-      }
-    }
-  }
-
-  expect(empty.slice(0, 5)).toEqual([])
-})
-
-test('everything you can ride sits on a lane', () => {
-  // A lane change lands on a lane middle. A rail placed between two of them
-  // could never be lined up with, however well you played.
-  const adrift: string[] = []
-
-  for (let trial = 0; trial < TRIALS; trial++) {
-    for (const segment of laid(trial).segments) {
-      if (segment.floor) continue
-      const lane = segment.z / LANE_WIDTH
-      if (Math.abs(lane - Math.round(lane)) > 1e-6 || Math.abs(lane) > LANE_MAX) {
-        adrift.push(`trial ${trial}: ${segment.kind} at z=${segment.z.toFixed(2)}`)
-      }
-    }
-  }
-
-  expect(adrift.slice(0, 5)).toEqual([])
-})
-
-test('no lane is half in a hole', () => {
-  // A hole takes whole lanes. A lane cut down the middle would be a line you
-  // can neither ride nor leave.
-  const cut: string[] = []
-
-  for (let trial = 0; trial < 12; trial++) {
-    for (const segment of laid(trial).segments) {
-      if (!segment.floor || segment.halfWidth >= ROAD_HALF) continue
-      for (const edge of [segment.z - segment.halfWidth, segment.z + segment.halfWidth]) {
-        if (Math.abs(edge) > ROAD_HALF - 0.01) continue
-        for (let lane = -LANE_MAX; lane <= LANE_MAX; lane++) {
-          if (Math.abs(edge - lane * LANE_WIDTH) < 0.6) {
-            cut.push(`trial ${trial}: edge ${edge.toFixed(2)} splits lane ${lane}`)
-          }
-        }
-      }
-    }
-  }
-
-  expect(cut.slice(0, 5)).toEqual([])
-})
-
 /** The lowest ground at a point, which is what a fall ends on. */
-function groundAt(floors: Segment[], x: number, z: number): number | null {
+function groundAt(floors: Segment[], x: number): number | null {
   let low: number | null = null
   for (const s of floors) {
-    if (x < s.x0 || x > s.x1 || !coversZ(s, x, z)) continue
+    if (x < s.x0 || x > s.x1) continue
     const top = surfaceYAt(s, x)
     if (low === null || top < low) low = top
   }
@@ -141,25 +74,19 @@ test('a jump off a lip never lands on the way up', () => {
   // that punishes the jump, and it must not be possible to build.
   const bad: string[] = []
 
-  for (let trial = 0; trial < 20; trial++) {
+  for (let trial = 0; trial < TRIALS; trial++) {
     const floors = laid(trial).segments.filter((s) => s.floor)
     for (const lip of floors) {
       if (lip.x1 > LENGTH - JUMP_REACH - 5) continue
-      for (let lane = -LANE_MAX; lane <= LANE_MAX; lane++) {
-        const z = lane * LANE_WIDTH
-        if (!coversZ(lip, lip.x1, z)) continue
-        const top = surfaceYAt(lip, lip.x1)
-        const below = groundAt(floors, lip.x1 + 0.05, z)
-        if (below === null || top - below < 1) continue
+      const top = surfaceYAt(lip, lip.x1)
+      const below = groundAt(floors, lip.x1 + 0.05)
+      if (below === null || top - below < 1) continue
 
-        const far = groundAt(floors, lip.x1 + JUMP_REACH, z)
-        if (far === null) continue
-        const onBottom = Math.abs(far - below) < 0.01
-        const cleared = far >= top - 0.01
-        if (!onBottom && !cleared) {
-          bad.push(`trial ${trial}: lip at x=${lip.x1.toFixed(0)} lands mid-climb`)
-        }
-      }
+      const far = groundAt(floors, lip.x1 + JUMP_REACH)
+      if (far === null) continue
+      const onBottom = Math.abs(far - below) < 0.01
+      const cleared = far >= top - 0.01
+      if (!onBottom && !cleared) bad.push(`trial ${trial}: lip at x=${lip.x1.toFixed(0)}`)
     }
   }
 

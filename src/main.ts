@@ -1,14 +1,6 @@
 import { Group } from 'three'
 import { startLoop } from './core/loop'
-import {
-  ANCHOR,
-  FIXED_DT,
-  JUMP_SPEED,
-  LANE_Y,
-  LANE_SPEED,
-  SPARK_RATE,
-  VIEW_WIDTH,
-} from './game/constants'
+import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
 import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
@@ -73,10 +65,6 @@ let camHeading = 0
 
 const eye = { x: 0, z: 0 }
 const feet = { x: 0, z: 0 }
-const centre = { x: 0, z: 0 }
-/** How much of his line the camera takes on. The rest is what you see move. */
-const CAM_FOLLOW = 0.5
-let camZ = 0
 const mix = (from: number, to: number, alpha: number) => from + (to - from) * alpha
 
 startLoop(
@@ -93,7 +81,6 @@ startLoop(
     const { skater, road } = game
     const x = mix(skater.prevX, skater.x, alpha)
     const y = mix(skater.prevY, skater.y, alpha)
-    const z = mix(skater.prevZ, skater.z, alpha)
     const camLeft = x - VIEW_WIDTH * ANCHOR
     // The camera looks a little ahead of him, which is what keeps him on the
     // anchor instead of dead centre.
@@ -118,24 +105,18 @@ startLoop(
     path.forget(camS)
     const heading = path.headingAt(camS)
     camHeading += (heading - camHeading) * 0.09
-    // Park the frame so a local x of camS lands on the road's centreline.
+    path.place(camS, 0, eye)
+    // Park the frame so a local x of camS lands on the camera's point.
     // The frame carries the ground, so it takes the road's true heading. Only
     // the camera lags; letting the ground lag too swings sand over the road.
-    path.place(camS, 0, centre)
-    frame.position.set(centre.x - camS * Math.cos(heading), 0, centre.z - camS * Math.sin(heading))
+    frame.position.set(eye.x - camS * Math.cos(heading), 0, eye.z - camS * Math.sin(heading))
     frame.rotation.y = -heading
 
-    // The camera follows him across the road, but only part of the way. A
-    // camera locked to a movement cancels it, and crossing the road has to
-    // be something you can see yourself do.
-    camZ += (z * CAM_FOLLOW - camZ) * 0.1
-    path.place(camS, camZ, eye)
-
-    path.place(x, z, feet)
+    path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
     backdrop.update(camLeft, stage.viewHeight)
-    roadView.update(road.segments, camLeft, skater.lane)
+    roadView.update(road.segments, camLeft)
     skaterView.update(
       feet.x,
       y,
@@ -152,7 +133,6 @@ startLoop(
       Math.min(1, skater.pushTime / 0.22),
       skater.switched,
       skater.stance,
-      (skater.vz / LANE_SPEED) * 0.3,
     )
     hud.setSwitched(skater.switched)
     hud.update(skater)
