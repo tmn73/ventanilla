@@ -193,11 +193,11 @@ export class Backdrop {
     const lift = ground - DEATH_Y
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
-    this.sky.scale.set(VIEW_WIDTH * 1.05, top + 40, 1)
+    this.sky.scale.set(VIEW_WIDTH * 2.6, top + 60, 1)
     this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -90)
 
     for (const item of this.bands) {
-      item.mesh.scale.set(VIEW_WIDTH * 1.1, item.depth, 1)
+      item.mesh.scale.set(VIEW_WIDTH * 2.6, item.depth, 1)
       item.mesh.position.set(centre, lift + item.top - item.depth / 2, item.z)
     }
 

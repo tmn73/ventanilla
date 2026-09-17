@@ -113,8 +113,7 @@ export class Road {
       else this.stairs()
     } else if (roll < 0.62) this.railSpot()
     else if (roll < 0.76) this.ledgeSpot()
-    else if (roll < 0.95) this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
-    else this.gap()
+    else this.bank(drift > DRIFT_LIMIT * 0.5 ? -1 : 0)
   }
 
   /** Plain pavement, with room to set up. */
@@ -153,9 +152,10 @@ export class Road {
 
     this.groundY = bottomY
     this.headX = runX
-    // Landing room at the bottom of every set.
-    const runout = range(this.rng, 7, 13)
+    // Landing room at the bottom of every set, then something to dodge.
+    const runout = range(this.rng, 8, 14)
     this.push(this.headX, this.headX + runout, this.groundY, this.groundY, 'flat', true)
+    this.clutter(this.headX + 5, this.headX + runout - 1.5)
     this.headX += runout
   }
 
@@ -169,6 +169,8 @@ export class Road {
     const y0 = this.groundY + RAIL_HEIGHT + (drop < 0 ? -drop : 0)
     this.push(this.headX + 0.8, this.headX + length - 0.8, y0, y0 + drop, 'rail', false)
 
+    // Something on the ground under the rail, so taking the low line costs you.
+    this.clutter(this.headX + 2.5, this.headX + length - 2.5)
     this.headX += length
   }
 
@@ -179,6 +181,11 @@ export class Road {
     const y = this.groundY + LEDGE_HEIGHT
     this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
     this.headX += length
+    // A short flat after the block, with room for one hazard.
+    const after = range(this.rng, 8, 13)
+    this.push(this.headX, this.headX + after, this.groundY, this.groundY, 'flat', true)
+    this.clutter(this.headX + 4, this.headX + after - 1.5)
+    this.headX += after
   }
 
   /** Pavement pitching up or down. A rising lip throws you into the air. */
@@ -196,20 +203,10 @@ export class Road {
     this.headX += length
   }
 
-  /** A hole in the pavement. Sized so it clears at the slowest the car drives. */
-  private gap(): void {
-    const before = range(this.rng, 6, 11)
-    this.push(this.headX, this.headX + before, this.groundY, this.groundY, 'flat', true)
-    this.headX += before + range(this.rng, 2.6, 5.2)
-    const after = range(this.rng, 8, 14)
-    this.push(this.headX, this.headX + after, this.groundY, this.groundY, 'flat', true)
-    this.headX += after
-  }
-
   /** Street furniture standing on the pavement, never near a landing. */
   private clutter(from: number, to: number): void {
     if (to - from < 6) return
-    if (this.rng() > 0.5) return
+    if (this.rng() > 0.62) return
     const kind = STREET_PROPS[Math.floor(this.rng() * STREET_PROPS.length)]!
     const height = kind === 'palm' ? 2.8 : kind === 'sign' ? 2.1 : kind === 'post' ? 1.5 : 0.75
     this.obstacles.push({

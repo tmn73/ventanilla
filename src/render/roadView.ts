@@ -102,7 +102,7 @@ export class RoadView {
     this.rods.reset()
 
     for (const segment of segments) {
-      if (segment.x1 < camLeft - 6 || segment.x0 > right + 6) continue
+      if (segment.x1 < camLeft - 14 || segment.x0 > right + 14) continue
 
       const run = segment.x1 - segment.x0
       const rise = segment.y1 - segment.y0
@@ -142,7 +142,7 @@ export class RoadView {
   private railPosts(segment: Segment, camLeft: number, right: number): void {
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
     for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) {
-      if (x < camLeft - 2 || x > right + 2) continue
+      if (x < camLeft - 14 || x > right + 14) continue
       const top = surfaceYAt(segment, x)
       this.rod(x, top - RAIL_POST_DROP / 2, 0, RAIL_POST_DROP, 0.045, Math.PI / 2, POST_COLOR.rail)
     }
@@ -155,7 +155,7 @@ export class RoadView {
    */
   private drawObstacles(obstacles: Obstacle[], camLeft: number, right: number): void {
     for (const item of obstacles) {
-      if (item.x < camLeft - 5 || item.x > right + 5) continue
+      if (item.x < camLeft - 14 || item.x > right + 14) continue
       const top = item.base + item.height
 
       if (item.kind === 'post') {
