@@ -30,6 +30,10 @@ const HORIZON = 0.34
  * side-scroller.
  */
 const EYE = new Vector3(6, 9.5, 32)
+/** What is left of the one big light once the day has gone. */
+const MOON = 0.16
+const SUN_COLOUR = 0xfffaf2
+const MOON_COLOUR = 0x8fa6c8
 /**
  * How high the eye sits, as an angle above the road. Low is the flattest side
  * view; high looks down enough to see the board lying across a rail, which is
@@ -60,6 +64,7 @@ export class Stage {
   private environmentMap: Texture | null = null
   private night = 0
   private skyTint = new Color()
+  private moonTint = new Color(MOON_COLOUR)
   private composer: EffectComposer
   private bloom: UnrealBloomPass
   private sun: DirectionalLight
@@ -82,7 +87,7 @@ export class Stage {
 
     // One soft sun and a wide fill. Enough to tell two faces of a box apart,
     // not enough for a badly judged shape to announce itself.
-    this.sun = new DirectionalLight(0xfffaf2, 1.15)
+    this.sun = new DirectionalLight(SUN_COLOUR, 1.15)
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(2048, 2048)
     this.sun.shadow.camera.left = -VIEW_WIDTH * 1.4
@@ -228,9 +233,13 @@ export class Stage {
   setNight(amount: number): void {
     this.night = amount
 
-    this.sun.intensity = 1.15 * (1 - amount) ** 2
+    // Never nothing. A street with no light at all between the lamps is not
+    // dark, it is blank: you cannot see the road you are riding on. This is
+    // the moon, cool and weak, and it only has to separate ground from void.
+    this.sun.intensity = 1.15 * (1 - amount) ** 2 + amount * MOON
+    this.sun.color.set(SUN_COLOUR).lerp(this.moonTint, amount)
     this.applyEnvironment()
-    this.fill.intensity = 0.12 * (1 - amount)
+    this.fill.intensity = 0.12 * (1 - amount) + amount * 0.055
     // Only the lamp heads should bleed, so the threshold sits above anything
     // the lamps put on the ground.
     this.bloom.strength = amount * 0.55

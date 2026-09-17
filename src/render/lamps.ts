@@ -13,8 +13,8 @@ import type { Path } from './path'
 import { LAMP_GLOW, LAMP_LIGHT, POST_COLOR } from './palette'
 
 /** How far apart they stand, and how many exist at once. */
-const SPACING = 26
-const COUNT = 6
+const SPACING = 17
+const COUNT = 8
 const HEIGHT = 5.2
 /** How far to the side of the road they stand. */
 const LATERAL = 5.4
@@ -56,7 +56,7 @@ export class Lamps {
 
       // Falls off with the square of the distance, the way light does. The
       // old one barely fell off at all, so the pool was a floodlit field.
-      const light = new SpotLight(LAMP_LIGHT, 0, 18, Math.PI / 4.4, 0.7, 2)
+      const light = new SpotLight(LAMP_LIGHT, 0, 24, Math.PI / 3.6, 0.75, 2)
       light.position.set(0, HEIGHT - 0.1, 0)
       light.castShadow = true
       light.shadow.mapSize.set(512, 512)
@@ -82,7 +82,7 @@ export class Lamps {
   setNight(amount: number): void {
     for (const unit of this.units) {
       unit.group.visible = amount > 0.01
-      unit.light.intensity = amount * 34
+      unit.light.intensity = amount * 42
     }
   }
 
