@@ -13,7 +13,6 @@ import { Stage } from './render/stage'
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
 const surface = document.getElementById('stage') as HTMLElement
-const danger = document.getElementById('danger') as HTMLElement
 
 const stage = new Stage(canvas)
 const backdrop = new Backdrop(stage.scene)
@@ -84,12 +83,6 @@ startLoop(
     }
     particles.update(frameDt)
 
-    // The suspension. This is what says "you are in a moving car".
-    const jolt = Math.min(1, car.speed / 26)
-    const shakeY =
-      (Math.sin(now * 27.3) * 0.5 + Math.sin(now * 41.7) * 0.3 + Math.sin(now * 13.1) * 0.2) * 0.1 * jolt
-    const shakeX = Math.sin(now * 19.4) * 0.04 * jolt
-
     // The camera follows the pavement, never the jump.
     if (skater.support) groundRef = skater.y
     if (game.phase === 'ready') groundRef = LANE_Y[0]!
@@ -106,8 +99,7 @@ startLoop(
           : 0
     skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind, skater.flipAngle)
     hud.update(game)
-    danger.style.opacity = game.phase === 'falling' ? '0.85' : '0'
-    stage.render(camLeft, camY, shakeX, shakeY)
+    stage.render(camLeft, camY)
   },
   FIXED_DT,
 )

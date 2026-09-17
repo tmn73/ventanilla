@@ -2,8 +2,9 @@ import * as C from './constants'
 import type { Input } from '../input'
 import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 
-const GRIND_NAME = ['5-0', '50-50', 'NOSEGRIND']
-const MANUAL_NAME = ['MANUAL', '', 'NOSE MANUAL']
+/** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
+const GRIND_NAME = ['FEEBLE', '5-0', '50-50', 'NOSEGRIND', 'SMITH']
+const MANUAL_NAME = ['MANUAL', 'MANUAL', '', 'NOSE MANUAL', 'NOSE MANUAL']
 
 const LABEL: Record<string, string> = {
   rail: 'RAIL',
@@ -97,10 +98,10 @@ export class Skater {
     this.airTime = 0
     this.spin = 0
 
-    if (input.lean !== this.grind) {
-      this.grind = input.lean
+    if (input.grind !== this.grind) {
+      this.grind = input.grind
       const names = GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
-      this.trick = names[this.grind + 1] ?? ''
+      this.trick = names[this.grind + 2] ?? ''
       this.trickAge = 0
     }
 

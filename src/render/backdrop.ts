@@ -52,11 +52,11 @@ interface Band {
  * the composition holds while the street climbs and drops.
  */
 const BANDS: Array<{ color: string; top: number; depth: number; z: number }> = [
-  { color: SAND, top: 1.6, depth: 60, z: -3.0 },
-  { color: SAND_WET, top: 1.75, depth: 0.28, z: -3.02 },
-  { color: FOAM, top: 1.95, depth: 0.22, z: -3.04 },
-  { color: SEA, top: 4.6, depth: 2.65, z: -3.1 },
-  { color: SEA_DEEP, top: 4.9, depth: 0.3, z: -3.12 },
+  { color: SAND, top: 1.6, depth: 60, z: -14 },
+  { color: SAND_WET, top: 1.75, depth: 0.28, z: -14.2 },
+  { color: FOAM, top: 1.95, depth: 0.22, z: -14.4 },
+  { color: SEA, top: 4.6, depth: 2.65, z: -14.6 },
+  { color: SEA_DEEP, top: 4.9, depth: 0.3, z: -14.8 },
 ]
 
 const MAX_PALMS = 26
@@ -172,10 +172,10 @@ export class Backdrop {
 
     // Headlands rise out of the bay, so they are drawn before the water bands.
     this.layers = [
-      ridgeLayer(scene, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -52),
-      ridgeLayer(scene, SIERRA, 6.4, 7.6, 0.24, 0.07, -50),
-      ridgeLayer(scene, HEADLAND, 3.8, 5.2, 0.44, 0.14, -45),
-      ridgeLayer(scene, JUNGLE, 2.4, 4.1, 0.67, 0.26, -40),
+      ridgeLayer(scene, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -80),
+      ridgeLayer(scene, SIERRA, 6.4, 7.6, 0.24, 0.07, -78),
+      ridgeLayer(scene, HEADLAND, 3.8, 5.2, 0.44, 0.14, -60),
+      ridgeLayer(scene, JUNGLE, 2.4, 4.1, 0.67, 0.26, -50),
     ]
 
     this.bands = BANDS.map((spec) => ({
@@ -185,8 +185,8 @@ export class Backdrop {
       z: spec.z,
     }))
 
-    this.trunks = instanced(scene, PALM_TRUNK, MAX_PALMS, -3.3)
-    this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -3.28)
+    this.trunks = instanced(scene, PALM_TRUNK, MAX_PALMS, -13)
+    this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -12.8)
   }
 
   update(camLeft: number, viewHeight: number, ground: number): void {
@@ -194,7 +194,7 @@ export class Backdrop {
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
     this.sky.scale.set(VIEW_WIDTH * 1.05, top + 40, 1)
-    this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -60)
+    this.sky.position.set(centre, lift + (top + 40) / 2 - 20, -90)
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 1.1, item.depth, 1)
@@ -215,7 +215,7 @@ export class Backdrop {
       const wx = px + lag
       const footY = lift + 1.5
 
-      this.proxy.position.set(wx, footY + height / 2, -3.3)
+      this.proxy.position.set(wx, footY + height / 2, -13)
       this.proxy.scale.set(0.26, height, 1)
       this.proxy.rotation.z = (hash - 0.5) * 0.16
       this.proxy.updateMatrix()
@@ -228,7 +228,7 @@ export class Backdrop {
         this.proxy.position.set(
           wx + Math.cos(angle) * reach * 0.5,
           footY + height + Math.sin(angle) * reach * 0.3,
-          -3.28,
+          -12.8,
         )
         this.proxy.scale.set(reach * 1.4, 0.2, 1)
         this.proxy.rotation.z = angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55)

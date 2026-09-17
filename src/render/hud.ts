@@ -26,8 +26,8 @@ export class Hud {
   }
 
   showReady(): void {
-    this.title.textContent = 'Regarde par la fenetre'
-    this.body.textContent = "La voiture ne t'attend pas."
+    this.title.textContent = 'Ne touche pas le sol'
+    this.body.textContent = 'Enchaine les rails jusqu au bout du malecon.'
     this.overlay.dataset.visible = 'true'
   }
 
