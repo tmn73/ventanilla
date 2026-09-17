@@ -31,6 +31,7 @@ interface Layer {
   near: Mesh
   far: Mesh
   parallax: number
+  depth: number
 }
 
 /**
@@ -120,7 +121,7 @@ function ridgeLayer(
     mesh.frustumCulled = false
     scene.add(mesh)
   }
-  return { near, far, parallax }
+  return { near, far, parallax, depth }
 }
 
 function band(scene: Object3D, color: string, z: number): Mesh {
@@ -151,7 +152,7 @@ export class Backdrop {
   private proxy = new Object3D()
   private layers: Layer[]
 
-  constructor(scene: Object3D) {
+  constructor(scene: Object3D, world: Object3D) {
     const geometry = new PlaneGeometry(1, 1, 1, 28)
     const position = geometry.getAttribute('position')
     const colors = new Float32Array(position.count * 3)
@@ -169,12 +170,14 @@ export class Backdrop {
     this.sky.frustumCulled = false
     scene.add(this.sky)
 
-    // Headlands rise out of the bay, so they are drawn before the water bands.
+    // The hills stay put in the world while the road turns under them. That
+    // swing is the only thing that shows a bend, since the camera and the
+    // promenade both turn together and cancel each other out.
     this.layers = [
-      ridgeLayer(scene, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -80),
-      ridgeLayer(scene, SIERRA, 6.4, 7.6, 0.24, 0.07, -78),
-      ridgeLayer(scene, HEADLAND, 3.2, 4.0, 0.44, 0.14, -60),
-      ridgeLayer(scene, JUNGLE, 1.7, 2.5, 0.67, 0.26, -50),
+      ridgeLayer(world, SIERRA_SNOW, 7.2, 9.4, 0.21, 0.05, -80),
+      ridgeLayer(world, SIERRA, 6.4, 7.6, 0.24, 0.07, -78),
+      ridgeLayer(world, HEADLAND, 3.2, 4.0, 0.44, 0.14, -60),
+      ridgeLayer(world, JUNGLE, 1.7, 2.5, 0.67, 0.26, -50),
     ]
 
     this.bands = BANDS.map((spec) => ({
@@ -188,7 +191,7 @@ export class Backdrop {
     this.crowns = instanced(scene, PALM_CROWN, MAX_PALMS * 5, -12.8)
   }
 
-  update(camLeft: number, viewHeight: number, ground: number): void {
+  update(camLeft: number, viewHeight: number, ground: number, worldX: number, worldZ: number): void {
     const lift = ground - DEATH_Y
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
@@ -242,11 +245,12 @@ export class Backdrop {
     this.crowns.instanceMatrix.needsUpdate = true
 
     for (const layer of this.layers) {
-      // A layer drifting at `parallax` sits at camLeft * (1 - parallax).
-      const anchor = camLeft * (1 - layer.parallax)
-      const start = anchor + Math.floor((camLeft - anchor) / RIDGE_SPAN) * RIDGE_SPAN
-      layer.near.position.set(start, lift, layer.near.position.z)
-      layer.far.position.set(start + RIDGE_SPAN, lift, layer.far.position.z)
+      // Tiled against the camera's world position, since these sit outside the
+      // frame that carries the bend.
+      const anchor = worldX * (1 - layer.parallax)
+      const start = anchor + Math.floor((worldX - RIDGE_SPAN / 2 - anchor) / RIDGE_SPAN) * RIDGE_SPAN
+      layer.near.position.set(start, lift, worldZ + layer.depth)
+      layer.far.position.set(start + RIDGE_SPAN, lift, worldZ + layer.depth)
     }
   }
 }

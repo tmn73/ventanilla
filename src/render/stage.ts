@@ -10,14 +10,14 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
-const HORIZON = 0.2
+const HORIZON = 0.34
 
 /**
  * A small three quarter offset. Enough to show the top of a ledge and which
  * side of a rail the board hangs over, not enough to stop reading as a
  * side-scroller.
  */
-const EYE = new Vector3(7, 9, 34)
+const EYE = new Vector3(6, 12, 31)
 const SUN = new Vector3(-16, 26, 20)
 const UP = new Vector3(0, 1, 0)
 

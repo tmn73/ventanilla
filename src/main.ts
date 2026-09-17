@@ -32,7 +32,7 @@ const stage = new Stage(canvas)
 const frame = new Group()
 stage.scene.add(frame)
 
-const backdrop = new Backdrop(frame)
+const backdrop = new Backdrop(frame, stage.scene)
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
@@ -46,6 +46,12 @@ let lastFrame = performance.now() / 1000
 /** The pavement height the camera rests on. It eases so jumps do not move it. */
 let camY = 0
 let groundRef = LANE_Y[0]!
+/**
+ * The camera's own heading trails the road's. A camera locked to the road
+ * cancels the bend exactly and nothing appears to turn; letting it lag is what
+ * swings the road across the screen while he still runs left to right.
+ */
+let camHeading = 0
 
 const eye = { x: 0, z: 0 }
 const feet = { x: 0, z: 0 }
@@ -65,7 +71,9 @@ startLoop(
     const x = mix(skater.prevX, skater.x, alpha)
     const y = mix(skater.prevY, skater.y, alpha)
     const camLeft = x - VIEW_WIDTH * ANCHOR
-    const camS = x
+    // The camera looks a little ahead of him, which is what keeps him on the
+    // anchor instead of dead centre.
+    const camS = x + VIEW_WIDTH * (0.5 - ANCHOR)
 
     grounded += ((skater.support ? 1 : 0) - grounded) * 0.25
 
@@ -84,15 +92,16 @@ startLoop(
     const lean = skater.support ? Math.atan(slopeOf(skater.support)) : 0
 
     const heading = path.headingAt(camS)
+    camHeading += (heading - camHeading) * 0.022
     path.place(camS, 0, eye)
     // Park the frame so a local x of camS lands on the camera's point.
-    frame.position.set(eye.x - camS * Math.cos(heading), 0, eye.z - camS * Math.sin(heading))
-    frame.rotation.y = -heading
+    frame.position.set(eye.x - camS * Math.cos(camHeading), 0, eye.z - camS * Math.sin(camHeading))
+    frame.rotation.y = -camHeading
 
     path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
-    backdrop.update(camLeft, stage.viewHeight, groundRef)
+    backdrop.update(camLeft, stage.viewHeight, groundRef, eye.x, eye.z)
     roadView.update(road.segments, camLeft)
     skaterView.update(
       feet.x,
@@ -110,7 +119,7 @@ startLoop(
       Math.min(1, skater.pushTime / 0.18),
     )
     hud.update(game)
-    stage.render(eye.x, camY, eye.z, heading)
+    stage.render(eye.x, camY, eye.z, camHeading)
   },
   FIXED_DT,
 )

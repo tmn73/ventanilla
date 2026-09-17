@@ -23,8 +23,8 @@ export class Path {
     const turn = (hash % 1000) / 1000
     const sway = ((hash >> 10) % 1000) / 1000
     this.waves = [
-      { amplitude: 0.13, wavelength: 95, phase: turn * Math.PI * 2 },
-      { amplitude: 0.085, wavelength: 38, phase: sway * Math.PI * 2 },
+      { amplitude: 0.3, wavelength: 52, phase: turn * Math.PI * 2 },
+      { amplitude: 0.18, wavelength: 21, phase: sway * Math.PI * 2 },
     ]
   }
 
