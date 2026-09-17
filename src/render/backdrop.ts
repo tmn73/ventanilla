@@ -42,9 +42,10 @@ export class Backdrop {
     }
     geometry.setAttribute('color', new BufferAttribute(colors, 3))
 
+    // Kept but not added: a real sky is behind everything now, and this one
+    // would stand in front of it.
     this.sky = new Mesh(geometry, new MeshBasicMaterial({ vertexColors: true }))
-    this.sky.frustumCulled = false
-    scene.add(this.sky)
+    this.sky.visible = false
 
     this.bands = BANDS.map((spec) => {
       const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: spec.color }))

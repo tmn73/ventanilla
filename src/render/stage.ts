@@ -1,12 +1,17 @@
 import {
+  ACESFilmicToneMapping,
   AmbientLight,
   DirectionalLight,
   OrthographicCamera,
   PCFSoftShadowMap,
   Scene,
   Vector3,
+  EquirectangularReflectionMapping,
+  PMREMGenerator,
+  type Texture,
   WebGLRenderer,
 } from 'three'
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
@@ -44,11 +49,16 @@ export class Stage {
   private target = new Vector3()
   private eye = new Vector3()
   private point = new Vector3()
+  private sky: Texture | null = null
   private sun: DirectionalLight
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
     this.renderer.setClearColor(0xdfe3e4, 1)
+    // A real sky has more range than a screen does, so it has to be mapped
+    // down rather than clipped, or every cloud comes out as flat white.
+    this.renderer.toneMapping = ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFSoftShadowMap
 
@@ -56,7 +66,7 @@ export class Stage {
 
     // One soft sun and a wide fill. Enough to tell two faces of a box apart,
     // not enough for a badly judged shape to announce itself.
-    this.sun = new DirectionalLight(0xfffaf2, 0.72)
+    this.sun = new DirectionalLight(0xfffaf2, 1.15)
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(2048, 2048)
     this.sun.shadow.camera.left = -VIEW_WIDTH * 1.4
@@ -69,7 +79,8 @@ export class Stage {
     this.scene.add(this.sun)
     this.scene.add(this.sun.target)
 
-    this.scene.add(new AmbientLight(0xdfe4e6, 0.78))
+    // The sky does the filling now, so this is only a floor under the shadows.
+    this.scene.add(new AmbientLight(0xdfe4e6, 0.12))
     this.resize()
     // A window resize is not the only thing that changes the canvas box.
     if (typeof ResizeObserver !== 'undefined') {
@@ -96,6 +107,29 @@ export class Stage {
     const canvas = this.renderer.domElement
     out.x = ((this.point.x + 1) / 2) * canvas.clientWidth
     out.y = ((1 - this.point.y) / 2) * canvas.clientHeight
+  }
+
+  /**
+   * The sky, used twice: as what you see behind everything and as the light
+   * that falls on it. The second is the part that matters. A flat grey box lit
+   * by one lamp and a fill looks like a flat grey box; lit by a whole sky it
+   * picks up the colour of the day.
+   */
+  setSky(url: string): void {
+    new RGBELoader().load(url, (texture) => {
+      texture.mapping = EquirectangularReflectionMapping
+      const pmrem = new PMREMGenerator(this.renderer)
+      const environment = pmrem.fromEquirectangular(texture).texture
+      // The old pair are released by hand: swapping skies otherwise leaves
+      // every previous one on the graphics card.
+      this.scene.environment?.dispose()
+      if (this.sky) this.sky.dispose()
+      this.sky = texture
+      this.scene.environment = environment
+      this.scene.background = texture
+      this.scene.backgroundBlurriness = 0.06
+      pmrem.dispose()
+    })
   }
 
   resize(): void {

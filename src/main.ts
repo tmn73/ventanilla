@@ -15,6 +15,13 @@ import { SkaterView } from './render/skaterView'
 import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
+/** Three skies from Poly Haven, public domain. See assets/README.md. */
+const SKIES: Record<string, string> = {
+  day: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr',
+  sunset: 'assets/industrial_sunset_puresky.hdr',
+  dusk: 'assets/evening_road_01_puresky.hdr',
+}
+
 const canvas = document.getElementById('view') as HTMLCanvasElement
 const trailCanvas = document.getElementById('trail') as HTMLCanvasElement
 const surface = document.getElementById('stage') as HTMLElement
@@ -60,6 +67,7 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
+  (sky) => stage.setSky(SKIES[sky] ?? SKIES.day!),
 )
 
 window.addEventListener('resize', () => {
