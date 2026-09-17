@@ -7,6 +7,7 @@ export function mountHelp(
   onStance: (stance: 1 | -1) => void,
   onCourse: (course: string) => void,
   onZoom: (zoom: number) => void,
+  onPitch: (pitch: number) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -129,6 +130,32 @@ export function mountHelp(
 
     zoom.addEventListener('pointerdown', (event) => event.stopPropagation())
     zoom.addEventListener('input', () => applyZoom(Number(zoom.value), true))
+  }
+
+  const pitch = document.getElementById('pitch') as HTMLInputElement | null
+  if (pitch) {
+    const applyPitch = (value: number, remember: boolean) => {
+      pitch.value = String(value)
+      onPitch(value)
+      if (!remember) return
+      try {
+        localStorage.setItem('ventanilla.pitch', String(value))
+      } catch {
+        // A private window refuses this. The choice still applies for now.
+      }
+    }
+
+    let saved: string | null = null
+    try {
+      saved = localStorage.getItem('ventanilla.pitch')
+    } catch {
+      saved = null
+    }
+    const start = Number(saved)
+    applyPitch(Number.isFinite(start) && saved !== null ? start : 0.3, false)
+
+    pitch.addEventListener('pointerdown', (event) => event.stopPropagation())
+    pitch.addEventListener('input', () => applyPitch(Number(pitch.value), true))
   }
 
   const setOpen = (open: boolean) => {

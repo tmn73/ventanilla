@@ -18,6 +18,15 @@ const HORIZON = 0.34
  * side-scroller.
  */
 const EYE = new Vector3(6, 9.5, 32)
+/**
+ * How high the eye sits, as an angle above the road. Low is the flattest side
+ * view; high looks down enough to see the board lying across a rail, which is
+ * the only way a noseslide and a tailslide tell themselves apart.
+ */
+const PITCH_LOW = 14
+const PITCH_HIGH = 52
+/** The eye keeps its distance as it rises, so the scale never changes with it. */
+const EYE_REACH = Math.hypot(EYE.y, EYE.z)
 const SUN = new Vector3(-16, 26, 20)
 const UP = new Vector3(0, 1, 0)
 
@@ -30,6 +39,7 @@ export class Stage {
   visibleWidth = VIEW_WIDTH
 
   private zoom = 1
+  private eyeBase = EYE.clone()
 
   private target = new Vector3()
   private eye = new Vector3()
@@ -66,6 +76,13 @@ export class Stage {
     }
   }
 
+  /** 0 is the flattest side view and 1 looks the furthest down on him. */
+  setPitch(value: number): void {
+    const t = Math.max(0, Math.min(1, value))
+    const angle = ((PITCH_LOW + (PITCH_HIGH - PITCH_LOW) * t) * Math.PI) / 180
+    this.eyeBase.set(EYE.x, Math.sin(angle) * EYE_REACH, Math.cos(angle) * EYE_REACH)
+  }
+
   /** 1 is the width the game is tuned around. Below it is closer, above wider. */
   setZoom(value: number): void {
     this.zoom = Math.max(0.6, Math.min(2, value))
@@ -95,7 +112,7 @@ export class Stage {
   render(x: number, y: number, z: number, heading: number): void {
     this.target.set(x, y, z)
 
-    this.eye.copy(EYE).applyAxisAngle(UP, -heading)
+    this.eye.copy(this.eyeBase).applyAxisAngle(UP, -heading)
     this.camera.position.copy(this.target).add(this.eye)
     this.camera.up.set(0, 1, 0)
     this.camera.lookAt(this.target)

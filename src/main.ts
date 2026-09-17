@@ -56,6 +56,7 @@ mountHelp(
     game.start()
   },
   (zoom) => stage.setZoom(zoom),
+  (pitch) => stage.setPitch(pitch),
 )
 
 window.addEventListener('resize', () => {

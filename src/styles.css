@@ -275,7 +275,8 @@ body {
   pointer-events: none;
 }
 
-#zoom {
+#zoom,
+#pitch {
   flex: 1;
   accent-color: var(--accent, #e2603c);
   min-width: 8rem;
