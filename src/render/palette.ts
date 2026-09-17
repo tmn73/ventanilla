@@ -43,6 +43,8 @@ export const SKATER = '#24282b'
  */
 export const SKATER_FACE = '#cfcac1'
 export const SKATER_LEAD = '#4c545c'
+/** The cap. A shade off the body, so it reads as worn and not as painted on. */
+export const SKATER_CAP = '#3c4349'
 export const BOARD = '#e2603c'
 export const GRIP = '#1a1d1f'
 export const WHEEL_COLOR = '#6f7378'

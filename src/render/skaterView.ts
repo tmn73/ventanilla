@@ -6,7 +6,15 @@ import {
   MeshLambertMaterial,
   Scene,
 } from 'three'
-import { BOARD, GRIP, SKATER, SKATER_FACE, SKATER_LEAD, WHEEL_COLOR } from './palette'
+import {
+  BOARD,
+  GRIP,
+  SKATER,
+  SKATER_CAP,
+  SKATER_FACE,
+  SKATER_LEAD,
+  WHEEL_COLOR,
+} from './palette'
 
 type Point = [number, number]
 
@@ -188,6 +196,7 @@ export class SkaterView {
   /** The road's heading, then the ramp lean, then the rider's own facing. */
   private leaner = new Group()
   private face!: Mesh
+  private peak!: Mesh
   private turner = new Group()
   private boardPivot = new Group()
   private board = new Group()
@@ -274,6 +283,22 @@ export class SkaterView {
     )
     this.face.position.y = 0.02
     head.add(this.face)
+
+    // A cap, worn backwards. The crown is a shade off the body and the peak
+    // sits behind, so the two ends of his head never read the same way.
+    const capSkin = new MeshLambertMaterial({
+      color: Number(SKATER_CAP.replace('#', '0x')),
+      flatShading: true,
+    })
+    const crown = new Mesh(new BoxGeometry(0.32, 0.13, 0.29), capSkin)
+    crown.position.y = 0.16
+    crown.castShadow = true
+    head.add(crown)
+
+    this.peak = new Mesh(new BoxGeometry(0.21, 0.035, 0.15), capSkin)
+    this.peak.position.y = 0.12
+    this.peak.castShadow = true
+    head.add(this.peak)
   }
 
   /**
@@ -407,6 +432,9 @@ export class SkaterView {
     this.bones.head!.position.set(pose.head[0], pose.head[1] + 0.12, 0)
     // Standing regular he has his back to the camera, goofy he faces it. The
     // yaw turns the rest, so this only has to follow the stance.
-    this.face.position.z = stance > 0 ? -0.16 : 0.16
+    const facing = stance > 0 ? -1 : 1
+    this.face.position.z = facing * 0.16
+    // Backwards, so the peak hangs off the back of his head.
+    this.peak.position.z = facing * -0.2
   }
 }
