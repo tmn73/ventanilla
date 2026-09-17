@@ -117,13 +117,97 @@ export class Road {
     }
 
     const roll = this.rng()
-    if (roll < 0.28) this.stairs(scale)
-    else if (roll < 0.44) this.railSpot(scale)
-    else if (roll < 0.6) this.ledgeSpot(scale)
-    else if (roll < 0.72) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
-    else if (roll < 0.84) this.plaza(scale)
-    else if (roll < 0.94) this.doubleSet(scale)
-    else this.hip(scale)
+    if (roll < 0.19) this.stairs(scale)
+    else if (roll < 0.3) this.railSpot(scale)
+    else if (roll < 0.41) this.ledgeSpot(scale)
+    else if (roll < 0.5) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
+    else if (roll < 0.59) this.plaza(scale)
+    else if (roll < 0.67) this.doubleSet(scale)
+    else if (roll < 0.74) this.hip(scale)
+    else if (roll < 0.83) this.funbox(scale)
+    else if (roll < 0.9) this.bumpToBar(scale)
+    else if (roll < 0.96) this.channel(scale)
+    else this.drop(scale)
+  }
+
+  /**
+   * Bank up, a flat top with a rail across it, bank down. The centrepiece of
+   * any park, and it offers three lines: over it, along the rail, or round the
+   * bottom if you stay low.
+   */
+  private funbox(scale: number): void {
+    const rise = 1.1 + scale * 1.1
+    const ramp = rise / 0.3
+    const top = this.groundY + rise
+    const deck = 9 + scale * 9
+
+    this.push(this.headX, this.headX + ramp, this.groundY, top, 'flat', true)
+    this.headX += ramp
+
+    this.push(this.headX, this.headX + deck, top, top, 'flat', true)
+    const railY = top + RAIL_HEIGHT
+    this.push(this.headX + 1, this.headX + deck - 1, railY, railY, 'rail', false)
+    this.headX += deck
+
+    this.push(this.headX, this.headX + ramp, top, this.groundY, 'flat', true)
+    this.headX += ramp
+  }
+
+  /** A kicker right before a flat rail, so you pop onto it instead of climbing. */
+  private bumpToBar(scale: number): void {
+    const rise = 0.45 + scale * 0.5
+    const ramp = rise / 0.32
+    const crest = this.groundY + rise
+
+    this.push(this.headX, this.headX + ramp, this.groundY, crest, 'flat', true)
+    this.headX += ramp
+    this.push(this.headX, this.headX + ramp * 0.7, crest, this.groundY, 'flat', true)
+    this.headX += ramp * 0.7
+
+    const length = 10 + scale * 12
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    const y = this.groundY + RAIL_HEIGHT
+    this.push(this.headX + 0.5, this.headX + length - 1, y, y, 'rail', false)
+    this.headX += length
+  }
+
+  /**
+   * A drainage channel. You clear it, or you drop in and ride the long ramp
+   * back out, which costs you the line but never the run.
+   */
+  private channel(scale: number): void {
+    const width = 3.4 + scale * 3
+    const depth = 1.2 + scale * 0.5
+    const floorY = this.groundY - depth
+
+    // A sheer near wall, so the edge reads as something to leave the ground at.
+    this.push(this.headX, this.headX + width, floorY, floorY, 'flat', true)
+    this.headX += width
+
+    // And a long ramp out, gentle enough for a board to hold.
+    const out = depth / 0.26
+    this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
+    this.headX += out
+  }
+
+  /** A raised platform ending in a sheer edge, with a landing well below. */
+  private drop(scale: number): void {
+    const height = 1.6 + scale * 2
+    const climb = height / 0.3
+    const top = this.settle(this.groundY + height)
+
+    this.push(this.headX, this.headX + climb, this.groundY, top, 'flat', true)
+    this.headX += climb
+
+    const deck = 10 + scale * 8
+    this.push(this.headX, this.headX + deck, top, top, 'flat', true)
+    const ledgeY = top + LEDGE_HEIGHT
+    this.push(this.headX + 1.5, this.headX + deck - 1.5, ledgeY, ledgeY, 'ledge', false)
+    this.headX += deck
+
+    const landing = 16 + scale * 8
+    this.push(this.headX, this.headX + landing, this.groundY, this.groundY, 'flat', true)
+    this.headX += landing
   }
 
   /**
@@ -156,7 +240,16 @@ export class Road {
     if (hasRail) {
       const kind: SurfaceKind = this.rng() < 0.6 ? 'rail' : 'hubba'
       const lift = kind === 'rail' ? RAIL_HEIGHT : LEDGE_HEIGHT
-      this.push(topX - 0.6, runX + 0.6, topY + lift, bottomY + lift, kind, false)
+
+      if (kind === 'rail' && count >= 7 && this.rng() < 0.45) {
+        // Kinked: it runs flat off the top, then breaks and plunges.
+        const kinkX = topX + count * TREAD * 0.3
+        const kinkY = topY - count * RISE * 0.1
+        this.push(topX - 1.2, kinkX, topY + lift, kinkY + lift, kind, false)
+        this.push(kinkX, runX + 0.6, kinkY + lift, bottomY + lift, kind, false)
+      } else {
+        this.push(topX - 0.6, runX + 0.6, topY + lift, bottomY + lift, kind, false)
+      }
     }
 
     this.groundY = bottomY
