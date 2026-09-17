@@ -43,7 +43,7 @@ export function slopeOf(segment: Segment): number {
 
 const RISE = 0.34
 const TREAD = 0.8
-const MAX_STEPS = 36
+const MAX_STEPS = 60
 /** Without a rail the whole set has to be cleared in one ollie. */
 const MAX_FREE_STEPS = 8
 
@@ -93,16 +93,16 @@ export class Road {
   }
 
   /**
-   * 0 is a small feature, 1 is a landmark, and one in twenty goes past 1 into
-   * something outsized. The tails matter more than the middle: a rail you can
-   * barely pop onto and a rail that runs half a block have to both be possible.
+   * 0 is a small feature and 1 is a landmark. One spot in fifty goes far past
+   * that into something absurd, and it is rare on purpose: a monster every
+   * fifty spots is an event, a monster every six is the weather.
    */
   private rollScale(): number {
     const roll = this.rng()
-    if (roll < 0.16) return 1 + this.rng() * 0.5
-    if (roll < 0.36) return this.rng() * 0.3
-    if (roll < 0.74) return 0.3 + this.rng() * 0.45
-    return 0.75 + this.rng() * 0.25
+    if (roll < 0.02) return 1.5 + this.rng() * 2
+    if (roll < 0.34) return this.rng() * 0.3
+    if (roll < 0.78) return 0.3 + this.rng() * 0.42
+    return 0.72 + this.rng() * 0.4
   }
 
   private runUp(length: number): void {
@@ -229,7 +229,9 @@ export class Road {
       this.bank(1, scale)
       return
     }
-    const wish = Math.round(3 + scale * (MAX_STEPS - 3) + range(this.rng, -3, 6))
+    // Quadratic, not linear: a linear count put a thirty step set on a middling
+    // spot, so the big ones stopped being big.
+    const wish = Math.round(3 + scale * 12 + scale * scale * 8 + range(this.rng, -2, 4))
     const wanted = Math.max(3, Math.min(wish, MAX_STEPS, headroom))
     const hasRail = wanted > MAX_FREE_STEPS || this.rng() < 0.5
     const count = hasRail ? wanted : Math.min(wanted, MAX_FREE_STEPS)
