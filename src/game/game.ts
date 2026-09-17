@@ -16,16 +16,21 @@ export class Game {
   readonly road: Road
   readonly skater = new Skater()
 
+  /** The seed the current run was built from. */
+  seedLabel = ''
+
   private rng = mulberry32(0)
   private startX = 0
 
-  constructor(private seedLabel: string) {
+  /** A null seed means a fresh road every run. A string pins the same one. */
+  constructor(private fixedSeed: string | null) {
     const draw = () => this.rng()
     this.car = new Car(draw)
     this.road = new Road(draw, () => this.car.speed)
   }
 
   start(): void {
+    this.seedLabel = this.fixedSeed ?? Math.random().toString(36).slice(2, 10)
     this.rng = mulberry32(seedFrom(this.seedLabel))
     this.car.reset()
     this.road.reset(this.car.x)
