@@ -57,6 +57,9 @@ mountHelp(
   },
   (zoom) => stage.setZoom(zoom),
   (pitch) => stage.setPitch(pitch),
+  (held) => {
+    game.rewinding = held
+  },
 )
 
 window.addEventListener('resize', () => {
@@ -78,6 +81,7 @@ let camHeading = 0
 
 const eye = { x: 0, z: 0 }
 const feet = { x: 0, z: 0 }
+const overhead = { x: 0, y: 0 }
 const mix = (from: number, to: number, alpha: number) => from + (to - from) * alpha
 
 startLoop(
@@ -157,6 +161,10 @@ startLoop(
     hud.setStance(skater.stanceWord)
     hud.update(skater)
     trail.update(input.strokes, now * 1000)
+    // Drawn after the trail so the arc sits over it, and after the scene so it
+    // is placed with the camera the frame was actually rendered with.
+    stage.project(feet.x, y + 2.3, feet.z, overhead)
+    trail.balance(overhead, skater.balance, skater.balancing)
     stage.render(eye.x, camY, eye.z, camHeading)
   },
   FIXED_DT,

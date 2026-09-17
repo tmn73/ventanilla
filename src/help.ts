@@ -8,6 +8,7 @@ export function mountHelp(
   onCourse: (course: string) => void,
   onZoom: (zoom: number) => void,
   onPitch: (pitch: number) => void,
+  onRewind: (held: boolean) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -156,6 +157,30 @@ export function mountHelp(
 
     pitch.addEventListener('pointerdown', (event) => event.stopPropagation())
     pitch.addEventListener('input', () => applyPitch(Number(pitch.value), true))
+  }
+
+  // Held, not tapped: winding back is something you watch and stop when you
+  // see the moment you wanted.
+  const rewind = document.getElementById('rewind')
+  if (rewind) {
+    const set = (held: boolean) => {
+      rewind.setAttribute('aria-pressed', String(held))
+      onRewind(held)
+    }
+    rewind.addEventListener('pointerdown', (event) => {
+      event.stopPropagation()
+      event.preventDefault()
+      set(true)
+    })
+    for (const end of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+      rewind.addEventListener(end, () => set(false))
+    }
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'KeyR' && !event.repeat) set(true)
+    })
+    window.addEventListener('keyup', (event) => {
+      if (event.code === 'KeyR') set(false)
+    })
   }
 
   const setOpen = (open: boolean) => {

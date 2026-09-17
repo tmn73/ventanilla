@@ -43,6 +43,7 @@ export class Stage {
 
   private target = new Vector3()
   private eye = new Vector3()
+  private point = new Vector3()
   private sun: DirectionalLight
 
   constructor(canvas: HTMLCanvasElement) {
@@ -87,6 +88,14 @@ export class Stage {
   setZoom(value: number): void {
     this.zoom = Math.max(0.6, Math.min(2, value))
     this.resize()
+  }
+
+  /** A world point in css pixels of the canvas, for drawing over the scene. */
+  project(x: number, y: number, z: number, out: { x: number; y: number }): void {
+    this.point.set(x, y, z).project(this.camera)
+    const canvas = this.renderer.domElement
+    out.x = ((this.point.x + 1) / 2) * canvas.clientWidth
+    out.y = ((1 - this.point.y) / 2) * canvas.clientHeight
   }
 
   resize(): void {

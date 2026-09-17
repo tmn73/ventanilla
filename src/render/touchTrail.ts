@@ -1,5 +1,5 @@
 import type { Stroke } from '../input'
-import { TRAIL_COLOR } from './palette'
+import { SKATER_CAP, TRAIL_COLOR } from './palette'
 
 /** How long a finished path stays on screen, in ms. */
 const LINGER = 1100
@@ -24,6 +24,42 @@ export class TouchTrail {
     this.canvas.width = Math.round(this.canvas.clientWidth * ratio)
     this.canvas.height = Math.round(this.canvas.clientHeight * ratio)
     this.ctx?.setTransform(ratio, 0, 0, ratio, 0, 0)
+  }
+
+  /**
+   * The balance meter, drawn as an arc over his head rather than parked in a
+   * corner. What you are correcting and what you are looking at are the same
+   * thing, so they belong in the same place.
+   */
+  balance(at: { x: number; y: number }, value: number, active: boolean): void {
+    const ctx = this.ctx
+    if (!ctx || !active) return
+
+    const radius = 26
+    const spread = Math.PI * 0.62
+    const middle = -Math.PI / 2
+    const edge = Math.min(1, Math.abs(value))
+
+    ctx.save()
+    ctx.lineCap = 'round'
+
+    ctx.strokeStyle = SKATER_CAP
+    ctx.globalAlpha = 0.5
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(at.x, at.y, radius, middle - spread, middle + spread)
+    ctx.stroke()
+
+    // The needle warms as it runs out of board, so the trouble is visible
+    // before it is over rather than only once it is.
+    ctx.strokeStyle = TRAIL_COLOR.took
+    ctx.globalAlpha = 0.45 + edge * 0.55
+    ctx.lineWidth = 3 + edge * 2
+    const angle = middle + spread * Math.max(-1, Math.min(1, value))
+    ctx.beginPath()
+    ctx.arc(at.x, at.y, radius, angle - 0.06, angle + 0.06)
+    ctx.stroke()
+    ctx.restore()
   }
 
   update(strokes: Stroke[], now: number): void {

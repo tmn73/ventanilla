@@ -179,6 +179,19 @@ export class Skater {
   /** Set on landing, so the frame after it adopts the held grind in silence. */
   private justLanded = false
 
+  /**
+   * Everything that makes him what he is at this instant. It is taken as a
+   * whole rather than field by field so that adding a field to him and
+   * forgetting it here is impossible.
+   */
+  snapshot(): Record<string, unknown> {
+    return { ...this } as Record<string, unknown>
+  }
+
+  restore(state: Record<string, unknown>): void {
+    Object.assign(this, state)
+  }
+
   reset(x: number): void {
     this.x = x
     this.y = C.LANE_Y[0]!
@@ -279,12 +292,12 @@ export class Skater {
     // Sideways on a rail, the end under a foot decides which slide it is, the
     // same way it decides which end the pop comes off. Press the nose for a
     // noseslide, the tail for a tailslide, neither for a boardslide.
+    // Weighting an end on flat ground is a manual, and it used to be thrown
+    // away here: a flick latched a grind, and the latch had to be kept off the
+    // pavement. Nothing is latched now, so a manual is simply held.
     const held = input.pressedEnd
-    const wanted = rolling
-      ? 0
-      : this.sideways && held !== 0
-        ? ((held === 1) !== this.reversed ? 1 : -1)
-        : input.grind
+    const wanted =
+      this.sideways && held !== 0 ? ((held === 1) !== this.reversed ? 1 : -1) : input.grind
     if (wanted !== this.grind) {
       this.grind = wanted
       // He has just landed and named the trick. A grind key he was already
@@ -351,8 +364,9 @@ export class Skater {
    * keeps it there. Run out of board and he simply rolls off it.
    */
   private keepBalance(dt: number, seg: Segment, input: Input): void {
-    const rolling = seg.kind === 'flat' || seg.kind === 'step'
-    const wants = !rolling || this.grind !== 0
+    // Anything ridden on one end has to be held there: a manual on the flat as
+    // much as a grind on a rail.
+    const wants = this.grind !== 0 || (seg.kind !== 'flat' && seg.kind !== 'step')
 
     if (!wants) {
       this.balancing = false
