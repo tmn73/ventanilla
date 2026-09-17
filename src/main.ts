@@ -169,7 +169,8 @@ startLoop(
     hud.update(skater)
     // Three metres to the far side, so both are in frame and neither is in
     // the way of the other.
-    model.update(feet.x, y - 0.95, feet.z - 3, path.headingAt(x), frameDt)
+    // His feet are at the model's origin, so it goes on the ground he is on.
+    model.update(feet.x, y - 0.08, feet.z - 3, path.headingAt(x), frameDt)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it
     // is placed with the camera the frame was actually rendered with.

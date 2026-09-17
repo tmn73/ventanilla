@@ -11,22 +11,15 @@ import { SKATER } from './palette'
  * idle, a jump, a punch and a death, and nothing that belongs on a board.
  */
 const STANCE: Array<[string, [number, number, number]]> = [
-  // Knees bent, feet turned across the board, weight low.
-  ['LeftUpLeg', [0.1, 0.5, 0.45]],
-  ['LeftLeg', [0, 0, -0.75]],
-  ['LeftFoot', [0, 0.5, 0.3]],
-  ['RightUpLeg', [-0.1, -0.5, -0.45]],
-  ['RightLeg', [0, 0, 0.75]],
-  ['RightFoot', [0, -0.5, -0.3]],
-  // Shoulders squared to the board and arms out for balance.
-  ['Spine', [0.12, 0, 0]],
-  ['Spine1', [0.1, 0, 0]],
-  ['LeftShoulder', [0, 0, 0.3]],
-  ['LeftArm', [0.5, -0.4, 1.1]],
-  ['LeftForeArm', [0, -0.5, 0.3]],
-  ['RightShoulder', [0, 0, -0.3]],
-  ['RightArm', [-0.5, 0.4, -1.1]],
-  ['RightForeArm', [0, 0.5, -0.3]],
+  // Feet apart along the board, knees bent, arms a little out. Kept shallow:
+  // large angles on a real skeleton fold it into itself.
+  ['LeftUpLeg', [0, 0, 0.32]],
+  ['LeftLeg', [0, 0, -0.5]],
+  ['RightUpLeg', [0, 0, -0.32]],
+  ['RightLeg', [0, 0, 0.5]],
+  ['Spine', [0, 0, 0.06]],
+  ['LeftArm', [0, 0, 0.5]],
+  ['RightArm', [0, 0, -0.5]],
 ]
 
 export class ModelView {
@@ -54,9 +47,11 @@ export class ModelView {
         if (bone) bone.rotation.set(angles[0], angles[1], angles[2])
       }
 
-      // Scaled to a person's height, the same as the rig beside it.
-      const scale = 1.75 / 1.6
-      model.scale.setScalar(scale)
+      // Measured, not guessed. The mesh is 0.08 units tall and its armature
+      // carries a scale of 69, so it renders at about 5.5 and has to come down
+      // to a person's height. Guessing at it put him three times over.
+      const MODEL_HEIGHT = 5.53
+      model.scale.setScalar(1.75 / MODEL_HEIGHT)
       this.root.add(model)
       this.ready = true
     })
@@ -68,7 +63,8 @@ export class ModelView {
 
   update(x: number, y: number, z: number, heading: number, dt: number): void {
     this.root.position.set(x, y, z)
-    this.root.rotation.y = -heading
+    // He stands across the board, not along it.
+    this.root.rotation.y = -heading + Math.PI / 2
     this.mixer?.update(dt)
   }
 }
