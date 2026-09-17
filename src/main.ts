@@ -5,7 +5,6 @@ import { Game } from './game/game'
 import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
-import { Backdrop } from './render/backdrop'
 import { Hud } from './render/hud'
 import { Lamps } from './render/lamps'
 import { SPARK_COLOR } from './render/palette'
@@ -17,11 +16,16 @@ import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
 /** Three skies from Poly Haven, public domain. See assets/README.md. */
-const SKIES: Record<string, { file: string; night: number }> = {
-  day: { file: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr', night: 0 },
-  sunset: { file: 'assets/industrial_sunset_puresky.hdr', night: 0.35 },
-  dusk: { file: 'assets/evening_road_01_puresky.hdr', night: 0.6 },
-  night: { file: 'assets/moonless_golf.hdr', night: 1 },
+/**
+ * Each sky carries its own colour rather than one mixed toward black. Mixing
+ * happens in linear space, where a colour most of the way to black still comes
+ * out halfway grey, and the sky stayed bright over a dark street.
+ */
+const SKIES: Record<string, { file: string; colour: string; night: number }> = {
+  day: { file: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr', colour: '#cdd6db', night: 0 },
+  sunset: { file: 'assets/industrial_sunset_puresky.hdr', colour: '#4a3c39', night: 0.5 },
+  dusk: { file: 'assets/evening_road_01_puresky.hdr', colour: '#161d2a', night: 0.85 },
+  night: { file: 'assets/moonless_golf.hdr', colour: '#04060a', night: 1 },
 }
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
@@ -38,12 +42,11 @@ game.start()
 const path = new Path(game.seedLabel)
 const stage = new Stage(canvas)
 
-// The backdrop and the sparks work on one axis, so they hang off a frame that
+// The sparks work on one axis, so they hang off a frame that
 // carries the bend for them. Only the road and the skater are placed by hand.
 const frame = new Group()
 stage.scene.add(frame)
 
-const backdrop = new Backdrop(frame)
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const lamps = new Lamps(stage.scene, path)
@@ -73,9 +76,9 @@ mountHelp(
   (sky) => {
     const choice = SKIES[sky] ?? SKIES.day!
     stage.setSky(choice.file)
+    stage.setSkyColour(choice.colour)
     stage.setNight(choice.night)
     lamps.setNight(choice.night)
-    backdrop.setNight(choice.night)
   },
 )
 
@@ -154,7 +157,6 @@ startLoop(
     path.place(x, 0, feet)
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
-    backdrop.update(camLeft, stage.viewHeight)
     roadView.update(road.segments, camLeft, stage.visibleWidth)
     lamps.update(camLeft, road)
     skaterView.update({

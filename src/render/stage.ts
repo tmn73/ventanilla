@@ -19,7 +19,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { Vector2 } from 'three'
 import { Color } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
-import { SKY_NIGHT, SKY_TOP } from './palette'
+import { SKY_TOP } from './palette'
 
 /** Where the pavement sits in the window, measured from the bottom. */
 const HORIZON = 0.34
@@ -59,8 +59,7 @@ export class Stage {
   private sky: Texture | null = null
   private environmentMap: Texture | null = null
   private night = 0
-  private void = new Color()
-  private dark = new Color(SKY_NIGHT)
+  private skyTint = new Color()
   private composer: EffectComposer
   private bloom: UnrealBloomPass
   private sun: DirectionalLight
@@ -68,9 +67,9 @@ export class Stage {
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
-    // Whatever nothing is drawn on. It was a near white, which is why the
-    // background was white: the sky plane only covers the top of the frame and
-    // this shows through everywhere else.
+    // The sky. There is no plane for it any more: a plane in front of a clear
+    // colour is two colours with a seam between them, and that seam was the
+    // pale band across the middle of the screen.
     this.renderer.setClearColor(SKY_TOP, 1)
     // A real sky has more range than a screen does, so it has to be mapped
     // down rather than clipped, or every cloud comes out as flat white.
@@ -221,9 +220,14 @@ export class Stage {
    * How dark the day is. The sun goes out, the fill goes with it, and the
    * glow comes up, because a bulb only looks bright against something dark.
    */
+  /** The colour behind everything, given rather than mixed. */
+  setSkyColour(hex: string): void {
+    this.renderer.setClearColor(this.skyTint.set(hex), 1)
+  }
+
   setNight(amount: number): void {
     this.night = amount
-    this.renderer.setClearColor(this.void.set(SKY_TOP).lerp(this.dark, amount), 1)
+
     this.sun.intensity = 1.15 * (1 - amount) ** 2
     this.applyEnvironment()
     this.fill.intensity = 0.12 * (1 - amount)
