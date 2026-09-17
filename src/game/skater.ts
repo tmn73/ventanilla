@@ -79,10 +79,16 @@ export class Skater {
     this.x = carX
 
     if (this.support && !road.stillCarries(this.support, this.x)) {
-      // Rolling off the end of a ramp carries its rise into the air.
-      this.vy = slopeOf(this.support) * carSpeed
-      this.support = null
-      this.cutApplied = true
+      // Hand over to whatever continues at this height before calling it a fall.
+      const next = road.continuationAt(this.x, this.y)
+      if (next) {
+        this.support = next
+      } else {
+        // Rolling off the end of a ramp carries its rise into the air.
+        this.vy = slopeOf(this.support) * carSpeed
+        this.support = null
+        this.cutApplied = true
+      }
     }
 
     if (this.support) this.ride(dt, this.support, input, carSpeed)

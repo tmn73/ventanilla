@@ -237,7 +237,8 @@ export class Road {
     for (const segment of this.segments) {
       if (x < segment.x0 || x > segment.x1) continue
       const top = surfaceYAt(segment, x)
-      if (top > fromY + 1e-4 || top < toY - 1e-4) continue
+      // A little slack upward, so ground that rises into the fall still catches.
+      if (top > fromY + 0.22 || top < toY - 1e-4) continue
       if (top > bestY) {
         best = segment
         bestY = top
@@ -248,6 +249,27 @@ export class Road {
 
   stillCarries(segment: Segment, x: number): boolean {
     return x >= segment.x0 && x <= segment.x1
+  }
+
+  /**
+   * The surface that takes over when the one underfoot runs out. Without this
+   * a module that starts a hair higher than the last one ended is never caught
+   * by the falling sweep, and the skater drops past a floor that is right
+   * there. Up is tighter than down: you roll off a kerb, you do not roll up one.
+   */
+  continuationAt(x: number, y: number, up = 0.32, down = 0.5): Segment | null {
+    let best: Segment | null = null
+    let bestY = -Infinity
+    for (const segment of this.segments) {
+      if (x < segment.x0 || x > segment.x1) continue
+      const top = surfaceYAt(segment, x)
+      if (top > y + up || top < y - down) continue
+      if (top > bestY) {
+        best = segment
+        bestY = top
+      }
+    }
+    return best
   }
 
   /** Below this you are in the hole and the run is over. */
