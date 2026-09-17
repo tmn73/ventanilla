@@ -9,6 +9,7 @@ export function mountHelp(
   onZoom: (zoom: number) => void,
   onPitch: (pitch: number) => void,
   onRewind: (held: boolean) => void,
+  onModel: (on: boolean) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -180,6 +181,19 @@ export function mountHelp(
     })
     window.addEventListener('keyup', (event) => {
       if (event.code === 'KeyR') set(false)
+    })
+  }
+
+  // A bought-in rider stood beside the built one, to be judged at game size.
+  const model = document.getElementById('model-toggle')
+  if (model) {
+    let on = false
+    model.addEventListener('pointerdown', (event) => event.stopPropagation())
+    model.addEventListener('click', (event) => {
+      event.stopPropagation()
+      on = !on
+      model.setAttribute('aria-pressed', String(on))
+      onModel(on)
     })
   }
 
