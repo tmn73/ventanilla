@@ -120,7 +120,7 @@ export class RoadView {
       // rather than a slab on legs. Nothing sits under it and nothing edges it.
       const depth =
         segment.kind === 'flat'
-          ? Math.max(1.2, surfaceYAt(segment, segment.x0) - WORLD_FLOOR)
+          ? Math.min(9, Math.max(1.2, surfaceYAt(segment, segment.x0) - WORLD_FLOOR))
           : THICKNESS[segment.kind]
 
       this.slab(segment, depth, BREADTH[segment.kind], SURFACE_COLOR[segment.kind])

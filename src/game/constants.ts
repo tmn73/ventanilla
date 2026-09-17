@@ -7,7 +7,7 @@ export const LANE_Y = [2.2]
  * slide down a stair set with the player, which is backwards: he descends
  * toward the water, the water does not follow him.
  */
-export const WORLD_FLOOR = -2.9
+export const WORLD_FLOOR = -15.5
 export const DEATH_Y = 0
 
 /** How much road the window shows at once, in metres. */
@@ -23,7 +23,7 @@ export const JUMP_CUT = 0.52
 /** Speed, in metres per second. He rolls forever, but only pushing keeps pace. */
 export const START_SPEED = 11
 export const MIN_SPEED = 6.5
-export const MAX_SPEED = 22
+export const MAX_SPEED = 32
 /** One push is an impulse, not a throttle, so it reads as a kick. */
 export const PUSH_IMPULSE = 4.1
 export const PUSH_COOLDOWN = 0.46
@@ -32,7 +32,7 @@ export const BRAKE_ACCEL = 11
 export const DRAG_BASE = 1.05
 export const DRAG_SPEED = 0.022
 /** How hard a slope pulls him along it. */
-export const SLOPE_PULL = 18
+export const SLOPE_PULL = 22
 
 /** Sparks per second on a rail. Concrete throws none, which is the tell. */
 export const SPARK_RATE = 120

@@ -282,10 +282,14 @@ export class SkaterView {
 
     const pose = {} as Joints
     for (const key of JOINT_KEYS) pose[key] = mix(air[key], ride[key], grounded)
-    // Goofy is the mirror of regular: the other foot leads, on the same board.
+
+    // Stance only swaps which shoulder leads. Mirroring the whole pose would
+    // put the leading foot on the ground, which is the mongo it was meant to
+    // stop: whichever way you stand, you push off the back foot.
     if (stance < 0) {
-      const flipped = mirror(pose)
-      for (const key of JOINT_KEYS) pose[key] = flipped[key]
+      const back = pose.handBack
+      pose.handBack = [back[0], pose.handFront[1]]
+      pose.handFront = [pose.handFront[0], back[1]]
     }
 
     const squat = pump * 0.06 * grounded - absorb * 0.2 * grounded

@@ -1,16 +1,23 @@
-/** Frames per second, averaged over a short window so the number holds still. */
+import type { Skater } from '../game/skater'
+
+/**
+ * Speed, which way round you are riding, and the name of the last thing you
+ * landed. Nothing else, because nothing else has to be told.
+ */
 export class Hud {
-  private readout: HTMLElement
+  private speed: HTMLElement
+  private trick: HTMLElement
   private switchMark: HTMLElement
   private wasSwitched = false
-  private frames = 0
-  private since = performance.now()
+  private shown = -1
 
   constructor() {
-    const found = document.getElementById('fps')
+    const speed = document.getElementById('speed')
+    const trick = document.getElementById('trick')
     const mark = document.getElementById('switch')
-    if (!found || !mark) throw new Error('missing readout')
-    this.readout = found
+    if (!speed || !trick || !mark) throw new Error('missing readout')
+    this.speed = speed
+    this.trick = trick
     this.switchMark = mark
   }
 
@@ -21,13 +28,21 @@ export class Hud {
     this.switchMark.hidden = !switched
   }
 
-  update(): void {
-    this.frames++
-    const now = performance.now()
-    const elapsed = now - this.since
-    if (elapsed < 400) return
-    this.readout.textContent = Math.round((this.frames * 1000) / elapsed).toString()
-    this.frames = 0
-    this.since = now
+  update(skater: Skater): void {
+    // Rounded before it is compared, so the DOM is touched a few times a second
+    // rather than every frame.
+    const kmh = Math.round(skater.vx * 3.6)
+    if (kmh !== this.shown) {
+      this.shown = kmh
+      this.speed.textContent = String(kmh)
+    }
+
+    const age = skater.trickAge
+    if (age < 1.5 && skater.trick) {
+      this.trick.textContent = skater.trick
+      this.trick.style.opacity = Math.min(1, (1.5 - age) / 0.5).toFixed(2)
+    } else {
+      this.trick.style.opacity = '0'
+    }
   }
 }

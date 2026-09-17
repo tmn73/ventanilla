@@ -43,14 +43,14 @@ export function slopeOf(segment: Segment): number {
 
 const RISE = 0.34
 const TREAD = 0.8
-const MAX_STEPS = 20
+const MAX_STEPS = 34
 /** Without a rail the whole set has to be cleared in one ollie. */
 const MAX_FREE_STEPS = 8
 
 const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
 /** The pavement never wanders further than this from where it started. */
-const DRIFT_LIMIT = 4.5
+const DRIFT_LIMIT = 16
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -86,7 +86,7 @@ export class Road {
    */
   private emit(): void {
     const scale = this.rollScale()
-    this.runUp(6 + scale * 32)
+    this.runUp(5 + scale * 26)
     this.spot(scale)
   }
 
@@ -97,10 +97,10 @@ export class Road {
    */
   private rollScale(): number {
     const roll = this.rng()
-    if (roll < 0.05) return 1 + this.rng() * 0.45
-    if (roll < 0.34) return this.rng() * 0.3
-    if (roll < 0.83) return 0.3 + this.rng() * 0.42
-    return 0.72 + this.rng() * 0.28
+    if (roll < 0.14) return 1 + this.rng() * 1.1
+    if (roll < 0.36) return this.rng() * 0.3
+    if (roll < 0.74) return 0.3 + this.rng() * 0.45
+    return 0.75 + this.rng() * 0.25
   }
 
   private runUp(length: number): void {
@@ -141,10 +141,10 @@ export class Road {
    * bottom if you stay low.
    */
   private funbox(scale: number): void {
-    const rise = 0.7 + scale * 2.1
+    const rise = 0.7 + scale * 4.2
     const top = this.settle(this.groundY + rise)
     const ramp = Math.max(2, (top - this.groundY) / range(this.rng, 0.22, 0.34))
-    const deck = 5 + scale * 22
+    const deck = 5 + scale * 34
 
     this.push(this.headX, this.headX + ramp, this.groundY, top, 'flat', true)
     this.headX += ramp
@@ -160,7 +160,7 @@ export class Road {
 
   /** A kicker right before a flat rail, so you pop onto it instead of climbing. */
   private bumpToBar(scale: number): void {
-    const rise = 0.45 + scale * 0.5
+    const rise = 0.45 + scale * 1.3
     const crest = this.settle(this.groundY + rise)
     const ramp = Math.max(1.2, (crest - this.groundY) / 0.32)
 
@@ -169,7 +169,7 @@ export class Road {
     this.push(this.headX, this.headX + ramp * 0.7, crest, this.groundY, 'flat', true)
     this.headX += ramp * 0.7
 
-    const length = 5 + scale * 26
+    const length = 5 + scale * 38
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + RAIL_HEIGHT
     this.push(this.headX + 0.5, this.headX + length - 1, y, y, 'rail', false)
@@ -181,8 +181,8 @@ export class Road {
    * back out, which costs you the line but never the run.
    */
   private channel(scale: number): void {
-    const width = 2.2 + scale * 5
-    const floorY = this.settle(this.groundY - (0.8 + scale * 1.6))
+    const width = 2.2 + scale * 7
+    const floorY = this.settle(this.groundY - (0.8 + scale * 3.6))
     const depth = this.groundY - floorY
 
     // A sheer near wall, so the edge reads as something to leave the ground at.
@@ -197,20 +197,20 @@ export class Road {
 
   /** A raised platform ending in a sheer edge, with a landing well below. */
   private drop(scale: number): void {
-    const height = 0.9 + scale * 3.4
+    const height = 0.9 + scale * 7.5
     const climb = height / range(this.rng, 0.24, 0.34)
     const top = this.settle(this.groundY + height)
 
     this.push(this.headX, this.headX + climb, this.groundY, top, 'flat', true)
     this.headX += climb
 
-    const deck = 6 + scale * 18
+    const deck = 6 + scale * 26
     this.push(this.headX, this.headX + deck, top, top, 'flat', true)
     const ledgeY = top + LEDGE_HEIGHT
     this.push(this.headX + 1.5, this.headX + deck - 1.5, ledgeY, ledgeY, 'ledge', false)
     this.headX += deck
 
-    const landing = 16 + scale * 8
+    const landing = 18 + scale * 16
     this.push(this.headX, this.headX + landing, this.groundY, this.groundY, 'flat', true)
     this.headX += landing
   }
@@ -227,7 +227,7 @@ export class Road {
       this.bank(1, scale)
       return
     }
-    const wish = Math.round(3 + scale * (MAX_STEPS - 3) + range(this.rng, -3, 4))
+    const wish = Math.round(3 + scale * (MAX_STEPS - 3) + range(this.rng, -3, 6))
     const wanted = Math.max(3, Math.min(wish, MAX_STEPS, headroom))
     const hasRail = wanted > MAX_FREE_STEPS || this.rng() < 0.5
     const count = hasRail ? wanted : Math.min(wanted, MAX_FREE_STEPS)
@@ -287,7 +287,7 @@ export class Road {
 
   /** An open square with a block and a rail side by side. Pick your line. */
   private plaza(scale: number): void {
-    const length = range(this.rng, 12, 20 + scale * 36)
+    const length = range(this.rng, 12, 22 + scale * 60)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const ledgeY = this.groundY + LEDGE_HEIGHT
@@ -305,7 +305,7 @@ export class Road {
    * belongs to a rail that has a stair set descending under it.
    */
   private railSpot(scale: number): void {
-    const length = 3.5 + scale * range(this.rng, 12, 34)
+    const length = 3 + scale * range(this.rng, 16, 46)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const y = this.groundY + RAIL_HEIGHT
@@ -316,7 +316,7 @@ export class Road {
   /** A block you roll along. Concrete, so it gives a manual and no sparks. */
   private ledgeSpot(scale: number): void {
     // Small is a block to pop onto. Big is a manual pad you can ride forever.
-    const length = 3.5 + scale * range(this.rng, 14, 40)
+    const length = 3 + scale * range(this.rng, 18, 52)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + (scale > 0.6 ? LEDGE_HEIGHT * 0.55 : LEDGE_HEIGHT)
     this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
@@ -329,8 +329,8 @@ export class Road {
     // A bank is either a long gentle drift or a short sharp pitch, and the
     // roll decides which rather than averaging the two.
     const steep = this.rng() < 0.4
-    const length = steep ? 5 + scale * 9 : 10 + scale * 34
-    const swing = steep ? 1.4 + scale * 3.2 : 0.8 + scale * 5.4
+    const length = steep ? 4 + scale * 11 : 10 + scale * 52
+    const swing = steep ? 1.6 + scale * 5.5 : 0.9 + scale * 9.5
     const rise =
       force > 0
         ? range(this.rng, swing * 0.6, swing)

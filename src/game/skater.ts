@@ -3,14 +3,56 @@ import type { Input } from '../input'
 import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
-const GRIND_NAME = ['FEEBLE', '5-0', '50-50', 'NOSEGRIND', 'SMITH']
-const MANUAL_NAME = ['MANUAL', 'MANUAL', '', 'NOSE MANUAL', 'NOSE MANUAL']
+const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
+const MANUAL_NAME = ['manual', 'manual', '', 'nose manual', 'nose manual']
+
+/**
+ * Skate names it properly. Which way a spin goes is frontside or backside
+ * depending on the stance, so goofy reverses both, and a trick started while
+ * riding switch carries that word in front of everything else.
+ */
+function nameTrick(
+  halves: number,
+  flips: number,
+  flipSign: number,
+  stance: number,
+  wasSwitch: boolean,
+  surface: string,
+  bigAir: boolean,
+): string {
+  const turn = Math.abs(halves) * 180
+  const side = halves > 0 === stance > 0 ? 'frontside' : 'backside'
+  const flipName = flipSign > 0 ? 'kickflip' : 'heelflip'
+  const parts: string[] = []
+  if (wasSwitch) parts.push('switch')
+
+  if (turn > 0 && flips > 0) {
+    // A 180 with a kickflip has its own name and drops both numbers.
+    if (turn === 180 && flipSign > 0) parts.push(side, 'flip')
+    else if (turn === 180) parts.push(side, 'heelflip')
+    else parts.push(side, String(turn), flipName)
+  } else if (turn > 0) {
+    parts.push(side, String(turn))
+  } else if (flips > 1) {
+    parts.push('double', flipName)
+  } else if (flips === 1) {
+    parts.push(flipName)
+  } else if (bigAir) {
+    parts.push('big air')
+  } else if (surface) {
+    parts.push(surface)
+  } else {
+    parts.push('ollie')
+  }
+
+  return parts.join(' ')
+}
 
 const LABEL: Record<string, string> = {
-  rail: 'RAIL',
-  hubba: 'HUBBA',
-  ledge: 'LEDGE',
-  step: 'STAIRS',
+  rail: 'rail',
+  hubba: 'hubba',
+  ledge: 'ledge',
+  step: 'stairs',
   flat: '',
 }
 
@@ -215,6 +257,7 @@ export class Skater {
     // The facing itself is kept, so a 180 leaves him riding switch.
     const spun = this.yaw - this.takeoffYaw
     const halves = Math.round(spun / Math.PI)
+    const wasSwitch = Math.abs(Math.round(this.takeoffYaw / Math.PI)) % 2 === 1
     const bailed = Math.abs(spun - halves * Math.PI) > C.LANDING_TOLERANCE
     this.yaw = this.takeoffYaw + halves * Math.PI
     this.takeoffYaw = this.yaw
@@ -235,16 +278,17 @@ export class Skater {
     this.flipping = false
     this.flipsThisJump = 0
 
-    const flipName = this.flipSign > 0 ? 'KICKFLIP' : 'HEELFLIP'
-    const turn = Math.abs(halves) * 180
-    const spin = turn > 0 ? `${turn}` : ''
-
-    if (bailed) this.trick = 'BAIL'
-    else if (flips > 0 && turn > 0) this.trick = `${spin} ${flipName}`
-    else if (flips > 1) this.trick = `${flips}x ${flipName}`
-    else if (flips === 1) this.trick = flipName
-    else if (turn > 0) this.trick = spin
-    else this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
+    this.trick = bailed
+      ? 'bail'
+      : nameTrick(
+          halves,
+          flips,
+          this.flipSign,
+          this.stance,
+          wasSwitch,
+          LABEL[seg.kind] ?? '',
+          this.airTime > 0.82,
+        )
     this.trickAge = 0
     this.airTime = 0
   }

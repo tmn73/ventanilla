@@ -45,29 +45,32 @@ body {
   outline: none;
 }
 
-/* The only text in the game. */
+/* The only text in the game: what you are riding, and what you just did. */
 #hud {
   position: absolute;
   top: max(18px, env(safe-area-inset-top, 0px));
   left: 24px;
   pointer-events: none;
   font-weight: 700;
-  font-size: clamp(30px, 4.4vw, 54px);
-  line-height: 0.86;
+  line-height: 1;
+}
+
+.speed {
+  font-size: clamp(30px, 4.2vw, 52px);
+  line-height: 0.88;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 10px rgba(255, 255, 255, 0.55);
 }
 
 .unit {
-  font-size: 0.4em;
-  margin-left: 0.14em;
+  font-size: 0.32em;
+  margin-left: 0.2em;
   color: var(--muted);
 }
 
-/* The one other thing the player has to know: which way round they are. */
 #switch {
-  margin-top: 2px;
-  font-size: clamp(13px, 1.5vw, 18px);
+  margin-top: 3px;
+  font-size: clamp(13px, 1.5vw, 19px);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--accent);
@@ -75,6 +78,16 @@ body {
 
 #switch[hidden] {
   display: none;
+}
+
+#trick {
+  margin-top: 4px;
+  font-size: clamp(26px, 3.6vw, 46px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 90ms linear;
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.6);
 }
 
 .stance {

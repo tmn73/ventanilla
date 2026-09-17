@@ -134,7 +134,7 @@ startLoop(
       skater.stance,
     )
     hud.setSwitched(skater.switched)
-    hud.update()
+    hud.update(skater)
     stage.render(eye.x, camY, eye.z, camHeading)
   },
   FIXED_DT,
