@@ -157,6 +157,32 @@ function span(mesh: Mesh, from: Point, to: Point, width: number): void {
   mesh.rotation.z = Math.atan2(dy, dx)
 }
 
+/**
+ * Everything the rig needs for one frame. It is an object rather than a list
+ * of arguments because every one of these is a number, and a value slipped
+ * into the wrong place would look like a pose and not like a mistake.
+ */
+export interface Rider {
+  x: number
+  y: number
+  z: number
+  heading: number
+  lean: number
+  yaw: number
+  grounded: number
+  pump: number
+  grind: number
+  flip: number
+  rise: number
+  absorb: number
+  push: number
+  switched: boolean
+  stance: number
+  shove: number
+  /** True when he popped off the nose, which tips the board the other way. */
+  nose: boolean
+}
+
 export class SkaterView {
   private root = new Group()
   /** The road's heading, then the ramp lean, then the rider's own facing. */
@@ -250,24 +276,26 @@ export class SkaterView {
    * @param switched true when the rig is turned round, so the push mirrors
    * @param stance 1 for regular, -1 for goofy, which swaps the leading foot
    */
-  update(
-    x: number,
-    y: number,
-    z: number,
-    heading: number,
-    lean: number,
-    yaw: number,
-    grounded: number,
-    pump: number,
-    grind: number,
-    flip: number,
-    rise: number,
-    absorb: number,
-    push: number,
-    switched: boolean,
-    stance: number,
-    shove: number,
-  ): void {
+  update(rider: Rider): void {
+    const {
+      x,
+      y,
+      z,
+      heading,
+      lean,
+      yaw,
+      grounded,
+      pump,
+      grind,
+      flip,
+      rise,
+      absorb,
+      push,
+      switched,
+      stance,
+      shove,
+      nose,
+    } = rider
     // Airborne, the pose runs pop to level to reach. On the ground it settles
     // into the ride, then compresses under whatever the landing cost.
     const air = {} as Joints
@@ -333,8 +361,10 @@ export class SkaterView {
         hang = grind === -2 ? -HANG : HANG
       }
     } else {
-      // The tail snaps down to pop, and the board levels out at the top.
-      pitch = (rise > 0 ? rise * 0.52 : rise * 0.16) * (1 - grounded)
+      // The end he popped off snaps down and the board levels out at the top.
+      // A nollie does it with the nose, which is the whole look of the trick.
+      const end = nose ? -1 : 1
+      pitch = (rise > 0 ? rise * 0.52 : rise * 0.16) * (1 - grounded) * end
     }
 
     // The pivot sits on the truck that is touching, so the board turns on it.

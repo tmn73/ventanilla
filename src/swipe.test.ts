@@ -1,5 +1,12 @@
 import { expect, test } from 'bun:test'
-import { BACKSIDE_SHOVE, FRONTSIDE_SHOVE, HEELFLIP, KICKFLIP, swipeAction } from './input'
+import {
+  BACKSIDE_SHOVE,
+  FRONTSIDE_SHOVE,
+  HEELFLIP,
+  KICKFLIP,
+  swipeAction,
+  swipeLabel,
+} from './input'
 
 const TRAILING = -1
 const LEADING = 1
@@ -44,4 +51,16 @@ test('only the back foot pushes, so there is no mongo', () => {
 test('nothing fires from a flick that goes nowhere useful', () => {
   expect(swipeAction(0, TRAILING, HELD)).toEqual({})
   expect(swipeAction(0, LEADING, HELD)).toEqual({})
+})
+
+test('a pop is labelled with the stance it goes out in', () => {
+  const pop = (side: number, reversed: boolean) =>
+    swipeLabel(swipeAction(90, side, true), reversed)
+
+  // Flicking the front foot pops the end the back foot held, and the other
+  // way round. Turned round, the same two flicks name the other two tricks.
+  expect(pop(LEADING, false)).toBe('ollie')
+  expect(pop(TRAILING, false)).toBe('nollie')
+  expect(pop(TRAILING, true)).toBe('switch ollie')
+  expect(pop(LEADING, true)).toBe('fakie ollie')
 })

@@ -82,6 +82,10 @@ const mix = (from: number, to: number, alpha: number) => from + (to - from) * al
 startLoop(
   (dt) => {
     // Edges are still consumed while paused, so nothing fires on resume.
+    // Touch reads the same drag differently on the ground and in the air, and
+    // the same flick pops a different end depending on which way round he is.
+    input.reversed = game.skater.reversed
+    input.airborne = game.skater.support === null
     input.beginStep()
     if (!paused) game.step(dt, input)
   },
@@ -129,24 +133,25 @@ startLoop(
 
     backdrop.update(camLeft, stage.viewHeight)
     roadView.update(road.segments, camLeft, stage.visibleWidth)
-    skaterView.update(
-      feet.x,
+    skaterView.update({
+      x: feet.x,
       y,
-      feet.z,
-      path.headingAt(x),
+      z: feet.z,
+      heading: path.headingAt(x),
       lean,
-      skater.yaw,
+      yaw: skater.yaw,
       grounded,
-      Math.sin(x * 1.7),
-      skater.grind,
-      skater.flipAngle * skater.flipSign,
+      pump: Math.sin(x * 1.7),
+      grind: skater.grind,
+      flip: skater.flipAngle * skater.flipSign,
       rise,
-      Math.max(skater.absorb, skater.crouch * 0.72),
-      Math.min(1, skater.pushTime / 0.22),
-      skater.reversed,
-      skater.stance,
-      skater.shoveAngle * skater.shoveSign,
-    )
+      absorb: Math.max(skater.absorb, skater.crouch * 0.72),
+      push: Math.min(1, skater.pushTime / 0.22),
+      switched: skater.reversed,
+      stance: skater.stance,
+      shove: skater.shoveAngle * skater.shoveSign,
+      nose: skater.poppedNose,
+    })
     hud.setStance(skater.stanceWord)
     hud.update(skater)
     trail.update(input.strokes, now * 1000)

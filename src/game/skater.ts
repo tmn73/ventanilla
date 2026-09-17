@@ -16,7 +16,7 @@ const FLIP_COUNT = ['', '', 'double', 'triple', 'quadruple']
  */
 const STANCE_WORD = ['', 'nollie', 'switch', 'fakie']
 
-function stanceOf(reversed: boolean, nose: boolean): string {
+export function stanceOf(reversed: boolean, nose: boolean): string {
   return STANCE_WORD[(reversed ? 2 : 0) + (nose ? 1 : 0)]!
 }
 const QUARTER = Math.PI / 2

@@ -9,6 +9,8 @@ export const FRONTSIDE_SHOVE = 1
 const FLICK_PIXELS = 34
 /** How long a foot still counts as on the board after it lifts, in ms. */
 const LOAD_GRACE = 400
+/** How far a finger carries on sideways in the air before he starts turning. */
+const SPIN_PIXELS = 26
 /**
  * Which half of the screen a finger is on. The board is drawn from the side,
  * so the left half is always the end trailing behind him and the right half
@@ -16,6 +18,8 @@ const LOAD_GRACE = 400
  */
 const TRAILING = -1
 const LEADING = 1
+
+import { stanceOf } from './game/skater'
 
 /** One finger's path, kept so it can be drawn back at the player. */
 export interface Stroke {
@@ -32,11 +36,18 @@ export interface Stroke {
   failed: boolean
 }
 
-/** What a swipe was understood to be, in the words the game would use. */
-export function swipeLabel(move: Swipe): string {
+/**
+ * What a swipe was understood to be, in the words the game would use. A pop
+ * carries the stance it goes out in, because which end left the ground is the
+ * whole difference between an ollie, a nollie and a fakie.
+ */
+export function swipeLabel(move: Swipe, reversed: boolean): string {
   if (move.flip !== undefined) return move.flip === KICKFLIP ? 'kickflip' : 'heelflip'
   if (move.shove !== undefined) return move.shove === FRONTSIDE_SHOVE ? 'fs shove' : 'shove-it'
-  if (move.popEnd !== undefined) return 'pop'
+  if (move.popEnd !== undefined) {
+    const word = stanceOf(reversed, (move.popEnd === LEADING) !== reversed)
+    return word === 'nollie' ? 'nollie' : `${word} ollie`.trim()
+  }
   if (move.push) return 'push'
   return ''
 }
@@ -124,12 +135,28 @@ export class Input {
   private latched = 0
   private touches = new Map<
     number,
-    { x: number; y: number; side: number; at: number; spent: boolean; stroke: Stroke }
+    {
+      x: number
+      y: number
+      side: number
+      at: number
+      spent: boolean
+      /** Where the flick ended, so a spin after it is measured from there. */
+      spentAt?: { x: number; y: number }
+      stroke: Stroke
+    }
   >()
   /** When each half last had a foot on it, so a lift is not instantly gone. */
   private leftAt = new Map<number, number>()
   /** The last few finger paths, for drawing back what the hand actually did. */
   readonly strokes: Stroke[] = []
+  /**
+   * What the skater is doing, set every step. Touch needs it: the same drag is
+   * a push on the ground and a spin in the air, and the same flick pops a
+   * different end depending on which way round the board is.
+   */
+  reversed = false
+  airborne = false
   /** Which end the current crouch is loading, kept until the pop spends it. */
   private crouchLeading = false
   private detach: Array<() => void> = []
@@ -268,7 +295,22 @@ export class Input {
       if (!touch) return
       touch.stroke.x1 = e.clientX
       touch.stroke.y1 = e.clientY
-      if (touch.spent) return
+
+      // In the air, carrying the finger on sideways turns him, and it keeps
+      // turning while it is held. It is measured from wherever the flick that
+      // sent him ended, so a flip and the spin after it are one motion.
+      if (this.airborne) {
+        const from = touch.spentAt ?? touch
+        const across = e.clientX - from.x
+        if (Math.abs(across) >= SPIN_PIXELS) {
+          this.dragRotate = across > 0 ? 1 : -1
+          if (touch.spent) touch.stroke.label = 'spin'
+        }
+        if (touch.spent) return
+      } else if (touch.spent) {
+        return
+      }
+
       const dx = e.clientX - touch.x
       const dy = e.clientY - touch.y
       if (Math.hypot(dx, dy) < FLICK_PIXELS) return
@@ -276,8 +318,7 @@ export class Input {
       const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
       const sideways = Math.abs(angle) < 30 || Math.abs(angle) > 150
 
-      // A finger held out to the side turns him, and it keeps turning. It is
-      // the one gesture that is not a flick, so it waits to be sure.
+      // On the ground a held sideways drag off the front foot turns him too.
       if (sideways && touch.side === LEADING) {
         if (performance.now() - touch.at < 110) return
         this.dragRotate = Math.abs(angle) < 30 ? 1 : -1
@@ -286,6 +327,7 @@ export class Input {
       }
 
       touch.spent = true
+      touch.spentAt = { x: e.clientX, y: e.clientY }
       const read = this.readSwipe(angle, touch.side)
       touch.stroke.label = read.label
       touch.stroke.failed = read.failed
@@ -355,7 +397,7 @@ export class Input {
       y0: y,
       x1: x,
       y1: y,
-      label: '',
+      label: 'pop',
       at: performance.now(),
       live: true,
       failed: false,
@@ -379,7 +421,7 @@ export class Input {
 
     // An upward flick with nothing holding the other end is the one refusal
     // worth explaining, because it looks exactly like the gesture that works.
-    const label = swipeLabel(move)
+    const label = swipeLabel(move, this.reversed)
     if (label) return { label, failed: false }
     // The finger moved far enough to mean something and nothing came of it.
     // That is a miss, and it is drawn as one.
