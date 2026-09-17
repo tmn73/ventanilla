@@ -72,9 +72,10 @@ mountHelp(
   },
   (sky) => {
     const choice = SKIES[sky] ?? SKIES.day!
-    stage.setSky(choice.file, (texture) => backdrop.setTexture(texture))
+    stage.setSky(choice.file)
     stage.setNight(choice.night)
     lamps.setNight(choice.night)
+    backdrop.setNight(choice.night)
   },
 )
 

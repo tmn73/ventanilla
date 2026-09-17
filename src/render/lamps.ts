@@ -54,7 +54,9 @@ export class Lamps {
       head.position.set(0, HEIGHT, 0)
       group.add(head)
 
-      const light = new SpotLight(LAMP_LIGHT, 0, 22, Math.PI / 3.2, 0.55, 1.2)
+      // Falls off with the square of the distance, the way light does. The
+      // old one barely fell off at all, so the pool was a floodlit field.
+      const light = new SpotLight(LAMP_LIGHT, 0, 18, Math.PI / 4.4, 0.7, 2)
       light.position.set(0, HEIGHT - 0.1, 0)
       light.castShadow = true
       light.shadow.mapSize.set(512, 512)
@@ -62,8 +64,11 @@ export class Lamps {
       light.shadow.camera.far = 24
       group.add(light)
 
+      // Aimed at the ground at its own foot. It used to aim a whole lamp
+      // height below that, which put the bright part of the cone at the base
+      // of the post and made the light look like it came out of the floor.
       const target = new Object3D()
-      target.position.set(0, -HEIGHT, 0)
+      target.position.set(0, 0, 0)
       group.add(target)
       light.target = target
 
@@ -77,7 +82,7 @@ export class Lamps {
   setNight(amount: number): void {
     for (const unit of this.units) {
       unit.group.visible = amount > 0.01
-      unit.light.intensity = amount * 190
+      unit.light.intensity = amount * 34
     }
   }
 

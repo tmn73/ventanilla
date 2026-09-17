@@ -15,8 +15,11 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { Vector2 } from 'three'
+import { Color } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
+import { SKY_NIGHT, SKY_TOP } from './palette'
 
 /** Where the pavement sits in the window, measured from the bottom. */
 const HORIZON = 0.34
@@ -54,6 +57,10 @@ export class Stage {
   private eye = new Vector3()
   private point = new Vector3()
   private sky: Texture | null = null
+  private environmentMap: Texture | null = null
+  private night = 0
+  private void = new Color()
+  private dark = new Color(SKY_NIGHT)
   private composer: EffectComposer
   private bloom: UnrealBloomPass
   private sun: DirectionalLight
@@ -61,7 +68,10 @@ export class Stage {
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
-    this.renderer.setClearColor(0xdfe3e4, 1)
+    // Whatever nothing is drawn on. It was a near white, which is why the
+    // background was white: the sky plane only covers the top of the frame and
+    // this shows through everywhere else.
+    this.renderer.setClearColor(SKY_TOP, 1)
     // A real sky has more range than a screen does, so it has to be mapped
     // down rather than clipped, or every cloud comes out as flat white.
     this.renderer.toneMapping = ACESFilmicToneMapping
@@ -96,6 +106,10 @@ export class Stage {
     this.composer.addPass(new RenderPass(this.scene, this.camera))
     this.bloom = new UnrealBloomPass(new Vector2(1, 1), 0, 0.5, 0.92)
     this.composer.addPass(this.bloom)
+    // The last pass, and not optional. A composer renders into its own target
+    // and applies neither the tone mapping nor the colour space on the way
+    // out, so without this everything bright comes back blown.
+    this.composer.addPass(new OutputPass())
 
     this.resize()
     // A window resize is not the only thing that changes the canvas box.
@@ -131,7 +145,7 @@ export class Stage {
    * by one lamp and a fill looks like a flat grey box; lit by a whole sky it
    * picks up the colour of the day.
    */
-  setSky(url: string, onTexture: (texture: Texture) => void): void {
+  setSky(url: string): void {
     new RGBELoader().load(url, (texture) => {
       texture.mapping = EquirectangularReflectionMapping
       const pmrem = new PMREMGenerator(this.renderer)
@@ -139,18 +153,29 @@ export class Stage {
       // Released by hand: swapping skies otherwise leaves every previous one
       // sitting on the graphics card.
       this.scene.environment?.dispose()
-      this.scene.environment = environment
+      this.environmentMap = environment
+      this.applyEnvironment()
       pmrem.dispose()
 
-      // The sky itself is painted onto a plane rather than handed to
-      // scene.background. An equirectangular background is unrolled using the
-      // camera's projection, and this camera is orthographic: there is no
-      // perspective to unroll it with, so it lands as a small patch of image
-      // instead of a sky.
+      // Only the light is taken from it. Two things stopped the image itself
+      // being usable: an equirectangular background is unrolled with the
+      // camera's projection and this camera is orthographic, and cropping it
+      // onto a plane put the horizon glow, which carries enormous values, along
+      // one edge of that plane as a blown white strip.
       if (this.sky) this.sky.dispose()
       this.sky = texture
-      onTexture(texture)
     })
+  }
+
+  /**
+   * The sky lights the scene by day and not at all by night. Turning it down
+   * was not enough: environmentIntensity left the pavement lit to white under
+   * a black sky, so at night it comes off entirely and the lamps are the only
+   * light there is. Which is the point of a night.
+   */
+  private applyEnvironment(): void {
+    this.scene.environment = this.night > 0.75 ? null : this.environmentMap
+    this.scene.environmentIntensity = 1 - this.night
   }
 
   resize(): void {
@@ -197,9 +222,15 @@ export class Stage {
    * glow comes up, because a bulb only looks bright against something dark.
    */
   setNight(amount: number): void {
-    this.sun.intensity = 1.15 * (1 - amount)
-    this.fill.intensity = 0.12 + (1 - amount) * 0
-    this.bloom.strength = amount * 0.9
-    this.renderer.toneMappingExposure = 1 - amount * 0.25
+    this.night = amount
+    this.renderer.setClearColor(this.void.set(SKY_TOP).lerp(this.dark, amount), 1)
+    this.sun.intensity = 1.15 * (1 - amount) ** 2
+    this.applyEnvironment()
+    this.fill.intensity = 0.12 * (1 - amount)
+    // Only the lamp heads should bleed, so the threshold sits above anything
+    // the lamps put on the ground.
+    this.bloom.strength = amount * 0.55
+    this.bloom.threshold = 0.85
+    this.renderer.toneMappingExposure = 1 - amount * 0.35
   }
 }

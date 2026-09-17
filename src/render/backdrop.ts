@@ -3,13 +3,12 @@ import {
   Color,
   Mesh,
   MeshBasicMaterial,
+  MeshLambertMaterial,
   Object3D,
   PlaneGeometry,
-  type Texture,
 } from 'three'
-import { ClampToEdgeWrapping, RepeatWrapping } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
-import { GROUND, WATER, skyAt } from './palette'
+import { SKY_NIGHT, SKY_TOP, skyAt } from './palette'
 
 /**
  * Three planes and a sky. Everything that used to stand here, the town, the
@@ -19,17 +18,19 @@ import { GROUND, WATER, skyAt } from './palette'
  * `y` is a fixed world height. Anchoring any of this to the pavement made the
  * whole world slide down a stair set with the player.
  */
-const BANDS: Array<{ color: string; y: number; from: number; to: number }> = [
-  { color: WATER, y: WORLD_FLOOR, from: 16, to: 120 },
-  { color: GROUND, y: WORLD_FLOOR + 0.16, from: -60, to: 16 },
-]
+/**
+ * The beach and the sea are gone. They were two huge flat planes that filled
+ * most of the frame with nothing, and the one at the front was the pale strip
+ * that sat across the middle of the screen at night.
+ */
+const BANDS: Array<{ color: string; y: number; from: number; to: number }> = []
 
 /** Where the flat ground stops and the sky takes over. */
 const HORIZON_LATERAL = -60
 
 export class Backdrop {
   private sky: Mesh
-  private bands: Array<{ mesh: Mesh; y: number; from: number; to: number }>
+  private bands: Array<{ mesh: Mesh; color: string; y: number; from: number; to: number }>
 
   constructor(scene: Object3D) {
     const geometry = new PlaneGeometry(1, 1, 1, 12)
@@ -49,27 +50,31 @@ export class Backdrop {
     scene.add(this.sky)
 
     this.bands = BANDS.map((spec) => {
-      const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: spec.color }))
+      // Lit, not painted. These were unlit, so night had no effect on them at
+      // all and the ground stayed daylight-bright under a black sky.
+      const mesh = new Mesh(new PlaneGeometry(1, 1), new MeshLambertMaterial({ color: spec.color }))
       // Flat on the ground rather than standing up facing the camera.
       mesh.rotation.x = -Math.PI / 2
       mesh.frustumCulled = false
       scene.add(mesh)
-      return { mesh, y: spec.y, from: spec.from, to: spec.to }
+      return { mesh, color: spec.color, y: spec.y, from: spec.from, to: spec.to }
     })
   }
 
   /**
-   * Paint the real sky onto the plane. The gradient stays underneath as the
-   * fallback, so the game still has a sky before the file arrives and if it
-   * never does.
+   * How dark the day is. The sky and the ground are tinted by hand rather
+   * than left to the lighting: they are enormous flat things far from any
+   * lamp, and the scene's own light never reached them.
    */
-  setTexture(texture: Texture): void {
-    texture.wrapS = RepeatWrapping
-    texture.wrapT = ClampToEdgeWrapping
-    // The upper half of an equirectangular image is the sky above the horizon.
-    texture.repeat.set(0.34, 0.42)
-    texture.offset.set(0, 0.5)
-    this.sky.material = new MeshBasicMaterial({ map: texture, toneMapped: true })
+  setNight(amount: number): void {
+    const sky = this.sky.material as MeshBasicMaterial
+    sky.vertexColors = false
+    sky.color.set(SKY_TOP).lerp(new Color(SKY_NIGHT), amount)
+    sky.needsUpdate = true
+    for (const item of this.bands) {
+      const material = item.mesh.material as MeshLambertMaterial
+      material.color.set(item.color).multiplyScalar(1 - amount * 0.93)
+    }
   }
 
   update(camLeft: number, viewHeight: number): void {
@@ -78,9 +83,9 @@ export class Backdrop {
 
     this.sky.scale.set(VIEW_WIDTH * 9, top + 40, 1)
     this.sky.position.set(centre, WORLD_FLOOR + (top + 40) / 2, HORIZON_LATERAL - 2)
-    const map = (this.sky.material as MeshBasicMaterial).map
-    // A fraction of the camera's travel, which is what reads as distance.
-    if (map) map.offset.x = (centre * 0.0016) % 1
+    // They follow the camera outright. Stars do not shift as you walk, and
+    // offsetting them by a fraction of the travel simply carried them off the
+    // side of the screen.
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)

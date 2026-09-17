@@ -72,3 +72,7 @@ export const TRAIL_COLOR = { took: '#e2603c', missed: '#7b8590' }
 /** The lamps. One warm light and the bulb it comes out of. */
 export const LAMP_LIGHT = 0xffd9a8
 export const LAMP_GLOW = 0xfff1d6
+
+/** The sky, as one flat colour at each end of the day. */
+export const SKY_TOP = '#cdd6db'
+export const SKY_NIGHT = '#080b12'
