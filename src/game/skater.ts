@@ -386,7 +386,10 @@ export class Skater {
     const restless = Math.sin(this.wobble * 5.3) * 0.5 + Math.sin(this.wobble * 2.1) * 0.5
     this.balanceVel += this.balance * C.BALANCE_RUNAWAY * dt
     this.balanceVel += restless * C.BALANCE_DRIFT * dt
-    this.balanceVel -= input.lean * C.BALANCE_CORRECT * dt
+    // The needle follows the finger rather than opposing it. Correcting a
+    // lean by leaning the other way is what a board does; moving the thing you
+    // are looking at the way you moved your hand is what a control does.
+    this.balanceVel += input.lean * C.BALANCE_CORRECT * dt
     this.balanceVel *= 1 - Math.min(1, dt * 2.2)
     this.balance += this.balanceVel * dt
 
@@ -486,7 +489,9 @@ export class Skater {
     const unit = slideable ? QUARTER : Math.PI
     const target = Math.round(this.yaw / unit) * unit
     const off = Math.abs(this.yaw - target)
-    const bailed = off > C.LANDING_TOLERANCE
+    // Landing is graded, not passed or failed. He rides away from all of them;
+    // what changes is how square it was and what that costs him.
+    const sketchy = off > C.LANDING_TOLERANCE
 
     const wasReversed = Math.abs(Math.round(this.takeoffYaw / QUARTER)) % 4 === 2
     const quarters = Math.round((target - this.takeoffYaw) / QUARTER)
@@ -496,7 +501,7 @@ export class Skater {
 
     // The harder he arrives, the deeper he soaks it up.
     this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
-    if (bailed) {
+    if (sketchy) {
       // The cost follows how far off he was. Nearly landing it nearly costs
       // nothing, and only a real miss is expensive.
       const miss = Math.min(1, off / (unit / 2))
@@ -516,22 +521,25 @@ export class Skater {
     this.shoving = false
     this.shovesThisJump = 0
 
-    this.trick = bailed
-      ? 'bail'
-      : this.sideways
-        ? nameSlide(quarters, this.stance, wasReversed, this.poppedNose)
-        : nameTrick(
-            Math.round(quarters / 2),
-            flips,
-            this.flipSign,
-            shoves,
-            this.shoveSign,
-            this.stance,
-            wasReversed,
-            this.poppedNose,
-            LABEL[seg.kind] ?? '',
-            this.airTime > 0.82,
-          )
+    const named = this.sideways
+      ? nameSlide(quarters, this.stance, wasReversed, this.poppedNose)
+      : nameTrick(
+          Math.round(quarters / 2),
+          flips,
+          this.flipSign,
+          shoves,
+          this.shoveSign,
+          this.stance,
+          wasReversed,
+          this.poppedNose,
+          LABEL[seg.kind] ?? '',
+          this.airTime > 0.82,
+        )
+    this.trick = sketchy
+      ? `${named} sketchy`
+      : off < C.LANDING_PERFECT
+        ? `${named} perfect`
+        : named
     this.trickAge = 0
     this.airTime = 0
   }

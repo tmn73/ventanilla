@@ -50,8 +50,10 @@ export const SPARK_RATE = 120
 
 /** Radians per second of spin while the rotate input is held. */
 export const SPIN_RATE = 11.5
-/** Past this far from a half turn, the landing is a bail. */
-export const LANDING_TOLERANCE = 0.42
+/** Past this far from square, a landing is scrappy rather than clean. */
+export const LANDING_TOLERANCE = 0.6
+/** And inside this, it was square enough to be worth saying so. */
+export const LANDING_PERFECT = 0.12
 /**
  * What the worst bail costs. Nothing is fatal, so speed is the price, and
  * the price follows how far off the landing was rather than being a flat cut.
