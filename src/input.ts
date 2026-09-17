@@ -368,7 +368,7 @@ export class Input {
     // worth explaining, because it looks exactly like the gesture that works.
     const label = swipeLabel(move)
     if (label) return label
-    return !loaded && angle >= 20 && angle < 160 ? 'other foot?' : ''
+    return !loaded && angle >= 20 && angle < 160 ? 'hold other side' : ''
   }
 
 
