@@ -9,6 +9,8 @@ export const FRONTSIDE_SHOVE = 1
 const FLICK_PIXELS = 34
 /** How long a foot still counts as on the board after it lifts, in ms. */
 const LOAD_GRACE = 400
+/** How long a foot has to settle on an end before it counts as weighting it. */
+const WEIGHT_DWELL = 190
 /** How far the foot still on the board slides before he starts turning. */
 const SPIN_PIXELS = 24
 /** How far it slides for a full lean, which is wider than a flick so the two
@@ -187,7 +189,20 @@ export class Input {
    * is weighting, and that is what makes it a noseslide or a tailslide.
    */
   get pressedEnd(): number {
-    return this.resting(TRAILING) ? TRAILING : this.resting(LEADING) ? LEADING : 0
+    return this.weighted(TRAILING) ? TRAILING : this.weighted(LEADING) ? LEADING : 0
+  }
+
+  /**
+   * A foot that has settled on an end, rather than one on its way through. A
+   * push starts with the back foot touching down too, and without the pause it
+   * put him straight into a manual, which then swallowed the push itself.
+   */
+  private weighted(side: number): boolean {
+    const now = performance.now()
+    for (const touch of this.touches.values()) {
+      if (touch.side === side && !touch.spent && now - touch.at > WEIGHT_DWELL) return true
+    }
+    return false
   }
 
   /** A finger on this half that has not swiped: the foot still on the board. */
@@ -333,7 +348,7 @@ export class Input {
       // While he is balancing, the foot on the board is steering and nothing
       // else. Sliding it sideways is what holds the manual up, so it must
       // never turn into a flick however far it goes.
-      if (this.balancing && !touch.spent) {
+      if (this.balancing && !touch.spent && performance.now() - touch.at > WEIGHT_DWELL) {
         const across = Math.abs(e.clientX - touch.x)
         const down = Math.abs(e.clientY - touch.y)
         if (across >= down) {
