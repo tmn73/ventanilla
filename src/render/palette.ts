@@ -49,3 +49,10 @@ export const SKY_STOPS: Array<[number, string]> = [
 export function skyAt(t: number, out: Color): Color {
   return out.set(SKY_STOPS[0]![1]).lerp(new Color(SKY_STOPS[1]![1]), t)
 }
+
+/**
+ * The gesture trail. A swipe that took is the accent, the same colour as
+ * everything you can ride. A swipe the game did nothing with is cold and
+ * dashed, so it reads as a miss without depending on telling hues apart.
+ */
+export const TRAIL_COLOR = { took: '#e2603c', missed: '#7b8590' }

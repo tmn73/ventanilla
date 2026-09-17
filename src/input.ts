@@ -28,6 +28,8 @@ export interface Stroke {
   at: number
   /** True while the finger is still down and the path is still growing. */
   live: boolean
+  /** True when the finger swiped and the game did nothing with it. */
+  failed: boolean
 }
 
 /** What a swipe was understood to be, in the words the game would use. */
@@ -284,7 +286,9 @@ export class Input {
       }
 
       touch.spent = true
-      touch.stroke.label = this.readSwipe(angle, touch.side)
+      const read = this.readSwipe(angle, touch.side)
+      touch.stroke.label = read.label
+      touch.stroke.failed = read.failed
       touch.stroke.at = performance.now()
     }
 
@@ -346,13 +350,22 @@ export class Input {
    */
   /** Opens a path for a finger and retires the oldest when there are too many. */
   private openStroke(x: number, y: number): Stroke {
-    const stroke: Stroke = { x0: x, y0: y, x1: x, y1: y, label: '', at: performance.now(), live: true }
+    const stroke: Stroke = {
+      x0: x,
+      y0: y,
+      x1: x,
+      y1: y,
+      label: '',
+      at: performance.now(),
+      live: true,
+      failed: false,
+    }
     this.strokes.push(stroke)
     while (this.strokes.length > 8) this.strokes.shift()
     return stroke
   }
 
-  private readSwipe(angle: number, side: number): string {
+  private readSwipe(angle: number, side: number): { label: string; failed: boolean } {
     const loaded = this.loaded(-side)
     const move = swipeAction(angle, side, loaded)
     if (move.popEnd !== undefined) {
@@ -367,8 +380,11 @@ export class Input {
     // An upward flick with nothing holding the other end is the one refusal
     // worth explaining, because it looks exactly like the gesture that works.
     const label = swipeLabel(move)
-    if (label) return label
-    return !loaded && angle >= 20 && angle < 160 ? 'hold other side' : ''
+    if (label) return { label, failed: false }
+    // The finger moved far enough to mean something and nothing came of it.
+    // That is a miss, and it is drawn as one.
+    const missedPop = !loaded && angle >= 20 && angle < 160
+    return { label: missedPop ? 'hold other side' : '', failed: true }
   }
 
 

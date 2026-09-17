@@ -1,5 +1,5 @@
 import type { Stroke } from '../input'
-import { SURFACE_COLOR } from './palette'
+import { TRAIL_COLOR } from './palette'
 
 /** How long a finished path stays on screen, in ms. */
 const LINGER = 1100
@@ -42,15 +42,21 @@ export class TouchTrail {
       const y1 = stroke.y1 - box.top
       const fade = stroke.live ? 1 : Math.max(0, 1 - age / LINGER)
 
+      const color = stroke.failed ? TRAIL_COLOR.missed : TRAIL_COLOR.took
+
       if (fade > 0) {
-        ctx.strokeStyle = SURFACE_COLOR.ledge ?? '#e2603c'
+        ctx.strokeStyle = color
+        ctx.fillStyle = color
         ctx.globalAlpha = fade * 0.75
         ctx.lineWidth = 3
         ctx.lineCap = 'round'
+        // Dashed for a miss, so it reads without telling two colours apart.
+        ctx.setLineDash(stroke.failed ? [5, 6] : [])
         ctx.beginPath()
         ctx.moveTo(x0, y0)
         ctx.lineTo(x1, y1)
         ctx.stroke()
+        ctx.setLineDash([])
 
         // The dot marks where the finger landed, so the direction reads.
         ctx.globalAlpha = fade * 0.9
@@ -61,7 +67,7 @@ export class TouchTrail {
 
       if (!stroke.label) continue
       ctx.globalAlpha = Math.max(0, 1 - age / LABEL_LINGER)
-      ctx.fillStyle = SURFACE_COLOR.ledge ?? '#e2603c'
+      ctx.fillStyle = color
       ctx.font = '600 13px ui-monospace, monospace'
       ctx.textAlign = x1 < x0 ? 'right' : 'left'
       ctx.fillText(stroke.label, x1 + (x1 < x0 ? -12 : 12), y1 + 4)
