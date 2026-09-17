@@ -9,9 +9,32 @@ export interface Segment {
   /** Height at each end. When they differ the surface is a ramp. */
   y0: number
   y1: number
+  /** Where the surface sits across the road, and how far it reaches each way. */
+  z: number
+  halfWidth: number
   kind: SurfaceKind
   /** True for the pavement and the steps, which set where a fall becomes fatal. */
   floor: boolean
+}
+
+/** Half the width of the pavement. The skater may go this far either side. */
+export const ROAD_HALF = 5.4
+
+/**
+ * How wide each kind is by default. A rail catches wider than it looks, which
+ * is deliberate: missing one has to be a decision, not a pixel.
+ */
+const HALF_WIDTH: Record<SurfaceKind, number> = {
+  flat: ROAD_HALF,
+  step: ROAD_HALF,
+  ledge: 0.9,
+  hubba: 0.9,
+  rail: 0.5,
+}
+
+/** True when a point across the road is over this surface. */
+export function coversZ(segment: Segment, z: number): boolean {
+  return Math.abs(z - segment.z) <= segment.halfWidth
 }
 
 /**
@@ -53,6 +76,8 @@ const LEDGE_HEIGHT = 0.58
 const DRIFT_LIMIT = 20
 /** The steepest face the game ever builds. Past this it reads as a wall. */
 const MAX_SLOPE = 0.9
+/** Where a feature sits when it is not in the middle of the road. */
+const LANE = 3.1
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -66,6 +91,22 @@ export class Road {
   private headX = 0
 
   constructor(private rng: () => number) {}
+
+  /** Which side of the road a feature takes. The middle is the common case. */
+  private lane(): number {
+    const roll = this.rng()
+    if (roll < 0.34) return -LANE
+    if (roll < 0.68) return LANE
+    return 0
+  }
+
+  /** Pavement across only part of the road, so the rest of it can fall away. */
+  private band(x0: number, x1: number, y0: number, y1: number, from: number, to: number): void {
+    const mid = (from + to) / 2
+    // A hair wider than asked. Two bands that meet exactly leave a seam that
+    // rounding can open, and a player standing on it would be over nothing.
+    this.push(x0, x1, y0, y1, 'flat', true, mid, Math.abs(to - from) / 2 + 0.02)
+  }
 
   reset(startX: number): void {
     this.segments = []
@@ -137,11 +178,61 @@ export class Road {
     else if (roll < 0.68) this.bumpToBar(scale)
     else if (roll < 0.73) this.channel(scale)
     else if (roll < 0.79) this.drop(scale)
-    else if (roll < 0.85) this.railOverGap(scale)
-    else if (roll < 0.89) this.pit(scale)
-    else if (roll < 0.93) this.stepUp(scale)
-    else if (roll < 0.97) this.padChain(scale)
-    else this.ledgeToBank(scale)
+    else if (roll < 0.82) this.railOverGap(scale)
+    else if (roll < 0.85) this.pit(scale)
+    else if (roll < 0.88) this.stepUp(scale)
+    else if (roll < 0.91) this.padChain(scale)
+    else if (roll < 0.94) this.ledgeToBank(scale)
+    else if (roll < 0.97) this.splitPit(scale)
+    else this.fork(scale)
+  }
+
+  /**
+   * A hole down one half of the road. The other half stays whole, so the
+   * question is not whether you clear it but whether you go round it.
+   */
+  private splitPit(scale: number): void {
+    const width = 5 + scale * 12
+    const floorY = this.settle(this.groundY - (2 + scale * 7))
+    const out = Math.max(4, (this.groundY - floorY) / 0.26)
+    const open = this.rng() < 0.5 ? -1 : 1
+    // Where the hole stops and the safe ledge begins, never dead centre.
+    const edge = open * range(this.rng, 0.4, 2.6)
+
+    const safeFrom = open > 0 ? -ROAD_HALF : edge
+    const safeTo = open > 0 ? edge : ROAD_HALF
+    this.band(this.headX, this.headX + width + out, this.groundY, this.groundY, safeFrom, safeTo)
+
+    const holeFrom = open > 0 ? edge : -ROAD_HALF
+    const holeTo = open > 0 ? ROAD_HALF : edge
+    this.band(this.headX, this.headX + width, floorY, floorY, holeFrom, holeTo)
+    this.band(this.headX + width, this.headX + width + out, floorY, this.groundY, holeFrom, holeTo)
+
+    this.headX += width + out
+  }
+
+  /**
+   * Two lines running side by side: a rail down one edge and a raised platform
+   * down the other. Neither is the right answer, which is the point of it.
+   */
+  private fork(scale: number): void {
+    const length = 12 + scale * 26
+    const side = this.rng() < 0.5 ? -1 : 1
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+
+    const railY = this.groundY + RAIL_HEIGHT
+    this.push(this.headX + 1, this.headX + length - 1, railY, railY, 'rail', false, side * LANE)
+
+    // The platform is reached by a ramp at its near end and ends in a drop.
+    const lift = 0.9 + scale * 1.8
+    const ramp = Math.max(3, lift / 0.42)
+    const topY = this.groundY + lift
+    const half = 2.1
+    const centre = -side * (ROAD_HALF - half)
+    this.push(this.headX, this.headX + ramp, this.groundY, topY, 'flat', true, centre, half)
+    this.push(this.headX + ramp, this.headX + length, topY, topY, 'flat', true, centre, half)
+
+    this.headX += length
   }
 
   /**
@@ -160,7 +251,7 @@ export class Road {
 
     // The rail runs level over the whole thing, from lip to far bank.
     const railY = this.groundY + RAIL_HEIGHT
-    this.push(lip - 2.5, lip + width + out * 0.5, railY, railY, 'rail', false)
+    this.push(lip - 2.5, lip + width + out * 0.5, railY, railY, 'rail', false, this.lane())
 
     this.headX = lip + width + out
   }
@@ -186,10 +277,20 @@ export class Road {
     const lift = 0.5 + scale * 0.9
 
     this.push(this.headX, this.headX + first + gap + second, this.groundY, this.groundY, 'flat', true)
+    // The two rails sit on opposite sides, so the line crosses the road.
+    const side = this.rng() < 0.5 ? -LANE : LANE
     const lowY = this.groundY + RAIL_HEIGHT
-    this.push(this.headX + 0.5, this.headX + first, lowY, lowY, 'rail', false)
+    this.push(this.headX + 0.5, this.headX + first, lowY, lowY, 'rail', false, side)
     const highY = lowY + lift
-    this.push(this.headX + first + gap, this.headX + first + gap + second - 0.5, highY, highY, 'rail', false)
+    this.push(
+      this.headX + first + gap,
+      this.headX + first + gap + second - 0.5,
+      highY,
+      highY,
+      'rail',
+      false,
+      -side,
+    )
     this.headX += first + gap + second
   }
 
@@ -197,12 +298,13 @@ export class Road {
   private padChain(scale: number): void {
     const pads = 2 + Math.floor(scale * 2.4)
     const y = this.groundY + LEDGE_HEIGHT * 0.6
+    const lane = this.lane()
 
     for (let i = 0; i < pads; i++) {
       const length = 5 + scale * 9
       const gap = 2.2 + scale * 2.6
       this.push(this.headX, this.headX + length + gap, this.groundY, this.groundY, 'flat', true)
-      this.push(this.headX + 0.5, this.headX + length, y, y, 'ledge', false)
+      this.push(this.headX + 0.5, this.headX + length, y, y, 'ledge', false, lane)
       this.headX += length + gap
     }
   }
@@ -212,7 +314,7 @@ export class Road {
     const length = 7 + scale * 14
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + LEDGE_HEIGHT
-    this.push(this.headX + 1, this.headX + length, y, y, 'ledge', false)
+    this.push(this.headX + 1, this.headX + length, y, y, 'ledge', false, this.lane())
     this.headX += length
 
     const drop = 2 + scale * 7
@@ -405,7 +507,7 @@ export class Road {
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const y = this.groundY + RAIL_HEIGHT
-    this.push(this.headX + 0.8, this.headX + length - 0.8, y, y, 'rail', false)
+    this.push(this.headX + 0.8, this.headX + length - 0.8, y, y, 'rail', false, this.lane())
     this.headX += length
   }
 
@@ -415,7 +517,7 @@ export class Road {
     const length = 3 + scale * range(this.rng, 12, 32)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
     const y = this.groundY + (scale > 0.6 ? LEDGE_HEIGHT * 0.55 : LEDGE_HEIGHT)
-    this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false)
+    this.push(this.headX + 1, this.headX + length - 1, y, y, 'ledge', false, this.lane())
     this.headX += length
     this.runUp(range(this.rng, 6, 10))
   }
@@ -448,8 +550,17 @@ export class Road {
     this.headX += run
   }
 
-  private push(x0: number, x1: number, y0: number, y1: number, kind: SurfaceKind, floor: boolean): void {
-    this.segments.push({ x0, x1, y0, y1, kind, floor })
+  private push(
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    kind: SurfaceKind,
+    floor: boolean,
+    z = 0,
+    halfWidth = HALF_WIDTH[kind],
+  ): void {
+    this.segments.push({ x0, x1, y0, y1, z, halfWidth, kind, floor })
   }
 
   step(): void {}
@@ -460,11 +571,11 @@ export class Road {
   }
 
   /** Highest surface crossed while falling from fromY to toY, or null in open air. */
-  landingAt(x: number, fromY: number, toY: number): Segment | null {
+  landingAt(x: number, z: number, fromY: number, toY: number): Segment | null {
     let best: Segment | null = null
     let bestY = -Infinity
     for (const segment of this.segments) {
-      if (x < segment.x0 || x > segment.x1) continue
+      if (x < segment.x0 || x > segment.x1 || !coversZ(segment, z)) continue
       const top = surfaceYAt(segment, x)
       // A little slack upward, so ground that rises into the fall still catches.
       if (top > fromY + 0.22 || top < toY - 1e-4) continue
@@ -476,8 +587,8 @@ export class Road {
     return best
   }
 
-  stillCarries(segment: Segment, x: number): boolean {
-    return x >= segment.x0 && x <= segment.x1
+  stillCarries(segment: Segment, x: number, z: number): boolean {
+    return x >= segment.x0 && x <= segment.x1 && coversZ(segment, z)
   }
 
   /**
@@ -486,11 +597,11 @@ export class Road {
    * by the falling sweep, and the skater drops past a floor that is right
    * there. Up is tighter than down: you roll off a kerb, you do not roll up one.
    */
-  continuationAt(x: number, y: number, up = 0.32, down = 0.5): Segment | null {
+  continuationAt(x: number, z: number, y: number, up = 0.32, down = 0.5): Segment | null {
     let best: Segment | null = null
     let bestY = -Infinity
     for (const segment of this.segments) {
-      if (x < segment.x0 || x > segment.x1) continue
+      if (x < segment.x0 || x > segment.x1 || !coversZ(segment, z)) continue
       const top = surfaceYAt(segment, x)
       if (top > y + up || top < y - down) continue
       if (top > bestY) {
@@ -502,15 +613,21 @@ export class Road {
   }
 
   /** The pavement nearest this point. Used to put the skater back on it. */
-  floorAt(x: number): number {
+  /**
+   * The bottom of the world at a point. Floors overlap now, so this takes the
+   * lowest of them: a platform sits above the pavement, and the pavement is
+   * still what catches a player who ends up under everything.
+   */
+  floorAt(x: number, z = 0): number {
     let nearest = this.groundY
     let bestDistance = Infinity
     for (const segment of this.segments) {
-      if (!segment.floor) continue
+      if (!segment.floor || !coversZ(segment, z)) continue
       const distance = x < segment.x0 ? segment.x0 - x : x > segment.x1 ? x - segment.x1 : 0
-      if (distance < bestDistance) {
+      const top = surfaceYAt(segment, Math.min(segment.x1, Math.max(segment.x0, x)))
+      if (distance < bestDistance || (distance === bestDistance && top < nearest)) {
         bestDistance = distance
-        nearest = surfaceYAt(segment, Math.min(segment.x1, Math.max(segment.x0, x)))
+        nearest = top
       }
     }
     return nearest

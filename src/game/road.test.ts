@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { mulberry32, seedFrom } from '../core/rng'
-import { Road } from './road'
+import { coversZ, ROAD_HALF, Road } from './road'
 
 const TRIALS = 60
 const LENGTH = 1500
@@ -55,4 +55,22 @@ test('you can always ride out of a hollow', () => {
   }
 
   expect(walls).toEqual([])
+})
+
+test('there is ground under every point of the road', () => {
+  // A hole is ground at a lower height. A place with nothing under it at all
+  // would drop the player out of the world, and that must not exist.
+  const empty: string[] = []
+
+  for (let trial = 0; trial < 12; trial++) {
+    const floors = laid(trial).segments.filter((s) => s.floor)
+    for (let x = 40; x < LENGTH - 40; x += 1.7) {
+      for (let z = -ROAD_HALF; z <= ROAD_HALF; z += 1.35) {
+        const over = floors.some((s) => x >= s.x0 && x <= s.x1 && coversZ(s, z))
+        if (!over) empty.push(`trial ${trial}: nothing at x=${x.toFixed(0)} z=${z.toFixed(1)}`)
+      }
+    }
+  }
+
+  expect(empty.slice(0, 5)).toEqual([])
 })

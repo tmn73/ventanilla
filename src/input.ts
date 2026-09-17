@@ -14,6 +14,8 @@ export class Input {
 
   /** Held rotation: -1 backside, 1 frontside, 0 straight. */
   private dragRotate = 0
+  /** Held lean across the road, from a sustained vertical drag. */
+  private dragLean = 0
   private pressedAt = 0
   private pushPulse = false
   private brakeUntil = 0
@@ -40,6 +42,16 @@ export class Input {
     return this.dragRotate
   }
 
+  /**
+   * Across the road, from -1 to 1. This is the only input that chooses a line,
+   * so it is held rather than tapped.
+   */
+  get lean(): number {
+    if (this.held.has('KeyW')) return -1
+    if (this.held.has('KeyS')) return 1
+    return this.dragLean
+  }
+
   /** Held up on the ground, or one flick up. A push is a kick, not a throttle. */
   get pushing(): boolean {
     return this.held.has('ArrowUp') || this.pushPulse
@@ -59,7 +71,16 @@ export class Input {
   }
 
   attach(surface: HTMLElement): void {
-    const arrows = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'])
+    const arrows = new Set([
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'KeyA',
+      'KeyD',
+      'KeyW',
+      'KeyS',
+    ])
 
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return
@@ -86,6 +107,7 @@ export class Input {
       this.touchStart = { x: e.clientX, y: e.clientY }
       this.pressedAt = performance.now()
       this.dragRotate = 0
+      this.dragLean = 0
       this.ollie()
     }
 
@@ -95,16 +117,26 @@ export class Input {
       const start = this.touchStart
       if (!start) return
       const dx = e.clientX - start.x
-      if (Math.abs(dx) < 46 || performance.now() - this.pressedAt < 130) return
-      this.dragRotate = dx > 0 ? 1 : -1
+      const dy = e.clientY - start.y
+      // A flip flick is over well before this. Past it, a finger that is still
+      // down is steering: sideways it spins, up and down it changes line.
+      if (performance.now() - this.pressedAt < 130) return
+      if (Math.abs(dx) >= 46 && Math.abs(dx) >= Math.abs(dy)) {
+        this.dragRotate = dx > 0 ? 1 : -1
+        this.dragLean = 0
+      } else if (Math.abs(dy) >= 46) {
+        this.dragLean = dy > 0 ? 1 : -1
+        this.dragRotate = 0
+      }
     }
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
       this.touchStart = null
       this.jumpHeld = false
-      const spun = this.dragRotate !== 0
+      const steered = this.dragRotate !== 0 || this.dragLean !== 0
       this.dragRotate = 0
-      if (!start || spun) return
+      this.dragLean = 0
+      if (!start || steered) return
       this.readFlick(e.clientX - start.x, e.clientY - start.y)
     }
     const blur = () => {
@@ -112,6 +144,7 @@ export class Input {
       this.jumpHeld = false
       this.touchStart = null
       this.dragRotate = 0
+      this.dragLean = 0
     }
 
     window.addEventListener('keydown', down)

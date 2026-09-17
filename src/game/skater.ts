@@ -1,6 +1,6 @@
 import * as C from './constants'
 import type { Input } from '../input'
-import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
+import { GRINDABLE, ROAD_HALF, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
 const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
@@ -59,12 +59,16 @@ const LABEL: Record<string, string> = {
 export class Skater {
   x = 0
   y = C.LANE_Y[0]!
+  /** Where he is across the road. This is the line he chose. */
+  z = 0
   /** His own speed now. Nothing else carries him forward. */
   vx = C.START_SPEED
   vy = 0
+  vz = 0
 
   prevX = 0
   prevY = 0
+  prevZ = 0
 
   support: Segment | null = null
   /** -1 is a 5-0, 0 is a 50-50, 1 is a nosegrind. */
@@ -106,10 +110,13 @@ export class Skater {
   reset(x: number): void {
     this.x = x
     this.y = C.LANE_Y[0]!
+    this.z = 0
     this.prevX = x
     this.prevY = this.y
+    this.prevZ = 0
     this.vx = C.START_SPEED
     this.vy = 0
+    this.vz = 0
     this.support = null
     this.grind = 0
     this.flipAngle = 0
@@ -132,14 +139,17 @@ export class Skater {
   step(dt: number, road: Road, input: Input): void {
     this.prevX = this.x
     this.prevY = this.y
+    this.prevZ = this.z
     this.trickAge += dt
     if (this.absorb > 0) this.absorb = Math.max(0, this.absorb - dt * 5.5)
     if (this.pushTime > 0) this.pushTime = Math.max(0, this.pushTime - dt)
     if (this.pushCooldown > 0) this.pushCooldown = Math.max(0, this.pushCooldown - dt)
 
-    if (this.support && !road.stillCarries(this.support, this.x)) {
+    this.lean(dt, input)
+
+    if (this.support && !road.stillCarries(this.support, this.x, this.z)) {
       // Hand over to whatever continues at this height before calling it a fall.
-      const next = road.continuationAt(this.x, this.y)
+      const next = road.continuationAt(this.x, this.z, this.y)
       if (next) {
         this.support = next
       } else {
@@ -154,6 +164,26 @@ export class Skater {
     else this.fly(dt, road, input)
 
     this.x += this.vx * dt
+  }
+
+  /**
+   * Sideways. He carries his own momentum across the road, so a line is
+   * chosen a moment before it arrives rather than snapped to on the spot.
+   */
+  private lean(dt: number, input: Input): void {
+    const wanted = input.lean * C.LEAN_SPEED
+    const gap = wanted - this.vz
+    const step = C.LEAN_ACCEL * dt
+    this.vz += Math.abs(gap) <= step ? gap : Math.sign(gap) * step
+    this.z += this.vz * dt
+
+    if (this.z < -ROAD_HALF) {
+      this.z = -ROAD_HALF
+      this.vz = 0
+    } else if (this.z > ROAD_HALF) {
+      this.z = ROAD_HALF
+      this.vz = 0
+    }
   }
 
   private ride(dt: number, seg: Segment, input: Input): void {
@@ -231,7 +261,7 @@ export class Skater {
     this.y += this.vy * dt
 
     if (this.vy <= 0) {
-      const hit = road.landingAt(this.x, this.prevY, this.y)
+      const hit = road.landingAt(this.x, this.z, this.prevY, this.y)
       if (hit) {
         this.land(hit)
         return
@@ -239,9 +269,9 @@ export class Skater {
     }
 
     // Nothing is fatal. If he ever ends up under the pavement, put him back on.
-    const floor = road.floorAt(this.x)
+    const floor = road.floorAt(this.x, this.z)
     if (this.y < floor) {
-      const landing = road.continuationAt(this.x, floor, 0.1, 0.1)
+      const landing = road.continuationAt(this.x, this.z, floor, 0.1, 0.1)
       if (landing) this.land(landing)
       else {
         this.y = floor
@@ -272,6 +302,10 @@ export class Skater {
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg
+    if (seg.halfWidth < 1.2) {
+      this.z = seg.z
+      this.vz = 0
+    }
     this.spin = 0
     this.grind = 0
     this.flipAngle = 0
