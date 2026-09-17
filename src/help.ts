@@ -5,7 +5,30 @@
 export function mountHelp(): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
-  if (!toggle || !panel) return
+  const tabs = [
+    { button: document.getElementById('tab-keys'), table: document.getElementById('panel-keys') },
+    { button: document.getElementById('tab-touch'), table: document.getElementById('panel-touch') },
+  ]
+  if (!toggle || !panel || tabs.some((tab) => !tab.button || !tab.table)) return
+
+  const show = (index: number) => {
+    tabs.forEach((tab, i) => {
+      tab.button!.setAttribute('aria-selected', String(i === index))
+      ;(tab.table as HTMLElement).hidden = i !== index
+    })
+  }
+
+  // Open on the half that matches the device, rather than always the keyboard.
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false
+  show(coarse ? 1 : 0)
+
+  tabs.forEach((tab, index) => {
+    tab.button!.addEventListener('pointerdown', (event) => event.stopPropagation())
+    tab.button!.addEventListener('click', (event) => {
+      event.stopPropagation()
+      show(index)
+    })
+  })
 
   const setOpen = (open: boolean) => {
     panel.hidden = !open

@@ -66,17 +66,17 @@ body {
 /* Help. Out of the way until it is asked for, so the game keeps no text. */
 #help-toggle {
   position: fixed;
-  right: max(16px, env(safe-area-inset-right, 0px));
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
   z-index: 2;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 0;
   border-radius: 50%;
-  background: rgba(12, 42, 56, 0.42);
+  background: rgba(12, 42, 56, 0.4);
   color: var(--ink);
   font: inherit;
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -100,51 +100,76 @@ body {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(8, 30, 42, 0.62);
-  overflow-y: auto;
+  background: rgba(8, 30, 42, 0.5);
+}
+
+/* An explicit display beats the browser rule for [hidden], so say it again. */
+#help[hidden] {
+  display: none;
 }
 
 .sheet {
-  width: min(560px, 100%);
-  padding: 22px 24px 24px;
-  border-radius: 12px;
-  background: rgba(14, 38, 50, 0.96);
-  box-shadow: 0 24px 60px rgba(0, 20, 30, 0.5);
+  width: min(390px, 100%);
+  padding: 14px 16px 15px;
+  border-radius: 10px;
+  background: rgba(14, 38, 50, 0.97);
+  box-shadow: 0 18px 44px rgba(0, 20, 30, 0.5);
 }
 
-.sheet h2 {
-  margin: 0 0 8px;
-  font-size: 22px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 250, 240, 0.08);
   color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
-.sheet h2 + table {
-  margin-bottom: 22px;
+.tabs button[aria-selected='true'] {
+  background: rgba(255, 250, 240, 0.2);
+  color: var(--ink);
+}
+
+.tabs button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .sheet table {
   width: 100%;
   border-collapse: collapse;
   font-family: 'Archivo', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 12.5px;
+}
+
+.sheet table[hidden] {
+  display: none;
 }
 
 .sheet th,
 .sheet td {
   text-align: left;
   vertical-align: top;
-  padding: 7px 0;
-  border-bottom: 1px solid rgba(255, 250, 240, 0.12);
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 250, 240, 0.1);
 }
 
 .sheet th {
-  width: 40%;
-  padding-right: 14px;
+  width: 48%;
+  padding-right: 10px;
   font-weight: 500;
   color: var(--ink);
-  white-space: nowrap;
 }
 
 .sheet td {
@@ -153,16 +178,17 @@ body {
 
 .sheet kbd {
   display: inline-block;
-  padding: 2px 7px;
-  border: 1px solid rgba(255, 250, 240, 0.28);
-  border-radius: 5px;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 250, 240, 0.26);
+  border-radius: 4px;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .aside {
-  margin: 4px 0 0;
+  margin: 10px 0 0;
   font-family: 'Archivo', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--muted);
 }

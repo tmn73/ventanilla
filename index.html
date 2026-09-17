@@ -18,33 +18,33 @@
     <button id="help-toggle" type="button" aria-expanded="false" aria-controls="help">?</button>
     <div id="help" hidden>
       <div class="sheet">
-        <h2>Keyboard</h2>
-        <table>
+        <div class="tabs" role="tablist">
+          <button id="tab-keys" type="button" role="tab" aria-controls="panel-keys" aria-selected="true">Keyboard</button>
+          <button id="tab-touch" type="button" role="tab" aria-controls="panel-touch" aria-selected="false">Touch</button>
+        </div>
+
+        <table id="panel-keys" role="tabpanel" aria-labelledby="tab-keys">
           <tbody>
-            <tr><th scope="row"><kbd>Space</kbd></th><td>Ollie. Hold it to pop higher.</td></tr>
-            <tr><th scope="row"><kbd>Up</kbd></th><td>Push, while rolling.</td></tr>
-            <tr><th scope="row"><kbd>Down</kbd></th><td>Brake, while rolling.</td></tr>
-            <tr><th scope="row"><kbd>Left</kbd></th><td>Kickflip in the air. 5-0 on a rail.</td></tr>
-            <tr><th scope="row"><kbd>Right</kbd></th><td>Heelflip in the air. Nosegrind on a rail.</td></tr>
-            <tr><th scope="row"><kbd>Up</kbd> <kbd>Down</kbd></th><td>Smith and feeble, once you are on the rail.</td></tr>
-            <tr><th scope="row"><kbd>A</kbd> <kbd>D</kbd></th><td>Spin backside and frontside. You turn for as long as you hold.</td></tr>
+            <tr><th scope="row"><kbd>Space</kbd></th><td>Ollie, hold to pop higher</td></tr>
+            <tr><th scope="row"><kbd>Up</kbd> <kbd>Down</kbd></th><td>Push, brake</td></tr>
+            <tr><th scope="row"><kbd>Left</kbd> <kbd>Right</kbd></th><td>Kickflip, heelflip</td></tr>
+            <tr><th scope="row"><kbd>Left</kbd> <kbd>Right</kbd> on a rail</th><td>5-0, nosegrind</td></tr>
+            <tr><th scope="row"><kbd>Up</kbd> <kbd>Down</kbd> on a rail</th><td>Smith, feeble</td></tr>
+            <tr><th scope="row"><kbd>A</kbd> <kbd>D</kbd> held</th><td>Spin, until you let go</td></tr>
           </tbody>
         </table>
 
-        <h2>Touch</h2>
-        <table>
+        <table id="panel-touch" role="tabpanel" aria-labelledby="tab-touch" hidden>
           <tbody>
-            <tr><th scope="row">Tap</th><td>Ollie.</td></tr>
-            <tr><th scope="row">Flick up and right</th><td>Kickflip.</td></tr>
-            <tr><th scope="row">Flick up and left</th><td>Heelflip.</td></tr>
-            <tr><th scope="row">Flick up</th><td>Push while rolling. Smith on a rail.</td></tr>
-            <tr><th scope="row">Flick down</th><td>Brake while rolling. Feeble on a rail.</td></tr>
-            <tr><th scope="row">Flick left, right</th><td>5-0 and nosegrind, on a rail.</td></tr>
-            <tr><th scope="row">Drag, then hold</th><td>Spin. It keeps turning until you lift.</td></tr>
+            <tr><th scope="row">Tap</th><td>Ollie</td></tr>
+            <tr><th scope="row">Flick up-right, up-left</th><td>Kickflip, heelflip</td></tr>
+            <tr><th scope="row">Flick up, down</th><td>Push, brake</td></tr>
+            <tr><th scope="row">Flick on a rail</th><td>5-0, nosegrind, smith, feeble</td></tr>
+            <tr><th scope="row">Drag, then hold</th><td>Spin, until you lift</td></tr>
           </tbody>
         </table>
 
-        <p class="aside">Land far from a half turn and you bail. You never fall, but it costs half your speed.</p>
+        <p class="aside">Land far from a half turn and you bail: half your speed, never a fall.</p>
       </div>
     </div>
     <script type="module" src="./src/main.ts"></script>
