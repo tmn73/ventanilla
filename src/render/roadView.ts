@@ -8,11 +8,13 @@ import {
   MeshLambertMaterial,
   Object3D,
   Scene,
+  type Texture,
 } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
-import { CONTACT, EDGE_COLOR, KERB, PAVING, POST_COLOR, SURFACE_COLOR, WALL } from './palette'
+import { makeConcrete } from './concrete'
+import { POST_COLOR, SURFACE_COLOR } from './palette'
 
 const MAX_BOXES = 1400
 const MAX_RODS = 500
@@ -49,11 +51,11 @@ class Pool {
   private cursor = 0
   private tint = new Color()
 
-  constructor(scene: Scene, geometry: BufferGeometry, max: number) {
+  constructor(scene: Scene, geometry: BufferGeometry, max: number, grain: Texture | null = null) {
     // No vertexColors here. instanceColor alone defines USE_INSTANCING_COLOR;
     // adding USE_COLOR makes the shader read a colour attribute the geometry
     // does not have, and every instance comes out black.
-    const material: Material = new MeshLambertMaterial({ flatShading: true })
+    const material: Material = new MeshLambertMaterial({ flatShading: true, map: grain })
     this.mesh = new InstancedMesh(geometry, material, max)
     this.mesh.frustumCulled = false
     this.mesh.castShadow = true
@@ -95,7 +97,7 @@ export class RoadView {
     scene: Scene,
     private path: Path,
   ) {
-    this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
+    this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES, makeConcrete())
     // A rod lies along its own length once the proxy turns it a quarter turn.
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
   }
@@ -114,28 +116,14 @@ export class RoadView {
         continue
       }
 
-      this.slab(segment, THICKNESS[segment.kind], BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
+      // The pavement is one solid mass from the surface down to the ground,
+      // rather than a slab on legs. Nothing sits under it and nothing edges it.
+      const depth =
+        segment.kind === 'flat'
+          ? Math.max(1.2, surfaceYAt(segment, segment.x0) - WORLD_FLOOR)
+          : THICKNESS[segment.kind]
 
-      if (segment.kind === 'ledge' || segment.kind === 'hubba') {
-        // A lit cap on the edge you are aiming at, and a contact line at the
-        // foot so the block reads as standing on the pavement.
-        const half = BREADTH[segment.kind] / 2
-        this.strip(segment, 0, 0.02, BREADTH[segment.kind] + 0.26, EDGE_COLOR[segment.kind]!, 0.12)
-        this.strip(segment, -half - 0.1, -THICKNESS[segment.kind] + 0.03, 0.26, CONTACT, 0.06)
-        this.strip(segment, half + 0.1, -THICKNESS[segment.kind] + 0.03, 0.26, CONTACT, 0.06)
-      } else if (segment.kind === 'flat') {
-        this.paving(segment, camLeft, right)
-        // The lip along each edge, and the wall it stands on. A slab with no
-        // edge and nothing under it reads as floating.
-        const edge = BREADTH.flat / 2 - 0.2
-        this.strip(segment, -edge, 0.16, 0.42, KERB)
-        this.strip(segment, edge, 0.16, 0.42, KERB)
-        const wall = Math.max(1, surfaceYAt(segment, segment.x0) - WORLD_FLOOR)
-        this.strip(segment, -edge - 0.14, -wall / 2, 0.5, WALL, wall)
-        this.strip(segment, edge + 0.14, -wall / 2, 0.5, WALL, wall)
-      } else if (segment.kind === 'step') {
-        this.strip(segment, 0, 0.015, BREADTH.step, EDGE_COLOR.step!, 0.05)
-      }
+      this.slab(segment, depth, BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
     }
 
     this.boxes.finish()
@@ -174,38 +162,6 @@ export class RoadView {
     }
   }
 
-  /** A run of something narrow along one edge of a surface, piece by piece. */
-  private strip(
-    segment: Segment,
-    lateral: number,
-    lift: number,
-    breadth: number,
-    color: string,
-    height = 0.3,
-  ): void {
-    const span = segment.x1 - segment.x0
-    const pieces = Math.max(1, Math.ceil(span / PIECE))
-    const step = span / pieces
-    const slope = Math.atan2(segment.y1 - segment.y0, span)
-
-    for (let i = 0; i < pieces; i++) {
-      const s = segment.x0 + step * (i + 0.5)
-      const spread = 1 + Math.abs(this.path.curvatureAt(s)) * Math.abs(lateral)
-      const length = (step / Math.cos(slope)) * OVERLAP * spread
-      this.place(
-        this.boxes,
-        s,
-        surfaceYAt(segment, s) + lift,
-        lateral,
-        length,
-        height,
-        breadth,
-        color,
-        slope,
-      )
-    }
-  }
-
   private railAlong(segment: Segment, radius: number, color: string | undefined): void {
     const span = segment.x1 - segment.x0
     const pieces = Math.max(1, Math.ceil(span / PIECE))
@@ -231,16 +187,6 @@ export class RoadView {
       const foot = this.floorUnder(all, x, top)
       const drop = Math.max(0.2, top - foot)
       this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
-    }
-  }
-
-  /** Slab joints across the pavement. They give the eye something to clock. */
-  private paving(segment: Segment, camLeft: number, right: number): void {
-    const spacing = 3.6
-    const first = Math.ceil(segment.x0 / spacing) * spacing
-    for (let x = first; x < segment.x1; x += spacing) {
-      if (x < camLeft - 16 || x > right + 16) continue
-      this.place(this.boxes, x, surfaceYAt(segment, x) + 0.005, 0, 0.07, 0.02, BREADTH.flat, PAVING)
     }
   }
 

@@ -50,7 +50,7 @@ const MAX_FREE_STEPS = 8
 const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
 /** The pavement never wanders further than this from where it started. */
-const DRIFT_LIMIT = 7
+const DRIFT_LIMIT = 4.5
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -142,8 +142,8 @@ export class Road {
    */
   private funbox(scale: number): void {
     const rise = 0.7 + scale * 2.1
-    const ramp = rise / range(this.rng, 0.22, 0.34)
-    const top = this.groundY + rise
+    const top = this.settle(this.groundY + rise)
+    const ramp = Math.max(2, (top - this.groundY) / range(this.rng, 0.22, 0.34))
     const deck = 5 + scale * 22
 
     this.push(this.headX, this.headX + ramp, this.groundY, top, 'flat', true)
@@ -161,8 +161,8 @@ export class Road {
   /** A kicker right before a flat rail, so you pop onto it instead of climbing. */
   private bumpToBar(scale: number): void {
     const rise = 0.45 + scale * 0.5
-    const ramp = rise / 0.32
-    const crest = this.groundY + rise
+    const crest = this.settle(this.groundY + rise)
+    const ramp = Math.max(1.2, (crest - this.groundY) / 0.32)
 
     this.push(this.headX, this.headX + ramp, this.groundY, crest, 'flat', true)
     this.headX += ramp
@@ -182,15 +182,15 @@ export class Road {
    */
   private channel(scale: number): void {
     const width = 2.2 + scale * 5
-    const depth = 0.8 + scale * 1.6
-    const floorY = this.groundY - depth
+    const floorY = this.settle(this.groundY - (0.8 + scale * 1.6))
+    const depth = this.groundY - floorY
 
     // A sheer near wall, so the edge reads as something to leave the ground at.
     this.push(this.headX, this.headX + width, floorY, floorY, 'flat', true)
     this.headX += width
 
     // And a long ramp out, gentle enough for a board to hold.
-    const out = depth / 0.26
+    const out = Math.max(2, depth / 0.26)
     this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
     this.headX += out
   }

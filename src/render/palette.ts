@@ -5,16 +5,16 @@ import { Color } from 'three'
  * and nothing else, so the question "can I get on that" is answered by colour
  * alone and never depends on the angle or the light.
  */
-export const SKY = '#e9e5dd'
-export const GROUND = '#d6d0c3'
-export const WATER = '#b6c7c4'
+export const SKY = '#dfe3e4'
+export const GROUND = '#c9c6bf'
+export const WATER = '#aebcbb'
 
 export const PAVING = '#b3ac9f'
 
 /** Ridable. The accent, and the one dark for metal. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#c6c0b4',
-  step: '#bdb6a9',
+  flat: '#bcb9b2',
+  step: '#b3b0a9',
   ledge: '#e2603c',
   hubba: '#d4562f',
   rail: '#3a4045',
@@ -42,7 +42,7 @@ export const WHEEL_COLOR = '#6f7378'
 
 /** Kept so the sky plane can still carry a faint vertical lift. */
 export const SKY_STOPS: Array<[number, string]> = [
-  [0.0, '#f2eee7'],
+  [0.0, '#eef1f1'],
   [1.0, SKY],
 ]
 

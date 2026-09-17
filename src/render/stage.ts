@@ -33,7 +33,7 @@ export class Stage {
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true })
-    this.renderer.setClearColor(0xe9e5dd, 1)
+    this.renderer.setClearColor(0xdfe3e4, 1)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFSoftShadowMap
 
