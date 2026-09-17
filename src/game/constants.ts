@@ -53,8 +53,7 @@ export const FLIP_DURATION = 0.42
 
 
 /**
- * Across the road. Moving sideways is how you pick a line, so it is fast
- * enough to change your mind and slow enough to commit to.
+ * How fast a lane change crosses. It runs at a fixed speed and stops exactly
+ * on the lane, so every change puts him on a middle rather than near one.
  */
-export const LEAN_SPEED = 5.6
-export const LEAN_ACCEL = 30
+export const LANE_SPEED = 15

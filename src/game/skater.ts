@@ -1,6 +1,14 @@
 import * as C from './constants'
 import type { Input } from '../input'
-import { GRINDABLE, ROAD_HALF, slopeOf, surfaceYAt, type Road, type Segment } from './road'
+import {
+  GRINDABLE,
+  LANE_MAX,
+  LANE_WIDTH,
+  slopeOf,
+  surfaceYAt,
+  type Road,
+  type Segment,
+} from './road'
 
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
 const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
@@ -59,7 +67,9 @@ const LABEL: Record<string, string> = {
 export class Skater {
   x = 0
   y = C.LANE_Y[0]!
-  /** Where he is across the road. This is the line he chose. */
+  /** Which lane he is on. A press changes it by one, and never by less. */
+  lane = 0
+  /** Where he is across the road, on its way to the middle of that lane. */
   z = 0
   /** His own speed now. Nothing else carries him forward. */
   vx = C.START_SPEED
@@ -110,6 +120,7 @@ export class Skater {
   reset(x: number): void {
     this.x = x
     this.y = C.LANE_Y[0]!
+    this.lane = 0
     this.z = 0
     this.prevX = x
     this.prevY = this.y
@@ -171,18 +182,21 @@ export class Skater {
    * chosen a moment before it arrives rather than snapped to on the spot.
    */
   private lean(dt: number, input: Input): void {
-    const wanted = input.lean * C.LEAN_SPEED
-    const gap = wanted - this.vz
-    const step = C.LEAN_ACCEL * dt
-    this.vz += Math.abs(gap) <= step ? gap : Math.sign(gap) * step
-    this.z += this.vz * dt
+    if (input.laneStep !== 0) {
+      this.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, this.lane + input.laneStep))
+    }
 
-    if (this.z < -ROAD_HALF) {
-      this.z = -ROAD_HALF
+    // A fixed speed and an exact stop. Arriving short of the middle is what
+    // makes lining up with a rail a matter of aim, and it must not happen.
+    const target = this.lane * LANE_WIDTH
+    const gap = target - this.z
+    const step = C.LANE_SPEED * dt
+    if (Math.abs(gap) <= step) {
+      this.z = target
       this.vz = 0
-    } else if (this.z > ROAD_HALF) {
-      this.z = ROAD_HALF
-      this.vz = 0
+    } else {
+      this.vz = Math.sign(gap) * C.LANE_SPEED
+      this.z += this.vz * dt
     }
   }
 
@@ -302,7 +316,9 @@ export class Skater {
     this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg
+    // Catching a narrow surface puts him on its lane, not merely near it.
     if (seg.halfWidth < 1.2) {
+      this.lane = Math.round(seg.z / LANE_WIDTH)
       this.z = seg.z
       this.vz = 0
     }

@@ -12,7 +12,7 @@ const IDLE = {
   pushing: false,
   braking: false,
   rotate: 0,
-  lean: 0,
+  laneStep: 0,
 }
 const idle = IDLE as never
 
@@ -59,7 +59,10 @@ test('a player who keeps crossing the road is never trapped', () => {
     game.start()
     for (let tick = 0; tick < 120 * 90; tick++) {
       // Sweeps the full width over and over, so every line gets ridden.
-      const input = { ...IDLE, lean: Math.sin(tick / 90) } as never
+      // A press every half second, sweeping the full width and back.
+      const beat = tick % 60 === 0
+      const phase = Math.floor(tick / 60) % 8
+      const input = { ...IDLE, laneStep: beat ? (phase < 4 ? 1 : -1) : 0 } as never
       game.step(FIXED_DT, input)
       const floor = game.road.floorAt(game.skater.x, game.skater.z)
       if (!Number.isFinite(game.skater.z) || !Number.isFinite(game.skater.y)) {

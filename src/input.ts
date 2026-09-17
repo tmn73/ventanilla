@@ -14,8 +14,11 @@ export class Input {
 
   /** Held rotation: -1 backside, 1 frontside, 0 straight. */
   private dragRotate = 0
-  /** Held lean across the road, from a sustained vertical drag. */
-  private dragLean = 0
+  /** One lane, consumed by the next step. A press is a lane, never a drift. */
+  laneStep = 0
+  private lanePending = 0
+  /** True once a drag has spent its lane change, until the finger comes back. */
+  private laneSpent = false
   private pressedAt = 0
   private pushPulse = false
   private brakeUntil = 0
@@ -40,16 +43,6 @@ export class Input {
     if (this.held.has('KeyA')) return -1
     if (this.held.has('KeyD')) return 1
     return this.dragRotate
-  }
-
-  /**
-   * Across the road, from -1 to 1. This is the only input that chooses a line,
-   * so it is held rather than tapped.
-   */
-  get lean(): number {
-    if (this.held.has('KeyW')) return -1
-    if (this.held.has('KeyS')) return 1
-    return this.dragLean
   }
 
   /** Held up on the ground, or one flick up. A push is a kick, not a throttle. */
@@ -94,6 +87,8 @@ export class Input {
       this.held.add(e.code)
       if (e.code === 'ArrowLeft') this.flick(KICKFLIP)
       if (e.code === 'ArrowRight') this.flick(HEELFLIP)
+      if (e.code === 'KeyW') this.lanePending = -1
+      if (e.code === 'KeyS') this.lanePending = 1
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') this.jumpHeld = false
@@ -107,7 +102,7 @@ export class Input {
       this.touchStart = { x: e.clientX, y: e.clientY }
       this.pressedAt = performance.now()
       this.dragRotate = 0
-      this.dragLean = 0
+      this.laneSpent = false
       this.ollie()
     }
 
@@ -123,19 +118,24 @@ export class Input {
       if (performance.now() - this.pressedAt < 130) return
       if (Math.abs(dx) >= 46 && Math.abs(dx) >= Math.abs(dy)) {
         this.dragRotate = dx > 0 ? 1 : -1
-        this.dragLean = 0
-      } else if (Math.abs(dy) >= 46) {
-        this.dragLean = dy > 0 ? 1 : -1
-        this.dragRotate = 0
+        return
+      }
+      // One drag away is one lane. Coming back re-arms it, so a finger that
+      // stays down can walk across the road one lane at a time.
+      if (Math.abs(dy) < 24) this.laneSpent = false
+      else if (Math.abs(dy) >= 46 && !this.laneSpent) {
+        this.lanePending = dy > 0 ? 1 : -1
+        this.laneSpent = true
+        this.touchStart = { x: start.x, y: e.clientY }
       }
     }
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
       this.touchStart = null
       this.jumpHeld = false
-      const steered = this.dragRotate !== 0 || this.dragLean !== 0
+      const steered = this.dragRotate !== 0 || this.laneSpent
       this.dragRotate = 0
-      this.dragLean = 0
+      this.laneSpent = false
       if (!start || steered) return
       this.readFlick(e.clientX - start.x, e.clientY - start.y)
     }
@@ -144,7 +144,7 @@ export class Input {
       this.jumpHeld = false
       this.touchStart = null
       this.dragRotate = 0
-      this.dragLean = 0
+      this.laneSpent = false
     }
 
     window.addEventListener('keydown', down)
@@ -215,6 +215,8 @@ export class Input {
     this.flipSign = this.pendingSign
     this.flipPending = false
     this.pushPulse = false
+    this.laneStep = this.lanePending
+    this.lanePending = 0
   }
 
   release(): void {

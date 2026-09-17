@@ -5,7 +5,7 @@ import {
   FIXED_DT,
   JUMP_SPEED,
   LANE_Y,
-  LEAN_SPEED,
+  LANE_SPEED,
   SPARK_RATE,
   VIEW_WIDTH,
 } from './game/constants'
@@ -152,7 +152,7 @@ startLoop(
       Math.min(1, skater.pushTime / 0.22),
       skater.switched,
       skater.stance,
-      (skater.vz / LEAN_SPEED) * 0.28,
+      (skater.vz / LANE_SPEED) * 0.3,
     )
     hud.setSwitched(skater.switched)
     hud.update(skater)

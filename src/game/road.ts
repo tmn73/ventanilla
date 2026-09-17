@@ -18,7 +18,14 @@ export interface Segment {
 }
 
 /** Half the width of the pavement. The skater may go this far either side. */
-export const ROAD_HALF = 5.4
+export const ROAD_HALF = 6
+/**
+ * The road is five lanes, and they are invisible. A press moves you a whole
+ * lane and lands you on its middle, so being lined up with what is on that
+ * lane is never a question of aim.
+ */
+export const LANE_WIDTH = 2.5
+export const LANE_MAX = 2
 
 /**
  * How wide each kind is by default. A rail catches wider than it looks, which
@@ -76,8 +83,6 @@ const LEDGE_HEIGHT = 0.58
 const DRIFT_LIMIT = 20
 /** The steepest face the game ever builds. Past this it reads as a wall. */
 const MAX_SLOPE = 0.9
-/** Where a feature sits when it is not in the middle of the road. */
-const LANE = 3.1
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -92,12 +97,14 @@ export class Road {
 
   constructor(private rng: () => number) {}
 
-  /** Which side of the road a feature takes. The middle is the common case. */
-  private lane(): number {
+  /**
+   * Which lane a feature takes. Always a lane middle, never between two: a
+   * feature you cannot line up with is a feature you cannot ride.
+   */
+  private lane(spread = 1): number {
     const roll = this.rng()
-    if (roll < 0.34) return -LANE
-    if (roll < 0.68) return LANE
-    return 0
+    const out = roll < 0.16 ? -2 : roll < 0.4 ? -1 : roll < 0.6 ? 0 : roll < 0.84 ? 1 : 2
+    return Math.max(-LANE_MAX, Math.min(LANE_MAX, Math.round(out * spread))) * LANE_WIDTH
   }
 
   /** Pavement across only part of the road, so the rest of it can fall away. */
@@ -183,8 +190,74 @@ export class Road {
     else if (roll < 0.88) this.stepUp(scale)
     else if (roll < 0.91) this.padChain(scale)
     else if (roll < 0.94) this.ledgeToBank(scale)
-    else if (roll < 0.97) this.splitPit(scale)
-    else this.fork(scale)
+    else if (roll < 0.96) this.splitPit(scale)
+    else if (roll < 0.975) this.fork(scale)
+    else if (roll < 0.99) this.skybridge(scale)
+    else this.canyon(scale)
+  }
+
+  /**
+   * The road falls away and a rail keeps its level straight across the hole.
+   * Grind the whole span, or drop in and ride the bottom. It is the one shape
+   * where the easy line and the good line are furthest apart.
+   */
+  private skybridge(scale: number): void {
+    const lane = this.lane()
+    const top = this.groundY
+    const depth = 3 + scale * 9
+    const floorY = this.settle(top - depth)
+    const fall = Math.max(4, depth / 0.5)
+    const span = 10 + scale * 22
+    const climb = Math.max(5, depth / 0.3)
+
+    this.push(this.headX, this.headX + fall, top, floorY, 'flat', true)
+    this.push(this.headX + fall, this.headX + fall + span, floorY, floorY, 'flat', true)
+    this.push(
+      this.headX + fall + span,
+      this.headX + fall + span + climb,
+      floorY,
+      top,
+      'flat',
+      true,
+    )
+
+    // The rail ignores all of it and holds the line the road used to be on.
+    const railY = top + RAIL_HEIGHT
+    this.push(this.headX - 3, this.headX + fall + span + climb * 0.6, railY, railY, 'rail', false, lane)
+
+    this.headX += fall + span + climb
+  }
+
+  /**
+   * Two roads side by side at two heights, running together for a while. The
+   * lane you are on when it opens is the road you are committed to.
+   */
+  private canyon(scale: number): void {
+    const length = 20 + scale * 45
+    const depth = 1.6 + scale * 5
+    const lowY = this.settle(this.groundY - depth)
+    const drop = Math.max(3, depth / 0.5)
+    const climb = Math.max(4, depth / 0.32)
+    const down = this.rng() < 0.5 ? -1 : 1
+    // The split runs between two lanes, so no lane is half high and half low.
+    const edge = down * (Math.floor(this.rng() * 2) + 0.5) * LANE_WIDTH
+    const lowFrom = down > 0 ? edge : -ROAD_HALF
+    const lowTo = down > 0 ? ROAD_HALF : edge
+    const highFrom = down > 0 ? -ROAD_HALF : edge
+    const highTo = down > 0 ? edge : ROAD_HALF
+
+    const x = this.headX
+    this.band(x, x + drop + length + climb, this.groundY, this.groundY, highFrom, highTo)
+    this.band(x, x + drop, this.groundY, lowY, lowFrom, lowTo)
+    this.band(x + drop, x + drop + length, lowY, lowY, lowFrom, lowTo)
+    this.band(x + drop + length, x + drop + length + climb, lowY, this.groundY, lowFrom, lowTo)
+
+    // A hubba down the wall between the two, which is the line that uses both.
+    const ledgeY = this.groundY + LEDGE_HEIGHT
+    const ledgeZ = edge - down * LANE_WIDTH * 0.5
+    this.push(x + drop, x + drop + length, ledgeY, ledgeY, 'hubba', false, ledgeZ)
+
+    this.headX += drop + length + climb
   }
 
   /**
@@ -196,8 +269,8 @@ export class Road {
     const floorY = this.settle(this.groundY - (2 + scale * 7))
     const out = Math.max(4, (this.groundY - floorY) / 0.26)
     const open = this.rng() < 0.5 ? -1 : 1
-    // Where the hole stops and the safe ledge begins, never dead centre.
-    const edge = open * range(this.rng, 0.4, 2.6)
+    // The hole stops between two lanes, so a lane is either whole or gone.
+    const edge = open * (Math.floor(this.rng() * 2) + 0.5) * LANE_WIDTH
 
     const safeFrom = open > 0 ? -ROAD_HALF : edge
     const safeTo = open > 0 ? edge : ROAD_HALF
@@ -221,14 +294,23 @@ export class Road {
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
 
     const railY = this.groundY + RAIL_HEIGHT
-    this.push(this.headX + 1, this.headX + length - 1, railY, railY, 'rail', false, side * LANE)
+    this.push(
+      this.headX + 1,
+      this.headX + length - 1,
+      railY,
+      railY,
+      'rail',
+      false,
+      side * LANE_WIDTH * 2,
+    )
 
     // The platform is reached by a ramp at its near end and ends in a drop.
     const lift = 0.9 + scale * 1.8
     const ramp = Math.max(3, lift / 0.42)
     const topY = this.groundY + lift
-    const half = 2.1
-    const centre = -side * (ROAD_HALF - half)
+    // Two lanes wide, centred on a lane, so both of them carry you.
+    const half = LANE_WIDTH
+    const centre = -side * LANE_WIDTH * 1.5
     this.push(this.headX, this.headX + ramp, this.groundY, topY, 'flat', true, centre, half)
     this.push(this.headX + ramp, this.headX + length, topY, topY, 'flat', true, centre, half)
 
@@ -278,7 +360,7 @@ export class Road {
 
     this.push(this.headX, this.headX + first + gap + second, this.groundY, this.groundY, 'flat', true)
     // The two rails sit on opposite sides, so the line crosses the road.
-    const side = this.rng() < 0.5 ? -LANE : LANE
+    const side = this.rng() < 0.5 ? -LANE_WIDTH : LANE_WIDTH
     const lowY = this.groundY + RAIL_HEIGHT
     this.push(this.headX + 0.5, this.headX + first, lowY, lowY, 'rail', false, side)
     const highY = lowY + lift

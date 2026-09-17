@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { mulberry32, seedFrom } from '../core/rng'
-import { coversZ, ROAD_HALF, Road } from './road'
+import { coversZ, LANE_MAX, LANE_WIDTH, ROAD_HALF, Road } from './road'
 
 const TRIALS = 60
 const LENGTH = 1500
@@ -73,4 +73,44 @@ test('there is ground under every point of the road', () => {
   }
 
   expect(empty.slice(0, 5)).toEqual([])
+})
+
+test('everything you can ride sits on a lane', () => {
+  // A lane change lands on a lane middle. A rail placed between two of them
+  // could never be lined up with, however well you played.
+  const adrift: string[] = []
+
+  for (let trial = 0; trial < TRIALS; trial++) {
+    for (const segment of laid(trial).segments) {
+      if (segment.floor) continue
+      const lane = segment.z / LANE_WIDTH
+      if (Math.abs(lane - Math.round(lane)) > 1e-6 || Math.abs(lane) > LANE_MAX) {
+        adrift.push(`trial ${trial}: ${segment.kind} at z=${segment.z.toFixed(2)}`)
+      }
+    }
+  }
+
+  expect(adrift.slice(0, 5)).toEqual([])
+})
+
+test('no lane is half in a hole', () => {
+  // A hole takes whole lanes. A lane cut down the middle would be a line you
+  // can neither ride nor leave.
+  const cut: string[] = []
+
+  for (let trial = 0; trial < 12; trial++) {
+    for (const segment of laid(trial).segments) {
+      if (!segment.floor || segment.halfWidth >= ROAD_HALF) continue
+      for (const edge of [segment.z - segment.halfWidth, segment.z + segment.halfWidth]) {
+        if (Math.abs(edge) > ROAD_HALF - 0.01) continue
+        for (let lane = -LANE_MAX; lane <= LANE_MAX; lane++) {
+          if (Math.abs(edge - lane * LANE_WIDTH) < 0.6) {
+            cut.push(`trial ${trial}: edge ${edge.toFixed(2)} splits lane ${lane}`)
+          }
+        }
+      }
+    }
+  }
+
+  expect(cut.slice(0, 5)).toEqual([])
 })
