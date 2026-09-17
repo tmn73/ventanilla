@@ -126,33 +126,65 @@ export class Road {
 
   private spot(scale: number): void {
     const drift = this.groundY - LANE_Y[0]!
-    // In a world with a floor, every metre lost on a stair set is a metre
-    // that has to be climbed again. So the road climbs on a kicker with a
-    // deck on top, which is a thing to jump off, and never on a bare hill.
-    if (drift < -DRIFT_LIMIT * 0.55) {
-      this.drop(scale, true)
+    // In a world with a floor, every metre a stair set drops has to be climbed
+    // again. So the road climbs on a kicker with a deck on top, which is a
+    // thing to jump off, and never on a bare hill.
+    if (drift < -DRIFT_LIMIT * 0.75) {
+      this.climbSpot(scale)
       return
     }
 
-    const roll = this.rng()
-    if (roll < 0.13) this.stairs(scale)
-    else if (roll < 0.21) this.railSpot(scale)
-    else if (roll < 0.29) this.ledgeSpot(scale)
-    else if (roll < 0.36) this.bank(drift > DRIFT_LIMIT * 0.4 ? -1 : 0, scale)
-    else if (roll < 0.43) this.plaza(scale)
-    else if (roll < 0.49) this.doubleSet(scale)
-    else if (roll < 0.55) this.hip(scale)
-    else if (roll < 0.62) this.funbox(scale)
-    else if (roll < 0.68) this.bumpToBar(scale)
-    else if (roll < 0.73) this.channel(scale)
-    else if (roll < 0.79) this.drop(scale)
-    else if (roll < 0.85) this.railOverGap(scale)
-    else if (roll < 0.89) this.pit(scale)
-    else if (roll < 0.91) this.stepUp(scale)
-    else if (roll < 0.95) this.padChain(scale)
-    else if (roll < 0.98) this.ledgeToBank(scale)
-    else this.skybridge(scale)
+    // Weights, not an even spread. The plain spots are what a run is made of,
+    // and the odd ones are worth more for turning up rarely.
+    const lean = drift > DRIFT_LIMIT * 0.4 ? -1 : 0
+    const mix: Array<[number, () => void]> = [
+      [7, () => this.stairs(scale)],
+      [6, () => this.railSpot(scale)],
+      [6, () => this.ledgeSpot(scale)],
+      [5, () => this.plaza(scale)],
+      [5, () => this.bank(lean, scale)],
+      [4, () => this.funbox(scale)],
+      [4, () => this.doubleSet(scale)],
+      [4, () => this.hip(scale)],
+      [4, () => this.bumpToBar(scale)],
+      [4, () => this.quarterPipe(scale)],
+      [4, () => this.kinkedRail(scale)],
+      [4, () => this.euroGap(scale)],
+      [4, () => this.flatGap(scale)],
+      [4, () => this.loadingDock(scale)],
+      [3, () => this.channel(scale)],
+      [3, () => this.drop(scale)],
+      [3, () => this.railOverGap(scale)],
+      [3, () => this.stepUp(scale)],
+      [3, () => this.padChain(scale)],
+      [3, () => this.ledgeToBank(scale)],
+      [3, () => this.aFrame(scale)],
+      [3, () => this.spine(scale)],
+      [3, () => this.picnicTable(scale)],
+      [3, () => this.waterfall(scale)],
+      [3, () => this.rollingBumps(scale)],
+      [3, () => this.tripleSet(scale)],
+      [2, () => this.pit(scale)],
+      [2, () => this.rainbowRail(scale)],
+      [2, () => this.jerseyBarrier(scale)],
+      [2, () => this.poleJam(scale)],
+      [3, () => this.rollIn(scale)],
+      [2, () => this.skybridge(scale)],
+    ]
+
+    let total = 0
+    for (const [weight] of mix) total += weight
+    let roll = this.rng() * total
+    for (const [weight, build] of mix) {
+      roll -= weight
+      if (roll <= 0) {
+        build()
+        return
+      }
+    }
+    mix[0]![1]()
   }
+
 
   /**
    * The road falls away and a rail keeps its level straight across the hole.
@@ -317,6 +349,337 @@ export class Road {
    * there instead of dropping off the far end, which is how the pavement wins
    * back the height a stair set cost it.
    */
+/**
+   * A transition, built from straight pieces whose slope grows toward the lip.
+   * It never passes MAX_SLOPE: past that it stops being a ramp you hit and
+   * becomes a wall you climb.
+   */
+  private transition(rise: number, steepest: number, up: boolean): void {
+    // eslint-disable-next-line no-param-reassign
+    const base = this.groundY
+    const end = this.settle(up ? base + rise : base - rise)
+    rise = Math.abs(end - base)
+    if (rise < 0.05) return
+
+    const steps = [0.18, 0.42, 0.68, 1].map((t) => t * Math.min(MAX_SLOPE, steepest))
+    // Going up it steepens toward the lip. Coming down it does the reverse,
+    // so the steep part is at the top and the board flattens out at the base.
+    const slopes = up ? steps : steps.slice().reverse()
+    const weight = slopes.reduce((a, b) => a + b, 0)
+    let y = this.groundY
+
+    for (let i = 0; i < slopes.length; i++) {
+      const part = (rise * slopes[i]!) / weight
+      const run = part / slopes[i]!
+      const next = up ? y + part : y - part
+      this.push(this.headX, this.headX + run, y, next, 'flat', true)
+      this.headX += run
+      y = next
+    }
+    this.groundY = end
+  }
+
+  /** A rail laid in pieces, so it can kink or arch instead of running straight. */
+  private railLine(points: Array<[number, number]>): void {
+    for (let i = 1; i < points.length; i++) {
+      const [x0, y0] = points[i - 1]!
+      const [x1, y1] = points[i]!
+      this.push(x0, x1, y0, y1, 'rail', false)
+    }
+  }
+
+  /**
+   * How the pavement wins back the height a stair set cost it. Every one of
+   * these ends higher than it started and gives you something to jump off on
+   * the way, so a climb is never just a climb.
+   */
+  private climbSpot(scale: number): void {
+    const roll = this.rng()
+    if (roll < 0.4) this.drop(scale, true)
+    else if (roll < 0.7) this.euroGap(scale)
+    else this.rollIn(scale)
+  }
+
+  /** A curved transition up onto a plateau with a flat bar along it. */
+  private rollIn(scale: number): void {
+    const rise = 1.2 + Math.min(4.2, scale * 4)
+    this.transition(rise, 0.78, true)
+    const top = this.groundY
+    const deck = 12 + scale * 18
+    this.push(this.headX, this.headX + deck, top, top, 'flat', true)
+    const y = top + RAIL_HEIGHT
+    this.push(this.headX + 2, this.headX + deck - 2, y, y, 'rail', false)
+    this.headX += deck
+  }
+
+  /** A flight of steps down. Several modules need one without the rest of a set. */
+  private stepsDown(count: number): void {
+    const topX = this.headX
+    const topY = this.groundY
+    // No room left means no steps. Forcing one through walks the pavement
+    // out of the band it is allowed to wander in.
+    const room = Math.floor((topY - (LANE_Y[0]! - DRIFT_LIMIT)) / RISE)
+    const steps = Math.max(0, Math.min(count, room))
+    for (let i = 0; i < steps; i++) {
+      const y = topY - (i + 1) * RISE
+      this.push(topX + i * TREAD, topX + (i + 1) * TREAD, y, y, 'step', true)
+    }
+    this.headX = topX + steps * TREAD
+    this.groundY = topY - steps * RISE
+  }
+
+  /**
+   * A transition up to a lip with nothing behind it. You go up it and you
+   * leave the ground, and the landing is the street a long way below.
+   */
+  private quarterPipe(scale: number): void {
+    const base = this.groundY
+    const rise = 1.4 + Math.min(4.6, scale * 5)
+    this.transition(rise, 0.9, true)
+    const lip = this.groundY
+
+    // A short deck so the lip reads as an edge rather than a point.
+    this.push(this.headX, this.headX + 1.6, lip, lip, 'flat', true)
+    this.headX += 1.6
+
+    const landing = JUMP_REACH + 12 + scale * 14
+    this.push(this.headX, this.headX + landing, base, base, 'flat', true)
+    this.groundY = base
+    this.headX += landing
+  }
+
+  /** Two transitions back to back with no deck between them. */
+  private spine(scale: number): void {
+    const rise = 1.2 + Math.min(4, scale * 4.5)
+    this.transition(rise, 0.85, true)
+    const peak = this.groundY
+    this.push(this.headX, this.headX + 1.2, peak, peak, 'flat', true)
+    this.headX += 1.2
+    this.transition(rise, 0.85, false)
+  }
+
+  /** Two banks meeting at a peak, with a rail running over the top of them. */
+  private aFrame(scale: number): void {
+    const rise = 1.1 + Math.min(3.4, scale * 3.6)
+    const run = rise / range(this.rng, 0.34, 0.5)
+    const flat = 2 + scale * 4
+    const start = this.headX
+    const base = this.groundY
+    const peak = this.settle(base + rise)
+
+    this.push(this.headX, this.headX + run, base, peak, 'flat', true)
+    this.headX += run
+    this.push(this.headX, this.headX + flat, peak, peak, 'flat', true)
+    this.headX += flat
+    this.push(this.headX, this.headX + run, peak, base, 'flat', true)
+    this.headX += run
+    this.groundY = base
+
+    // The rail follows the roof line, which is what makes it an A-frame.
+    const lift = RAIL_HEIGHT
+    this.railLine([
+      [start + 0.5, base + lift],
+      [start + run, peak + lift],
+      [start + run + flat, peak + lift],
+      [this.headX - 0.5, base + lift],
+    ])
+  }
+
+  /** Flat, then a slope, then flat again lower down. The classic kinked rail. */
+  private kinkedRail(scale: number): void {
+    const top = 4 + scale * 8
+    const bottom = 5 + scale * 9
+    const base = this.groundY
+    const start = this.headX
+
+    this.push(this.headX, this.headX + top, base, base, 'flat', true)
+    this.headX += top
+    const kinkX = this.headX
+    this.stepsDown(Math.max(3, Math.round(3 + scale * 9)))
+    const breakX = this.headX
+    const low = this.groundY
+    this.push(this.headX, this.headX + bottom, low, low, 'flat', true)
+    this.headX += bottom
+
+    const lift = RAIL_HEIGHT
+    this.railLine([
+      [start + 1, base + lift],
+      [kinkX, base + lift],
+      [breakX, low + lift],
+      [this.headX - 1, low + lift],
+    ])
+  }
+
+  /** An arch. It rises off the ground, crests, and comes back down to it. */
+  private rainbowRail(scale: number): void {
+    const length = 9 + scale * 14
+    const crest = 1.1 + Math.min(1.6, scale * 1.8)
+    const start = this.headX
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    this.headX += length
+
+    const pieces = 6
+    const points: Array<[number, number]> = []
+    for (let i = 0; i <= pieces; i++) {
+      const t = i / pieces
+      points.push([start + 1 + (length - 2) * t, this.groundY + 0.12 + crest * Math.sin(t * Math.PI)])
+    }
+    this.railLine(points)
+  }
+
+  /** A bank to a deck, a notch, and a higher flat to clear onto. */
+  private euroGap(scale: number): void {
+    const first = 0.8 + scale * 1.6
+    const deck = 5 + scale * 8
+    const base = this.groundY
+    const low = this.settle(base + first)
+    const ramp = this.rampRun((low - base) / 0.42, low - base)
+
+    this.push(this.headX, this.headX + ramp, base, low, 'flat', true)
+    this.headX += ramp
+    this.push(this.headX, this.headX + deck, low, low, 'flat', true)
+    this.headX += deck
+
+    // The second flat sits higher than the first, and the notch between them
+    // climbs to it steeply enough to fit inside one ollie.
+    const high = this.settle(low + 0.6 + scale * 1.8)
+    const { bottom: notch, out } = this.hollow(high - base, 2 + scale * 3)
+    this.push(this.headX, this.headX + notch, base, base, 'flat', true)
+    this.headX += notch
+    this.push(this.headX, this.headX + out, base, high, 'flat', true)
+    this.headX += out
+    this.groundY = high
+  }
+
+  /** A low barrier across the road. Ollie it, or lay the board over it. */
+  private jerseyBarrier(scale: number): void {
+    const count = 1 + Math.floor(scale * 2)
+    for (let i = 0; i < count; i++) {
+      const length = 3 + scale * 4
+      const gap = 7 + scale * 6
+      this.push(this.headX, this.headX + length + gap, this.groundY, this.groundY, 'flat', true)
+      const y = this.groundY + 0.72
+      this.push(this.headX + 0.4, this.headX + length, y, y, 'ledge', false)
+      this.headX += length + gap
+    }
+  }
+
+  /** A bench, a table top, a bench. Three heights in three metres. */
+  private picnicTable(scale: number): void {
+    const length = 4 + scale * 3
+    const bench = 1.6 + scale * 0.8
+    const total = bench * 2 + length
+    this.push(this.headX, this.headX + total + 6, this.groundY, this.groundY, 'flat', true)
+
+    const seatY = this.groundY + 0.44
+    const topY = this.groundY + 0.76
+    this.push(this.headX, this.headX + bench, seatY, seatY, 'ledge', false)
+    this.push(this.headX + bench, this.headX + bench + length, topY, topY, 'ledge', false)
+    this.push(this.headX + bench + length, this.headX + total, seatY, seatY, 'ledge', false)
+    this.headX += total + 6
+  }
+
+  /** A raised platform that stops dead. Everything about it says jump. */
+  private loadingDock(scale: number): void {
+    const height = 1.2 + Math.min(3.6, scale * 4)
+    const ramp = this.rampRun(height / 0.5, height)
+    const deck = 8 + scale * 16
+    const base = this.groundY
+    const top = this.settle(base + height)
+
+    this.push(this.headX, this.headX + ramp, base, top, 'flat', true)
+    this.headX += ramp
+    this.push(this.headX, this.headX + deck, top, top, 'flat', true)
+    const ledgeY = top + LEDGE_HEIGHT
+    this.push(this.headX + 1, this.headX + deck, ledgeY, ledgeY, 'hubba', false)
+    this.headX += deck
+
+    const landing = JUMP_REACH + 14 + scale * 14
+    this.push(this.headX, this.headX + landing, base, base, 'flat', true)
+    this.groundY = base
+    this.headX += landing
+  }
+
+  /** Ledges stacked down like steps, each one a drop onto the next. */
+  private waterfall(scale: number): void {
+    const tiers = 2 + Math.floor(scale * 3)
+    for (let i = 0; i < tiers; i++) {
+      const length = 5 + scale * 7
+      const fall = 0.8 + scale * 1.6
+      const next = this.settle(this.groundY - fall)
+      const run = this.rampRun(fall / MAX_SLOPE, fall)
+      this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+      const y = this.groundY + LEDGE_HEIGHT * 0.7
+      this.push(this.headX + 0.8, this.headX + length, y, y, 'ledge', false)
+      this.headX += length
+      this.push(this.headX, this.headX + run, this.groundY, next, 'flat', true)
+      this.headX += run
+      this.groundY = next
+    }
+  }
+
+  /** A gap in flat ground. No height to help you, only speed. */
+  private flatGap(scale: number): void {
+    const floorY = this.settle(this.groundY - (1.2 + scale * 2))
+    const { bottom, out } = this.hollow(this.groundY - floorY, 3 + scale * 6)
+    this.push(this.headX, this.headX + bottom, floorY, floorY, 'flat', true)
+    this.headX += bottom
+    this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
+    this.headX += out
+  }
+
+  /** A pole out of the ground at an angle. You ride up it and off the end. */
+  private poleJam(scale: number): void {
+    const length = 8 + scale * 10
+    const rise = 0.9 + Math.min(1.4, scale * 1.6)
+    const run = 3.5 + scale * 3
+    this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
+    this.railLine([
+      [this.headX + 1, this.groundY + 0.1],
+      [this.headX + 1 + run, this.groundY + rise],
+    ])
+    this.headX += length
+  }
+
+  /** Humps in a row. Pump them, or pop off each one. */
+  private rollingBumps(scale: number): void {
+    const bumps = 2 + Math.floor(scale * 3)
+    for (let i = 0; i < bumps; i++) {
+      const rise = 0.4 + scale * 1.1
+      const run = this.rampRun(rise / 0.44, rise)
+      const crest = this.settle(this.groundY + rise)
+      const base = this.groundY
+      this.push(this.headX, this.headX + run, base, crest, 'flat', true)
+      this.headX += run
+      this.push(this.headX, this.headX + run, crest, base, 'flat', true)
+      this.headX += run
+      this.push(this.headX, this.headX + 3 + scale * 4, base, base, 'flat', true)
+      this.headX += 3 + scale * 4
+      this.groundY = base
+    }
+  }
+
+  /** Three sets with a landing between each. A rail runs down the biggest. */
+  private tripleSet(scale: number): void {
+    for (let i = 0; i < 3; i++) {
+      const steps = Math.max(2, Math.round(2 + scale * 5 + range(this.rng, -1, 2)))
+      const start = this.headX
+      const top = this.groundY
+      this.stepsDown(steps)
+      const low = this.groundY
+      const landing = i === 2 ? JUMP_REACH + 6 : 3 + scale * 5
+
+      if (steps > MAX_FREE_STEPS || (i === 1 && this.rng() < 0.5)) {
+        this.railLine([
+          [start - 0.6, top + RAIL_HEIGHT],
+          [this.headX + 0.6, low + RAIL_HEIGHT],
+        ])
+      }
+      this.push(this.headX, this.headX + landing, low, low, 'flat', true)
+      this.headX += landing
+    }
+  }
+
   private drop(scale: number, keep = false): void {
     const height = Math.min(12, 0.9 + scale * 9)
     const climb = this.rampRun(height / range(this.rng, 0.4, 0.62), height)
@@ -359,13 +722,9 @@ export class Road {
 
     const topX = this.headX
     const topY = this.groundY
-    for (let i = 0; i < count; i++) {
-      const y = topY - (i + 1) * RISE
-      this.push(topX + i * TREAD, topX + (i + 1) * TREAD, y, y, 'step', true)
-    }
-
-    const runX = topX + count * TREAD
-    const bottomY = topY - count * RISE
+    this.stepsDown(count)
+    const runX = this.headX
+    const bottomY = this.groundY
 
     if (hasRail) {
       // A big set sometimes carries both, which turns one spot into a choice.
@@ -387,8 +746,6 @@ export class Road {
       }
     }
 
-    this.groundY = bottomY
-    this.headX = runX
     // Landing room at the bottom of every set.
     this.runUp(range(this.rng, 8, 13))
   }
