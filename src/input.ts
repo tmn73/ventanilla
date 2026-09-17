@@ -1,13 +1,24 @@
-/** Keyboard and touch, reduced to what the skater understands. */
+/** Kickflip and heelflip turn the deck opposite ways around the same axis. */
+export const KICKFLIP = 1
+export const HEELFLIP = -1
+
+/** Under this, a touch is a tap and not a flick. */
+const FLICK_PIXELS = 26
+
 export class Input {
   jumpHeld = false
   jumpPressed = false
-  /** Edge. In the air, left starts a kickflip. */
-  leftPressed = false
+  /** Edge. Fires one flip. */
+  flipPressed = false
+  flipSign = KICKFLIP
 
-  private pending = false
-  private leftPending = false
+  private jumpPending = false
+  private flipPending = false
+  private pendingSign = KICKFLIP
   private held = new Set<string>()
+  /** A flick latches a grind until the next ollie, since a finger cannot hold one. */
+  private latched = 0
+  private touchStart: { x: number; y: number } | null = null
   private detach: Array<() => void> = []
 
   /**
@@ -19,7 +30,7 @@ export class Input {
     if (this.held.has('ArrowUp')) return 2
     if (this.held.has('ArrowLeft')) return -1
     if (this.held.has('ArrowRight')) return 1
-    return 0
+    return this.latched
   }
 
   attach(surface: HTMLElement): void {
@@ -29,15 +40,14 @@ export class Input {
       if (e.repeat) return
       if (e.code === 'Space') {
         e.preventDefault()
-        this.jumpHeld = true
-        this.pending = true
+        this.ollie()
         return
       }
-      if (arrows.has(e.code)) {
-        e.preventDefault()
-        this.held.add(e.code)
-        if (e.code === 'ArrowLeft') this.leftPending = true
-      }
+      if (!arrows.has(e.code)) return
+      e.preventDefault()
+      this.held.add(e.code)
+      if (e.code === 'ArrowLeft') this.flick(KICKFLIP)
+      if (e.code === 'ArrowRight') this.flick(HEELFLIP)
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') this.jumpHeld = false
@@ -46,15 +56,19 @@ export class Input {
 
     const pointerDown = (e: PointerEvent) => {
       e.preventDefault()
-      this.jumpHeld = true
-      this.pending = true
+      this.touchStart = { x: e.clientX, y: e.clientY }
     }
-    const pointerUp = () => {
+    const pointerUp = (e: PointerEvent) => {
+      const start = this.touchStart
+      this.touchStart = null
       this.jumpHeld = false
+      if (!start) return
+      this.readFlick(e.clientX - start.x, e.clientY - start.y)
     }
     const blur = () => {
       this.held.clear()
       this.jumpHeld = false
+      this.touchStart = null
     }
 
     window.addEventListener('keydown', down)
@@ -62,7 +76,7 @@ export class Input {
     window.addEventListener('blur', blur)
     surface.addEventListener('pointerdown', pointerDown)
     window.addEventListener('pointerup', pointerUp)
-    window.addEventListener('pointercancel', pointerUp)
+    window.addEventListener('pointercancel', blur)
 
     this.detach = [
       () => window.removeEventListener('keydown', down),
@@ -70,16 +84,47 @@ export class Input {
       () => window.removeEventListener('blur', blur),
       () => surface.removeEventListener('pointerdown', pointerDown),
       () => window.removeEventListener('pointerup', pointerUp),
-      () => window.removeEventListener('pointercancel', pointerUp),
+      () => window.removeEventListener('pointercancel', blur),
     ]
   }
 
-  /** Call once at the top of every fixed step so one press fires one jump. */
+  /**
+   * A tap is an ollie. A diagonal flick up and right is a kickflip, up and
+   * left a heelflip, and the four straight directions pick the grind.
+   */
+  private readFlick(dx: number, dy: number): void {
+    if (Math.hypot(dx, dy) < FLICK_PIXELS) {
+      this.ollie()
+      return
+    }
+
+    const angle = (Math.atan2(-dy, dx) * 180) / Math.PI
+    if (angle >= 22 && angle < 68) this.flick(KICKFLIP)
+    else if (angle >= 112 && angle < 158) this.flick(HEELFLIP)
+    else if (angle >= 68 && angle < 112) this.latched = 2
+    else if (angle >= -112 && angle < -68) this.latched = -2
+    else if (angle >= -22 && angle < 22) this.latched = 1
+    else this.latched = -1
+  }
+
+  private ollie(): void {
+    this.jumpHeld = true
+    this.jumpPending = true
+    this.latched = 0
+  }
+
+  private flick(sign: number): void {
+    this.flipPending = true
+    this.pendingSign = sign
+  }
+
+  /** Call once at the top of every fixed step so one press fires one trick. */
   beginStep(): void {
-    this.jumpPressed = this.pending
-    this.pending = false
-    this.leftPressed = this.leftPending
-    this.leftPending = false
+    this.jumpPressed = this.jumpPending
+    this.jumpPending = false
+    this.flipPressed = this.flipPending
+    this.flipSign = this.pendingSign
+    this.flipPending = false
   }
 
   release(): void {

@@ -5,12 +5,11 @@ import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
 import type { Input } from '../input'
 
-export type Phase = 'ready' | 'running' | 'falling' | 'dead'
+export type Phase = 'ready' | 'running'
 
 export class Game {
   phase: Phase = 'ready'
   distance = 0
-  best = 0
 
   readonly car: Car
   readonly road: Road
@@ -42,20 +41,14 @@ export class Game {
   }
 
   step(dt: number, input: Input): void {
-    if (this.phase !== 'running' && this.phase !== 'falling') return
+    if (this.phase !== 'running') return
 
     this.car.step(dt)
     this.road.ensureAhead(this.car.x)
     this.road.prune(this.car.x)
     this.skater.step(dt, this.road, input, this.car.x, this.car.speed)
 
-    if (this.phase === 'running') {
-      this.distance = this.skater.x - this.startX
-      if (this.skater.fell) this.phase = 'falling'
-    } else if (this.skater.fallTime >= C.FALL_GRACE) {
-      this.phase = 'dead'
-      this.best = Math.max(this.best, this.distance)
-    }
+    this.distance = this.skater.x - this.startX
   }
 
   /** World x of the left edge of the window. */

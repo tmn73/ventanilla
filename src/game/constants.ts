@@ -24,5 +24,3 @@ export const SPARK_RATE = 120
 /** One full revolution of a kickflip. */
 export const FLIP_DURATION = 0.42
 
-/** How long the fall plays before the run is called. */
-export const FALL_GRACE = 1.15

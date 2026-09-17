@@ -169,7 +169,8 @@ export class SkaterView {
   /**
    * @param grounded blends the tucked pose into the crouched one
    * @param grind -2 feeble, -1 five-o, 0 fifty-fifty, 1 nosegrind, 2 smith
-   * @param flip radians through a kickflip, which rolls the deck edge on
+   * @param flip signed radians through a flip: one way is a kickflip, the
+   *   other a heelflip
    */
   update(
     x: number,

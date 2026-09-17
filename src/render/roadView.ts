@@ -10,19 +10,8 @@ import {
   Scene,
 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
-import { surfaceYAt, type Obstacle, type Segment, type SurfaceKind } from '../game/road'
-import {
-  BIN,
-  BIN_LID,
-  FROND,
-  HYDRANT,
-  HYDRANT_CAP,
-  LAMP_GLOW,
-  POST_COLOR,
-  PROP_BODY,
-  SIGN_FACE,
-  SURFACE_COLOR,
-} from './palette'
+import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
+import { POST_COLOR, SURFACE_COLOR } from './palette'
 
 const MAX_BOXES = 900
 const MAX_RODS = 500
@@ -96,7 +85,7 @@ export class RoadView {
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
   }
 
-  update(segments: Segment[], obstacles: Obstacle[], camLeft: number): void {
+  update(segments: Segment[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
@@ -116,7 +105,7 @@ export class RoadView {
 
       if (segment.kind === 'rail') {
         this.rod(cx + nx * RAIL_RADIUS, cy + ny * RAIL_RADIUS, 0, length, RAIL_RADIUS, angle, SURFACE_COLOR.rail)
-        this.railPosts(segment, camLeft, right)
+        this.railPosts(segment, segments, camLeft, right)
         continue
       }
 
@@ -133,63 +122,33 @@ export class RoadView {
       )
     }
 
-    this.drawObstacles(obstacles, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
   }
 
   /** Uprights holding the handrail up, following its pitch. */
-  private railPosts(segment: Segment, camLeft: number, right: number): void {
+  private railPosts(segment: Segment, all: Segment[], camLeft: number, right: number): void {
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
     for (let x = first; x < segment.x1 - 0.5; x += RAIL_POST_SPACING) {
       if (x < camLeft - 14 || x > right + 14) continue
       const top = surfaceYAt(segment, x)
-      this.rod(x, top - RAIL_POST_DROP / 2, 0, RAIL_POST_DROP, 0.045, Math.PI / 2, POST_COLOR.rail)
+      // A post reaches the ground under it. A fixed length leaves rails hanging
+      // in the air wherever the pavement drops away, such as over a stair set.
+      const foot = this.floorUnder(all, x, top)
+      const drop = Math.max(0.2, top - foot)
+      this.rod(x, top - drop / 2, 0, drop, 0.045, Math.PI / 2, POST_COLOR.rail)
     }
   }
 
-  /**
-   * Each hazard gets a real silhouette. A lamp head on a curved arm, a
-   * reflective sign face, a crown of fronds. The shape says "you will hit
-   * this", not the hue.
-   */
-  private drawObstacles(obstacles: Obstacle[], camLeft: number, right: number): void {
-    for (const item of obstacles) {
-      if (item.x < camLeft - 14 || item.x > right + 14) continue
-      const top = item.base + item.height
-
-      if (item.kind === 'post') {
-        this.rod(item.x, item.base + item.height / 2, 0, item.height, 0.075, Math.PI / 2, PROP_BODY)
-        this.rod(item.x - 0.3, top + 0.16, 0, 0.72, 0.06, 0.35, PROP_BODY)
-        this.box(item.x - 0.66, top + 0.26, 0, 0.42, 0.18, 0.34, LAMP_GLOW)
-      } else if (item.kind === 'sign') {
-        this.rod(item.x, item.base + item.height / 2, 0, item.height, 0.055, Math.PI / 2, PROP_BODY)
-        this.box(item.x, top - 0.52, 0.06, 1.05, 0.9, 0.08, SIGN_FACE)
-      } else if (item.kind === 'hydrant') {
-        this.rod(item.x, item.base + item.height * 0.45, 0, item.height * 0.9, 0.2, Math.PI / 2, HYDRANT)
-        this.rod(item.x, top - 0.04, 0, 0.18, 0.15, Math.PI / 2, HYDRANT_CAP)
-        this.rod(item.x, item.base + item.height * 0.5, 0.3, 0.22, 0.09, 0, HYDRANT_CAP)
-        this.rod(item.x, item.base + item.height * 0.5, -0.3, 0.22, 0.09, 0, HYDRANT_CAP)
-      } else if (item.kind === 'bin') {
-        this.box(item.x, item.base + item.height / 2, 0, 0.72, item.height, 0.72, BIN)
-        this.box(item.x, top + 0.05, 0, 0.86, 0.14, 0.86, BIN_LID)
-      } else {
-        this.rod(item.x, item.base + item.height / 2, 0, item.height, 0.1, Math.PI / 2 + 0.05, PROP_BODY)
-        for (const angle of [2.5, 2.0, 1.571, 1.15, 0.65]) {
-          const reach = 1.05
-          this.box(
-            item.x + Math.cos(angle) * reach * 0.5,
-            top + Math.sin(angle) * reach * 0.32,
-            Math.cos(angle) * 0.25,
-            reach * 1.3,
-            0.09,
-            0.42,
-            FROND,
-            angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55),
-          )
-        }
-      }
+  private floorUnder(all: Segment[], x: number, below: number): number {
+    let best = below - RAIL_POST_DROP
+    for (const segment of all) {
+      if (!segment.floor) continue
+      if (x < segment.x0 || x > segment.x1) continue
+      const top = surfaceYAt(segment, x)
+      if (top <= below && top > best) best = top
     }
+    return best
   }
 
   private box(

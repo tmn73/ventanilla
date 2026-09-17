@@ -2,7 +2,6 @@ import { LANE_Y, VIEW_WIDTH } from './constants'
 import { range } from '../core/rng'
 
 export type SurfaceKind = 'flat' | 'step' | 'ledge' | 'rail' | 'hubba'
-export type ObstacleKind = 'post' | 'sign' | 'palm' | 'hydrant' | 'bin'
 
 export interface Segment {
   x0: number
@@ -13,15 +12,6 @@ export interface Segment {
   kind: SurfaceKind
   /** True for the pavement and the steps, which set where a fall becomes fatal. */
   floor: boolean
-}
-
-/** Something standing on the street. You cannot land on it, so you jump it. */
-export interface Obstacle {
-  x: number
-  halfWidth: number
-  base: number
-  height: number
-  kind: ObstacleKind
 }
 
 /**
@@ -59,18 +49,14 @@ const MAX_FREE_STEPS = 8
 
 const RAIL_HEIGHT = 0.95
 const LEDGE_HEIGHT = 0.58
-/** How far below the pavement a fall stops being recoverable. */
-const FATAL_DROP = 3
 /** The pavement never wanders further than this from where it started. */
 const DRIFT_LIMIT = 3.2
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
-const STREET_PROPS: ObstacleKind[] = ['hydrant', 'bin', 'sign', 'post', 'palm']
 
 export class Road {
   segments: Segment[] = []
-  obstacles: Obstacle[] = []
 
   /** The pavement the camera rests on, so it can be followed. */
   groundY = LANE_Y[0]!
@@ -81,7 +67,6 @@ export class Road {
 
   reset(startX: number): void {
     this.segments = []
-    this.obstacles = []
     this.groundY = LANE_Y[0]!
     // A guaranteed run-up under the spawn, or the run ends before it begins.
     this.push(startX - 12, startX + 20, this.groundY, this.groundY, 'flat', true)
@@ -120,7 +105,6 @@ export class Road {
   private flat(): void {
     const length = range(this.rng, 9, 19)
     this.push(this.headX, this.headX + length, this.groundY, this.groundY, 'flat', true)
-    this.clutter(this.headX + 2, this.headX + length - 2)
     this.headX += length
   }
 
@@ -155,7 +139,6 @@ export class Road {
     // Landing room at the bottom of every set, then something to dodge.
     const runout = range(this.rng, 8, 14)
     this.push(this.headX, this.headX + runout, this.groundY, this.groundY, 'flat', true)
-    this.clutter(this.headX + 5, this.headX + runout - 1.5)
     this.headX += runout
   }
 
@@ -184,7 +167,6 @@ export class Road {
     // A short flat after the block, with room for one hazard.
     const after = range(this.rng, 8, 13)
     this.push(this.headX, this.headX + after, this.groundY, this.groundY, 'flat', true)
-    this.clutter(this.headX + 4, this.headX + after - 1.5)
     this.headX += after
   }
 
@@ -203,21 +185,6 @@ export class Road {
     this.headX += length
   }
 
-  /** Street furniture standing on the pavement, never near a landing. */
-  private clutter(from: number, to: number): void {
-    if (to - from < 6) return
-    if (this.rng() > 0.62) return
-    const kind = STREET_PROPS[Math.floor(this.rng() * STREET_PROPS.length)]!
-    const height = kind === 'palm' ? 2.8 : kind === 'sign' ? 2.1 : kind === 'post' ? 1.5 : 0.75
-    this.obstacles.push({
-      x: range(this.rng, from, to),
-      halfWidth: kind === 'bin' ? 0.4 : kind === 'hydrant' ? 0.24 : 0.22,
-      base: this.groundY,
-      height,
-      kind,
-    })
-  }
-
   private push(x0: number, x1: number, y0: number, y1: number, kind: SurfaceKind, floor: boolean): void {
     this.segments.push({ x0, x1, y0, y1, kind, floor })
   }
@@ -227,7 +194,6 @@ export class Road {
   prune(x: number): void {
     const cutoff = x - TRAIL
     this.segments = this.segments.filter((s) => s.x1 > cutoff)
-    this.obstacles = this.obstacles.filter((o) => o.x + 2 > cutoff)
   }
 
   /** Highest surface crossed while falling from fromY to toY, or null in open air. */
@@ -272,8 +238,8 @@ export class Road {
     return best
   }
 
-  /** Below this you are in the hole and the run is over. */
-  deathLineAt(x: number): number {
+  /** The pavement nearest this point. Used to put the skater back on it. */
+  floorAt(x: number): number {
     let nearest = this.groundY
     let bestDistance = Infinity
     for (const segment of this.segments) {
@@ -284,15 +250,7 @@ export class Road {
         nearest = surfaceYAt(segment, Math.min(segment.x1, Math.max(segment.x0, x)))
       }
     }
-    return nearest - FATAL_DROP
+    return nearest
   }
 
-  /** True when this point is inside something standing on the pavement. */
-  blockedAt(x: number, y: number): boolean {
-    for (const obstacle of this.obstacles) {
-      if (Math.abs(x - obstacle.x) > obstacle.halfWidth + 0.3) continue
-      if (y >= obstacle.base - 0.45 && y < obstacle.base + obstacle.height) return true
-    }
-    return false
-  }
 }

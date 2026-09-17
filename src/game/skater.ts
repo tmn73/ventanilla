@@ -25,8 +25,10 @@ export class Skater {
   support: Segment | null = null
   /** -1 is a 5-0, 0 is a 50-50, 1 is a nosegrind. */
   grind = 0
-  /** Radians through the current kickflip. Zero when the board is flat. */
+  /** Radians through the current flip. Zero when the board is flat. */
   flipAngle = 0
+  /** Which way the deck is turning: a kickflip one way, a heelflip the other. */
+  flipSign = 1
 
   private flipping = false
   private flipsThisJump = 0
@@ -35,9 +37,6 @@ export class Skater {
   spin = 0
   trick = ''
   trickAge = 99
-
-  fell = false
-  fallTime = 0
 
   private cutApplied = false
 
@@ -57,8 +56,6 @@ export class Skater {
     this.spin = 0
     this.trick = ''
     this.trickAge = 99
-    this.fell = false
-    this.fallTime = 0
     this.cutApplied = false
   }
 
@@ -67,14 +64,6 @@ export class Skater {
     this.prevX = this.x
     this.prevY = this.y
     this.trickAge += dt
-
-    if (this.fell) {
-      this.fallTime += dt
-      this.vy -= C.GRAVITY * dt
-      this.y += this.vy * dt
-      this.spin += dt * 5
-      return
-    }
 
     this.x = carX
 
@@ -93,8 +82,6 @@ export class Skater {
 
     if (this.support) this.ride(dt, this.support, input, carSpeed)
     else this.fly(dt, road, input)
-
-    if (!this.fell && road.blockedAt(this.x, this.y)) this.crash()
   }
 
   private ride(dt: number, seg: Segment, input: Input, carSpeed: number): void {
@@ -125,7 +112,10 @@ export class Skater {
   private fly(dt: number, road: Road, input: Input): void {
     this.airTime += dt
 
-    if (input.leftPressed && !this.flipping) this.flipping = true
+    if (input.flipPressed && !this.flipping) {
+      this.flipping = true
+      this.flipSign = input.flipSign
+    }
     if (this.flipping) {
       this.flipAngle += ((Math.PI * 2) / C.FLIP_DURATION) * dt
       if (this.flipAngle >= Math.PI * 2) {
@@ -149,18 +139,16 @@ export class Skater {
         return
       }
     }
-    const floor = road.deathLineAt(this.x)
-    if (this.y <= floor) {
-      this.fell = true
-      this.y = floor
-      this.vy = 2.5
+    // Nothing is fatal. If he ever ends up under the pavement, put him back on.
+    const floor = road.floorAt(this.x)
+    if (this.y < floor) {
+      const landing = road.continuationAt(this.x, floor, 0.1, 0.1)
+      if (landing) this.land(landing)
+      else {
+        this.y = floor
+        this.vy = 0
+      }
     }
-  }
-
-  private crash(): void {
-    this.fell = true
-    this.support = null
-    this.vy = 3.2
   }
 
   private land(seg: Segment): void {
@@ -174,8 +162,9 @@ export class Skater {
     this.flipping = false
     this.flipsThisJump = 0
 
-    if (flips > 1) this.trick = `${flips}x KICKFLIP`
-    else if (flips === 1) this.trick = 'KICKFLIP'
+    const flipName = this.flipSign > 0 ? 'KICKFLIP' : 'HEELFLIP'
+    if (flips > 1) this.trick = `${flips}x ${flipName}`
+    else if (flips === 1) this.trick = flipName
     else this.trick = this.airTime > 0.82 ? `BIG AIR ${LABEL[seg.kind] ?? ''}` : (LABEL[seg.kind] ?? '')
     this.trickAge = 0
     this.airTime = 0
