@@ -37,7 +37,12 @@ const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
-mountHelp()
+
+// One interruption, one screen: the controls sheet is also the pause screen.
+let paused = false
+mountHelp((open) => {
+  paused = open
+})
 
 window.addEventListener('resize', () => stage.resize())
 
@@ -47,9 +52,9 @@ let lastFrame = performance.now() / 1000
 let camY = 0
 let groundRef = LANE_Y[0]!
 /**
- * The camera's own heading trails the road's. A camera locked to the road
- * cancels the bend exactly and nothing appears to turn; letting it lag is what
- * swings the road across the screen while he still runs left to right.
+ * The camera's heading trails the road's by a little. Locked to it exactly,
+ * the turn cancels itself and nothing appears to move; too far behind and it
+ * points the wrong way through a whole corner.
  */
 let camHeading = 0
 
@@ -59,8 +64,9 @@ const mix = (from: number, to: number, alpha: number) => from + (to - from) * al
 
 startLoop(
   (dt) => {
+    // Edges are still consumed while paused, so nothing fires on resume.
     input.beginStep()
-    game.step(dt, input)
+    if (!paused) game.step(dt, input)
   },
   (alpha) => {
     const now = performance.now() / 1000
@@ -92,7 +98,7 @@ startLoop(
     const lean = skater.support ? Math.atan(slopeOf(skater.support)) : 0
 
     const heading = path.headingAt(camS)
-    camHeading += (heading - camHeading) * 0.022
+    camHeading += (heading - camHeading) * 0.09
     path.place(camS, 0, eye)
     // Park the frame so a local x of camS lands on the camera's point.
     frame.position.set(eye.x - camS * Math.cos(camHeading), 0, eye.z - camS * Math.sin(camHeading))

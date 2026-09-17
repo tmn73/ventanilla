@@ -1,8 +1,8 @@
 /**
- * The controls, behind a button. The game itself carries no text beyond the
- * distance, so the reference has to be somewhere the player can ask for it.
+ * The controls, behind a button, and the pause screen. They are the same
+ * panel: the game has one interruption, so it has one screen for it.
  */
-export function mountHelp(): void {
+export function mountHelp(onPause: (paused: boolean) => void): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
   const tabs = [
@@ -33,6 +33,7 @@ export function mountHelp(): void {
   const setOpen = (open: boolean) => {
     panel.hidden = !open
     toggle.setAttribute('aria-expanded', String(open))
+    onPause(open)
   }
 
   toggle.addEventListener('pointerdown', (event) => event.stopPropagation())
@@ -48,6 +49,8 @@ export function mountHelp(): void {
   })
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setOpen(false)
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    setOpen(panel.hidden)
   })
 }

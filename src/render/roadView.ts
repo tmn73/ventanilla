@@ -28,10 +28,10 @@ const MAX_BOXES = 1600
 const MAX_RODS = 700
 const MAX_CONES = 120
 
-/** No piece of a surface is longer than this, so a bend never gets cut short. */
-const PIECE = 5
+/** No piece of a surface is longer than this, so a corner never gets chorded. */
+const PIECE = 3
 /** Pieces overlap a little, which hides the wedge a bend leaves between them. */
-const OVERLAP = 1.09
+const OVERLAP = 1.06
 
 /** How far each surface hangs below its ridable top edge, and how wide it runs. */
 const THICKNESS: Record<SurfaceKind, number> = {
@@ -141,15 +141,20 @@ export class RoadView {
     const slope = Math.atan2(segment.y1 - segment.y0, span)
     const nx = Math.sin(slope)
     const ny = -Math.cos(slope)
-    const length = (step / Math.cos(slope)) * OVERLAP
 
     for (let i = 0; i < pieces; i++) {
       const s = segment.x0 + step * (i + 0.5)
       const top = surfaceYAt(segment, s)
+      // Round a corner the outer edge travels further than the centre, so a
+      // plain rectangle leaves a wedge open. Stretch it by what the far edge
+      // actually needs, and nudge every other piece so the overlap cannot
+      // fight for the same depth.
+      const spread = 1 + Math.abs(this.path.curvatureAt(s)) * (breadth / 2)
+      const length = (step / Math.cos(slope)) * OVERLAP * spread
       this.place(
         this.boxes,
         s + nx * (depth / 2),
-        top + ny * (depth / 2),
+        top + ny * (depth / 2) + (i % 2) * 0.0015,
         0,
         length,
         depth,
@@ -165,10 +170,10 @@ export class RoadView {
     const pieces = Math.max(1, Math.ceil(span / PIECE))
     const step = span / pieces
     const slope = Math.atan2(segment.y1 - segment.y0, span)
-    const length = (step / Math.cos(slope)) * OVERLAP
 
     for (let i = 0; i < pieces; i++) {
       const s = segment.x0 + step * (i + 0.5)
+      const length = (step / Math.cos(slope)) * OVERLAP
       this.rod(s, surfaceYAt(segment, s) - radius, 0, length, radius, slope, color)
     }
   }
