@@ -10,7 +10,8 @@ const FLICK_PIXELS = 34
 
 export class Input {
   jumpHeld = false
-  jumpPressed = false
+  /** Edge, on the way up. The pop is the release, so this is what fires it. */
+  jumpReleased = false
   /** Edge. Fires one flip. */
   flipPressed = false
   flipSign = KICKFLIP
@@ -23,7 +24,7 @@ export class Input {
   private pressedAt = 0
   private pushPulse = false
   private brakeUntil = 0
-  private jumpPending = false
+  private releasePending = false
   private flipPending = false
   private pendingSign = KICKFLIP
   private shovePending = false
@@ -92,7 +93,8 @@ export class Input {
       if (e.repeat) return
       if (e.code === 'Space') {
         e.preventDefault()
-        this.ollie()
+        this.jumpHeld = true
+        this.latched = 0
         return
       }
       if (!arrows.has(e.code)) return
@@ -104,7 +106,10 @@ export class Input {
       if (e.code === 'KeyE') this.shove(FRONTSIDE_SHOVE)
     }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space') this.jumpHeld = false
+      if (e.code === 'Space' && this.jumpHeld) {
+        this.jumpHeld = false
+        this.releasePending = true
+      }
       this.held.delete(e.code)
     }
 
@@ -115,7 +120,7 @@ export class Input {
       this.touchStart = { x: e.clientX, y: e.clientY }
       this.pressedAt = performance.now()
       this.dragRotate = 0
-      this.ollie()
+      this.crouchDown()
     }
 
     // A quick flick is a flip. A finger that moves and then stays put is a
@@ -130,7 +135,7 @@ export class Input {
     const pointerUp = (e: PointerEvent) => {
       const start = this.touchStart
       this.touchStart = null
-      this.jumpHeld = false
+      this.pop()
       const spun = this.dragRotate !== 0
       this.dragRotate = 0
       if (!start || spun) return
@@ -190,10 +195,15 @@ export class Input {
     else this.latched = -1
   }
 
-  private ollie(): void {
+  private crouchDown(): void {
     this.jumpHeld = true
-    this.jumpPending = true
     this.latched = 0
+  }
+
+  private pop(): void {
+    if (!this.jumpHeld) return
+    this.jumpHeld = false
+    this.releasePending = true
   }
 
   /** True while a finger is down, which is what makes a tap a short pop. */
@@ -213,8 +223,8 @@ export class Input {
 
   /** Call once at the top of every fixed step so one press fires one trick. */
   beginStep(): void {
-    this.jumpPressed = this.jumpPending
-    this.jumpPending = false
+    this.jumpReleased = this.releasePending
+    this.releasePending = false
     this.flipPressed = this.flipPending
     this.flipSign = this.pendingSign
     this.flipPending = false

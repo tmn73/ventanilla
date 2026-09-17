@@ -129,6 +129,8 @@ export class Skater {
   absorb = 0
   /** Counts down a push, which drives the kick in the animation. */
   pushTime = 0
+  /** How far into the crouch he is, from 0 to 1. The pop spends it. */
+  crouch = 0
   /** Which way the stance is set, so the rig can pick the right pushing foot. */
   stance: 1 | -1 = 1
   trick = ''
@@ -140,7 +142,6 @@ export class Skater {
   private flipsThisJump = 0
   private shoving = false
   private shovesThisJump = 0
-  private cutApplied = false
   private pushCooldown = 0
   /** Set on landing, so the frame after it adopts the held grind in silence. */
   private justLanded = false
@@ -170,9 +171,9 @@ export class Skater {
     this.spin = 0
     this.absorb = 0
     this.pushTime = 0
+    this.crouch = 0
     this.trick = ''
     this.trickAge = 99
-    this.cutApplied = false
     this.pushCooldown = 0
     this.justLanded = false
   }
@@ -194,7 +195,6 @@ export class Skater {
         // Rolling off the end of a ramp carries its rise into the air.
         this.vy = slopeOf(this.support) * this.vx
         this.support = null
-        this.cutApplied = true
         if (this.sideways) {
           this.yaw = Math.round(this.yaw / Math.PI) * Math.PI
           this.takeoffYaw = this.yaw
@@ -250,7 +250,11 @@ export class Skater {
     }
     this.justLanded = false
 
-    if (input.jumpPressed) {
+    // Holding the key is the crouch. Nothing leaves the ground until it comes
+    // back up, which is how a pop works.
+    if (input.jumpHeld) this.crouch = Math.min(1, this.crouch + dt / C.CROUCH_TIME)
+
+    if (input.jumpReleased) {
       // Coming out of a slide, the quarter turn back onto the road is part of
       // the pop. Making the player spin it again would bail every boardslide.
       if (this.sideways) {
@@ -258,8 +262,11 @@ export class Skater {
         this.yaw = halves * Math.PI
         this.sideways = false
       }
-      // A ramp adds its own rise, so an uphill launch goes higher.
-      this.vy = C.JUMP_SPEED + Math.max(0, slope * this.vx)
+      // How long he held it decides how high it goes, and a ramp adds its own
+      // rise on top, so an uphill launch still goes higher.
+      const charge = C.POP_MIN + (1 - C.POP_MIN) * this.crouch
+      this.vy = C.JUMP_SPEED * charge + Math.max(0, slope * this.vx)
+      this.crouch = 0
       this.support = null
       this.grind = 0
       this.takeoffYaw = this.yaw
@@ -267,8 +274,13 @@ export class Skater {
       this.shovesThisJump = 0
       this.shoveAngle = 0
       this.shoving = false
-      this.cutApplied = false
       this.grindTime = 0
+
+      // A flick that arrives with the pop belongs to the jump it started.
+      if (input.flipPressed) {
+        this.flipping = true
+        this.flipSign = input.flipSign
+      }
     }
   }
 
@@ -313,10 +325,6 @@ export class Skater {
     this.yaw += input.rotate * C.SPIN_RATE * dt
 
     this.vy -= C.GRAVITY * dt
-    if (!input.jumpHeld && this.vy > 0 && !this.cutApplied) {
-      this.vy *= C.JUMP_CUT
-      this.cutApplied = true
-    }
     this.y += this.vy * dt
 
     if (this.vy <= 0) {

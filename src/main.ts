@@ -129,7 +129,7 @@ startLoop(
       skater.grind,
       skater.flipAngle * skater.flipSign,
       rise,
-      skater.absorb,
+      Math.max(skater.absorb, skater.crouch * 0.72),
       Math.min(1, skater.pushTime / 0.22),
       skater.switched,
       skater.stance,

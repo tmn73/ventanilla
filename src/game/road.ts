@@ -1,4 +1,4 @@
-import { LANE_Y, VIEW_WIDTH } from './constants'
+import { GRAVITY, JUMP_SPEED, LANE_Y, MAX_SPEED, VIEW_WIDTH } from './constants'
 import { range } from '../core/rng'
 
 export type SurfaceKind = 'flat' | 'step' | 'ledge' | 'rail' | 'hubba'
@@ -54,11 +54,11 @@ const DRIFT_LIMIT = 20
 /** The steepest face the game ever builds. Past this it reads as a wall. */
 const MAX_SLOPE = 0.9
 /**
- * How far an ollie carries at full speed: half a second in the air at
- * seventeen metres a second, rounded up. Nothing is shaped so that a jump
- * taken at a lip comes down on a slope that is still rising.
+ * How far a full ollie carries at full speed, taken from the physics rather
+ * than written down beside it. Nothing is shaped so that a jump taken at a
+ * lip comes down on a slope that is still rising.
  */
-export const JUMP_REACH = 9
+export const JUMP_REACH = Math.ceil(((2 * JUMP_SPEED) / GRAVITY) * MAX_SPEED)
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8

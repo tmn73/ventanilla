@@ -16,9 +16,14 @@ export const VIEW_WIDTH = 34
 export const ANCHOR = 0.3
 
 export const GRAVITY = 30
-export const JUMP_SPEED = 7.4
-/** Releasing the jump key early cuts the rise short. */
-export const JUMP_CUT = 0.52
+export const JUMP_SPEED = 8.2
+/**
+ * The pop happens when the key comes back up, not when it goes down. Holding
+ * it is the crouch, and this is how long a full one takes.
+ */
+export const CROUCH_TIME = 0.3
+/** What a straight tap is worth, as a share of a full crouch. */
+export const POP_MIN = 0.85
 
 /**
  * Speed, in metres per second, and a skater's rather than a car's. Cruising is
