@@ -11,12 +11,20 @@ import {
   type Texture,
 } from 'three'
 import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
-import { coversZ, ROAD_HALF, surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
+import {
+  coversZ,
+  LANE_MAX,
+  LANE_WIDTH,
+  ROAD_HALF,
+  surfaceYAt,
+  type Segment,
+  type SurfaceKind,
+} from '../game/road'
 import type { Path } from './path'
 import { makeConcrete } from './concrete'
-import { POST_COLOR, SURFACE_COLOR } from './palette'
+import { LANE_COLOR, POST_COLOR, SURFACE_COLOR } from './palette'
 
-const MAX_BOXES = 1400
+const MAX_BOXES = 2400
 const MAX_RODS = 500
 
 /** No piece of a surface is longer than this, so a corner never gets chorded. */
@@ -96,7 +104,7 @@ export class RoadView {
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
   }
 
-  update(segments: Segment[], camLeft: number): void {
+  update(segments: Segment[], camLeft: number, lane: number): void {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
@@ -124,6 +132,7 @@ export class RoadView {
 
       // Drawn exactly as wide as it carries. What you see is what holds you.
       this.slab(segment, depth, segment.halfWidth * 2, SURFACE_COLOR[segment.kind])
+      if (segment.kind === 'flat') this.laneMarks(segment, lane)
     }
 
     this.boxes.finish()
@@ -159,6 +168,34 @@ export class RoadView {
         color,
         slope,
       )
+    }
+  }
+
+  /** A line down the middle of every lane this surface carries. */
+  private laneMarks(segment: Segment, lane: number): void {
+    const span = segment.x1 - segment.x0
+    const pieces = Math.max(1, Math.ceil(span / PIECE))
+    const step = span / pieces
+    const slope = Math.atan2(segment.y1 - segment.y0, span)
+
+    for (let i = -LANE_MAX; i <= LANE_MAX; i++) {
+      const z = i * LANE_WIDTH
+      if (Math.abs(z - segment.z) > segment.halfWidth - 0.2) continue
+      const here = i === lane
+      for (let piece = 0; piece < pieces; piece++) {
+        const s = segment.x0 + step * (piece + 0.5)
+        this.place(
+          this.boxes,
+          s,
+          surfaceYAt(segment, s) + 0.012,
+          z,
+          (step / Math.cos(slope)) * OVERLAP,
+          0.02,
+          here ? 0.2 : 0.1,
+          here ? LANE_COLOR.on : LANE_COLOR.off,
+          slope,
+        )
+      }
     }
   }
 

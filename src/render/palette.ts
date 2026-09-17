@@ -34,6 +34,13 @@ export const WALL = '#bdb6a9'
 export const CONTACT = '#8f8879'
 export const POST_COLOR: Record<string, string> = { rail: '#4a5157' }
 
+/**
+ * The lanes are painted on the ground rather than drawn over it. A line runs
+ * down the middle of each one, and the one under the board is brighter, so
+ * which lane a rail is on can be read off the floor from a long way back.
+ */
+export const LANE_COLOR = { off: '#a9a69f', on: '#f0eee9' }
+
 export const SPARK_COLOR = '#ffffff'
 export const SKATER = '#24282b'
 export const BOARD = '#e2603c'

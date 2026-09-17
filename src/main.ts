@@ -135,7 +135,7 @@ startLoop(
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
     backdrop.update(camLeft, stage.viewHeight)
-    roadView.update(road.segments, camLeft)
+    roadView.update(road.segments, camLeft, skater.lane)
     skaterView.update(
       feet.x,
       y,

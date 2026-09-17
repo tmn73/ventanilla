@@ -83,6 +83,12 @@ const LEDGE_HEIGHT = 0.58
 const DRIFT_LIMIT = 20
 /** The steepest face the game ever builds. Past this it reads as a wall. */
 const MAX_SLOPE = 0.9
+/**
+ * How far an ollie carries at full speed: two thirds of a second in the air
+ * at seventeen metres a second, rounded up. Nothing is shaped so that a jump
+ * taken at a lip comes down on a slope that is still rising.
+ */
+export const JUMP_REACH = 9
 
 const LOOKAHEAD = VIEW_WIDTH * 2.5
 const TRAIL = VIEW_WIDTH * 0.8
@@ -105,6 +111,17 @@ export class Road {
     const roll = this.rng()
     const out = roll < 0.16 ? -2 : roll < 0.4 ? -1 : roll < 0.6 ? 0 : roll < 0.84 ? 1 : 2
     return Math.max(-LANE_MAX, Math.min(LANE_MAX, Math.round(out * spread))) * LANE_WIDTH
+  }
+
+  /**
+   * How to shape a hollow so a jump off its near lip is never punished. Short
+   * ones clear in one ollie, ramp and all. Longer ones get a flat bottom at
+   * least a jump across, so the jump lands on the flat and not on the climb.
+   */
+  private hollow(depth: number, want: number): { bottom: number; out: number } {
+    const steep = depth / MAX_SLOPE
+    if (want + steep <= JUMP_REACH) return { bottom: want, out: Math.max(1, steep) }
+    return { bottom: Math.max(want, JUMP_REACH), out: Math.max(4, depth / 0.26) }
   }
 
   /** Pavement across only part of the road, so the rest of it can fall away. */
@@ -138,7 +155,7 @@ export class Road {
   private emit(): void {
     // The run-up does not follow the size roll. A long walk with nothing on it
     // is the one thing that is never fun, however big what follows is.
-    this.runUp(range(this.rng, 8, 15))
+    this.runUp(range(this.rng, JUMP_REACH, 15))
     this.spot(this.rollScale())
   }
 
@@ -204,11 +221,9 @@ export class Road {
   private skybridge(scale: number): void {
     const lane = this.lane()
     const top = this.groundY
-    const depth = 3 + scale * 9
-    const floorY = this.settle(top - depth)
-    const fall = Math.max(4, depth / 0.5)
-    const span = 10 + scale * 22
-    const climb = Math.max(5, depth / 0.3)
+    const floorY = this.settle(top - (3 + scale * 9))
+    const fall = Math.max(4, (top - floorY) / 0.5)
+    const { bottom: span, out: climb } = this.hollow(top - floorY, 10 + scale * 22)
 
     this.push(this.headX, this.headX + fall, top, floorY, 'flat', true)
     this.push(this.headX + fall, this.headX + fall + span, floorY, floorY, 'flat', true)
@@ -265,9 +280,8 @@ export class Road {
    * question is not whether you clear it but whether you go round it.
    */
   private splitPit(scale: number): void {
-    const width = 5 + scale * 12
     const floorY = this.settle(this.groundY - (2 + scale * 7))
-    const out = Math.max(4, (this.groundY - floorY) / 0.26)
+    const { bottom: width, out } = this.hollow(this.groundY - floorY, 5 + scale * 12)
     const open = this.rng() < 0.5 ? -1 : 1
     // The hole stops between two lanes, so a lane is either whole or gone.
     const edge = open * (Math.floor(this.rng() * 2) + 0.5) * LANE_WIDTH
@@ -322,13 +336,11 @@ export class Road {
    * out the far side. One spot, three answers, which is the whole point.
    */
   private railOverGap(scale: number): void {
-    const width = 3 + scale * 7
-    const depth = 1.4 + scale * 3.5
     const lip = this.headX
+    const floorY = this.settle(this.groundY - (1.4 + scale * 3.5))
+    const { bottom: width, out } = this.hollow(this.groundY - floorY, 3 + scale * 7)
 
-    const floorY = this.settle(this.groundY - depth)
     this.push(lip, lip + width, floorY, floorY, 'flat', true)
-    const out = Math.max(3, (this.groundY - floorY) / 0.28)
     this.push(lip + width, lip + width + out, floorY, this.groundY, 'flat', true)
 
     // The rail runs level over the whole thing, from lip to far bank.
@@ -340,13 +352,11 @@ export class Road {
 
   /** A hole. Deep, and there is no rail over this one. */
   private pit(scale: number): void {
-    const width = 4 + scale * 9
     const floorY = this.settle(this.groundY - (2.5 + scale * 8))
+    const { bottom, out } = this.hollow(this.groundY - floorY, 4 + scale * 9)
 
-    this.push(this.headX, this.headX + width, floorY, floorY, 'flat', true)
-    this.headX += width
-
-    const out = Math.max(4, (this.groundY - floorY) / 0.26)
+    this.push(this.headX, this.headX + bottom, floorY, floorY, 'flat', true)
+    this.headX += bottom
     this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
     this.headX += out
   }
@@ -453,16 +463,14 @@ export class Road {
    * back out, which costs you the line but never the run.
    */
   private channel(scale: number): void {
-    const width = 2.2 + scale * 10
     const floorY = this.settle(this.groundY - (0.8 + scale * 5))
-    const depth = this.groundY - floorY
+    const { bottom, out } = this.hollow(this.groundY - floorY, 2.2 + scale * 10)
 
     // A sheer near wall, so the edge reads as something to leave the ground at.
-    this.push(this.headX, this.headX + width, floorY, floorY, 'flat', true)
-    this.headX += width
+    this.push(this.headX, this.headX + bottom, floorY, floorY, 'flat', true)
+    this.headX += bottom
 
-    // And a long ramp out, gentle enough for a board to hold.
-    const out = Math.max(2, depth / 0.26)
+    // And a ramp out that either fits inside one ollie or starts past one.
     this.push(this.headX, this.headX + out, floorY, this.groundY, 'flat', true)
     this.headX += out
   }

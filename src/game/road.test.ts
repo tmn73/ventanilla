@@ -1,6 +1,15 @@
 import { expect, test } from 'bun:test'
 import { mulberry32, seedFrom } from '../core/rng'
-import { coversZ, LANE_MAX, LANE_WIDTH, ROAD_HALF, Road } from './road'
+import {
+  coversZ,
+  JUMP_REACH,
+  LANE_MAX,
+  LANE_WIDTH,
+  ROAD_HALF,
+  Road,
+  surfaceYAt,
+  type Segment,
+} from './road'
 
 const TRIALS = 60
 const LENGTH = 1500
@@ -113,4 +122,46 @@ test('no lane is half in a hole', () => {
   }
 
   expect(cut.slice(0, 5)).toEqual([])
+})
+
+/** The lowest ground at a point, which is what a fall ends on. */
+function groundAt(floors: Segment[], x: number, z: number): number | null {
+  let low: number | null = null
+  for (const s of floors) {
+    if (x < s.x0 || x > s.x1 || !coversZ(s, x, z)) continue
+    const top = surfaceYAt(s, x)
+    if (low === null || top < low) low = top
+  }
+  return low
+}
+
+test('a jump off a lip never lands on the way up', () => {
+  // Off the edge of a hole you either come down on its flat bottom or clear
+  // the far side. Coming down part way up the ramp out is the one landing
+  // that punishes the jump, and it must not be possible to build.
+  const bad: string[] = []
+
+  for (let trial = 0; trial < 20; trial++) {
+    const floors = laid(trial).segments.filter((s) => s.floor)
+    for (const lip of floors) {
+      if (lip.x1 > LENGTH - JUMP_REACH - 5) continue
+      for (let lane = -LANE_MAX; lane <= LANE_MAX; lane++) {
+        const z = lane * LANE_WIDTH
+        if (!coversZ(lip, lip.x1, z)) continue
+        const top = surfaceYAt(lip, lip.x1)
+        const below = groundAt(floors, lip.x1 + 0.05, z)
+        if (below === null || top - below < 1) continue
+
+        const far = groundAt(floors, lip.x1 + JUMP_REACH, z)
+        if (far === null) continue
+        const onBottom = Math.abs(far - below) < 0.01
+        const cleared = far >= top - 0.01
+        if (!onBottom && !cleared) {
+          bad.push(`trial ${trial}: lip at x=${lip.x1.toFixed(0)} lands mid-climb`)
+        }
+      }
+    }
+  }
+
+  expect(bad.slice(0, 5)).toEqual([])
 })

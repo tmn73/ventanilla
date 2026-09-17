@@ -89,8 +89,9 @@ export class Stage {
     this.camera.up.set(0, 1, 0)
     this.camera.lookAt(this.target)
 
-    this.eye.copy(SUN).applyAxisAngle(UP, -heading)
-    this.sun.position.copy(this.target).add(this.eye)
+    // The sun stays where it is. Turning it with the road moved it across the
+    // sky at every bend, and every shadow swung round with it.
+    this.sun.position.copy(this.target).add(SUN)
     this.sun.target.position.copy(this.target)
     this.sun.target.updateMatrixWorld()
 
