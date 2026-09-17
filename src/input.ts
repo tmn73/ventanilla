@@ -2,13 +2,13 @@
 export class Input {
   jumpHeld = false
   jumpPressed = false
-  dive = false
-  /** -1 leans back for a 5-0, +1 leans forward for a nosegrind. */
+  /** Held. On a rail, -1 is a 5-0 and +1 is a nosegrind. */
   lean = 0
-  flipPressed = false
+  /** Edge. In the air, left starts a kickflip. */
+  leftPressed = false
 
   private pending = false
-  private flipPending = false
+  private leftPending = false
   private detach: Array<() => void> = []
 
   attach(surface: HTMLElement): void {
@@ -20,37 +20,29 @@ export class Input {
         this.jumpHeld = true
         this.pending = true
       }
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault()
-        this.dive = true
+        this.lean = -1
+        this.leftPending = true
       }
-      if (e.code === 'ArrowUp') {
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault()
-        this.flipPending = true
+        this.lean = 1
       }
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = -1
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = 1
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') this.jumpHeld = false
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') this.dive = false
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.lean = this.lean === -1 ? 0 : this.lean
       if (e.code === 'ArrowRight' || e.code === 'KeyD') this.lean = this.lean === 1 ? 0 : this.lean
     }
 
     const pointerDown = (e: PointerEvent) => {
       e.preventDefault()
-      // The bottom strip of the screen is the dive pad.
-      if (e.clientY > window.innerHeight * 0.75) {
-        this.dive = true
-      } else {
-        this.jumpHeld = true
-        this.pending = true
-      }
+      this.jumpHeld = true
+      this.pending = true
     }
     const pointerUp = () => {
       this.jumpHeld = false
-      this.dive = false
     }
 
     window.addEventListener('keydown', down)
@@ -72,8 +64,8 @@ export class Input {
   beginStep(): void {
     this.jumpPressed = this.pending
     this.pending = false
-    this.flipPressed = this.flipPending
-    this.flipPending = false
+    this.leftPressed = this.leftPending
+    this.leftPending = false
   }
 
   release(): void {

@@ -158,10 +158,13 @@ export class SkaterView {
     // The flat middle of the deck, then the two tips kicked up off its ends.
     let tailBase: Point = [pose.deckBack[0] + KICK_IN, pose.deckBack[1]]
     let noseBase: Point = [pose.deckFront[0] - KICK_IN, pose.deckFront[1]]
-    let tailTip: Point = [pose.deckBack[0], pose.deckBack[1] + KICK_RISE]
-    let noseTip: Point = [pose.deckFront[0], pose.deckFront[1] + KICK_RISE]
-    let axleBack: Point = [-TRUCK_X, pose.deckBack[1] - TRUCK_DROP]
-    let axleFront: Point = [TRUCK_X, pose.deckFront[1] - TRUCK_DROP]
+    let tailTip: Point = [pose.deckBack[0], pose.deckBack[1] + KICK_RISE * Math.cos(flip)]
+    let noseTip: Point = [pose.deckFront[0], pose.deckFront[1] + KICK_RISE * Math.cos(flip)]
+    // Side on, the readable part of a kickflip is the trucks crossing over
+    // the deck. `facing` swings them from below to above and back.
+    const facing = Math.cos(flip)
+    let axleBack: Point = [-TRUCK_X, pose.deckBack[1] - TRUCK_DROP * facing]
+    let axleFront: Point = [TRUCK_X, pose.deckFront[1] - TRUCK_DROP * facing]
 
     // A 5-0 rides the back truck with the nose up. A nosegrind is the mirror.
     if (grind !== 0 && grounded > 0.5) {
@@ -182,10 +185,8 @@ export class SkaterView {
     const sin = Math.sin(-spin)
     const originY = y + FEET_TO_HIP
 
-    // A kickflip rolls the deck around its long axis. Side on, that is not a
-    // rotation: the deck thins to its edge, then shows its other face.
-    const facing = Math.cos(flip)
-    const deckThickness = DECK_THICK * Math.max(0.14, Math.abs(facing))
+    // The deck thins to its edge at the quarter turn, then shows its grip side.
+    const deckThickness = DECK_THICK * Math.max(0.16, Math.abs(facing))
     const boardMaterial = this.board.mesh.material as MeshBasicMaterial
     boardMaterial.color.set(facing >= 0 ? BOARD : GRIP)
 
@@ -193,8 +194,8 @@ export class SkaterView {
     this.limb(tailBase, noseBase, deckThickness)
     this.limb(tailBase, tailTip, deckThickness)
     this.limb(noseBase, noseTip, deckThickness)
-    this.limb([axleBack[0], axleBack[1] + TRUCK_DROP], axleBack, 0.055)
-    this.limb([axleFront[0], axleFront[1] + TRUCK_DROP], axleFront, 0.055)
+    this.limb([axleBack[0], axleBack[1] + TRUCK_DROP * facing], axleBack, 0.055)
+    this.limb([axleFront[0], axleFront[1] + TRUCK_DROP * facing], axleFront, 0.055)
     this.end(this.board)
 
     for (const [index, axle] of [axleBack, axleFront].entries()) {

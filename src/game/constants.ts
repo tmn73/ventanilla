@@ -13,7 +13,6 @@ export const GRAVITY = 30
 export const JUMP_SPEED = 13.6
 /** Releasing the jump key early cuts the rise short. */
 export const JUMP_CUT = 0.45
-export const DIVE_ACCEL = 48
 
 export const CAR_START = 15
 /** The slowest the car ever goes. Gaps are sized against this, so a jump always clears. */

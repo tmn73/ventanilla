@@ -112,7 +112,7 @@ export class Skater {
   private fly(dt: number, road: Road, input: Input): void {
     this.airTime += dt
 
-    if (input.flipPressed && !this.flipping) this.flipping = true
+    if (input.leftPressed && !this.flipping) this.flipping = true
     if (this.flipping) {
       this.flipAngle += ((Math.PI * 2) / C.FLIP_DURATION) * dt
       if (this.flipAngle >= Math.PI * 2) {
@@ -123,7 +123,6 @@ export class Skater {
     }
 
     this.vy -= C.GRAVITY * dt
-    if (input.dive) this.vy -= C.DIVE_ACCEL * dt
     if (!input.jumpHeld && this.vy > 0 && !this.cutApplied) {
       this.vy *= C.JUMP_CUT
       this.cutApplied = true
