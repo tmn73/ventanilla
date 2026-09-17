@@ -31,7 +31,7 @@ export const PALM_CROWN = '#2f8a4f'
 
 /** Sides sit in shadow, tops catch the sun. That pair reads on any band. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#d6c9a8',
+  flat: '#ddd2b4',
   step: '#cabd9c',
   ledge: '#e0d4b4',
   hubba: '#dbcfae',
@@ -76,6 +76,8 @@ export const BENCH = '#b3552f'
 export const BENCH_LEG = '#4a4a52'
 export const UMBRELLA = ['#e8483c', '#f2b23c', '#3aa9c4', '#e8dcc4']
 export const UMBRELLA_POLE = '#d6cdb8'
+/** The joint between paving slabs. */
+export const PAVING = '#b9ab8b'
 
 export const WHEEL_COLOR = '#2b2a33'
 export const SKATER = '#fffaf0'

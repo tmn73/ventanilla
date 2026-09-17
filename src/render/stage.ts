@@ -10,7 +10,7 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 
 /** Where the pavement sits in the window, measured from the bottom. */
-const HORIZON = 0.36
+const HORIZON = 0.2
 
 /**
  * A small three quarter offset. Enough to show the top of a ledge and which

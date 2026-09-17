@@ -16,6 +16,7 @@ import {
   BENCH_LEG,
   PALM_CROWN_NEAR,
   PALM_TRUNK_NEAR,
+  PAVING,
   POST_COLOR,
   SURFACE_COLOR,
   UMBRELLA,
@@ -35,8 +36,8 @@ const THICKNESS: Record<SurfaceKind, number> = {
 }
 
 const BREADTH: Record<SurfaceKind, number> = {
-  flat: 15,
-  step: 15,
+  flat: 11,
+  step: 11,
   ledge: 1.7,
   hubba: 1.7,
   rail: 0.11,
@@ -86,18 +87,21 @@ class Pool {
 export class RoadView {
   private boxes: Pool
   private rods: Pool
+  private cones: Pool
   private proxy = new Object3D()
 
   constructor(scene: Scene) {
     this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
     // A rod lies along its own length once the proxy turns it a quarter turn.
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
+    this.cones = new Pool(scene, new CylinderGeometry(0.04, 1, 1, 10), 120)
   }
 
   update(segments: Segment[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
+    this.cones.reset()
 
     for (const segment of segments) {
       if (segment.x1 < camLeft - 14 || segment.x0 > right + 14) continue
@@ -129,14 +133,27 @@ export class RoadView {
         SURFACE_COLOR[segment.kind],
         angle,
       )
+
+      if (segment.kind === 'flat') this.paving(segment, camLeft, right, angle)
     }
 
     this.decorate(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
+    this.cones.finish()
   }
 
   /** Uprights holding the handrail up, following its pitch. */
+  /** Slab joints across the plaza. They also give the eye something to clock. */
+  private paving(segment: Segment, camLeft: number, right: number, angle: number): void {
+    const spacing = 3.6
+    const first = Math.ceil(segment.x0 / spacing) * spacing
+    for (let x = first; x < segment.x1; x += spacing) {
+      if (x < camLeft - 14 || x > right + 14) continue
+      this.box(x, surfaceYAt(segment, x) + 0.005, 0, 0.07, 0.02, BREADTH.flat, PAVING, angle)
+    }
+  }
+
   private railPosts(segment: Segment, all: Segment[], camLeft: number, right: number): void {
     const stops: number[] = [segment.x0 + 0.18, segment.x1 - 0.18]
     const first = Math.ceil((segment.x0 + 0.5) / RAIL_POST_SPACING) * RAIL_POST_SPACING
@@ -174,17 +191,22 @@ export class RoadView {
       if (shape < 0.58) {
         const height = 4.2 + jitter * 2.6
         this.rod(wx, ground + height / 2, z, height, 0.13, Math.PI / 2 + (jitter - 0.5) * 0.12, PALM_TRUNK_NEAR)
-        for (const angle of [2.5, 2.0, 1.571, 1.15, 0.65]) {
-          const reach = 1.5
+        // Fronds radiate from the crown and droop, which is what makes the
+        // shape a palm rather than a handful of sticks.
+        for (const angle of [2.79, 2.36, 1.92, 1.571, 1.22, 0.79, 0.35]) {
+          const reach = 1.55 + jitter * 0.4
+          const dx = Math.cos(angle)
+          const dy = Math.sin(angle) * 0.42 - 0.12
+          const len = Math.hypot(dx, dy)
           this.box(
-            wx + Math.cos(angle) * reach * 0.5,
-            ground + height + Math.sin(angle) * reach * 0.3,
-            z + Math.cos(angle) * 0.4,
-            reach * 1.35,
-            0.1,
-            0.5,
+            wx + (dx / len) * reach * 0.5,
+            ground + height + (dy / len) * reach * 0.5,
+            z + dx * 0.55,
+            reach,
+            0.11,
+            0.42,
             PALM_CROWN_NEAR,
-            angle - Math.PI / 2 + (angle > 1.571 ? 0.55 : -0.55),
+            Math.atan2(dy, dx),
           )
         }
       } else if (shape < 0.82) {
@@ -193,11 +215,10 @@ export class RoadView {
         this.box(wx - 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
         this.box(wx + 0.75, ground + 0.23, z, 0.09, 0.46, 0.5, BENCH_LEG)
       } else {
-        const height = 2.4
+        const height = 2.5
         const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
-        this.rod(wx, ground + height / 2, z, height, 0.05, Math.PI / 2, UMBRELLA_POLE)
-        this.box(wx, ground + height, z, 2.6, 0.16, 2.6, shade)
-        this.box(wx, ground + height - 0.28, z, 1.7, 0.4, 1.7, shade)
+        this.rod(wx, ground + height / 2, z, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
+        this.cone(wx, ground + height + 0.22, z, 0.62, 2.1, shade)
       }
     }
   }
@@ -239,6 +260,14 @@ export class RoadView {
     this.proxy.scale.set(width, height, breadth)
     this.proxy.rotation.set(0, 0, rotation)
     this.boxes.add(this.proxy, color)
+  }
+
+  /** A canopy: wide at the bottom, closed at the top. */
+  private cone(x: number, y: number, z: number, height: number, width: number, color: string): void {
+    this.proxy.position.set(x, y, z)
+    this.proxy.scale.set(width / 2, height, width / 2)
+    this.proxy.rotation.set(Math.PI, 0, 0)
+    this.cones.add(this.proxy, color)
   }
 
   /** A round bar. `rotation` is the angle its length makes with the x axis. */
