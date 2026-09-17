@@ -11,6 +11,8 @@ import {
 import { VIEW_WIDTH } from '../game/constants'
 import {
   FOAM,
+  STREET,
+  TOWN,
   HEADLAND,
   JUNGLE,
   PALM_CROWN,
@@ -54,17 +56,23 @@ interface Band {
  * `drop` is metres below the pavement, `from` and `to` are metres to the side
  * of the road. Positive is toward the camera.
  */
+/**
+ * A malecon has the water on one side and the town on the other. The camera
+ * looks from the sea side, so the bay is in the foreground and the town rises
+ * behind: positive is toward the camera, negative is away.
+ */
 const GROUND: Array<{ color: string; drop: number; from: number; to: number }> = [
-  { color: SAND, drop: 1.3, from: 6, to: 60 },
-  { color: SAND, drop: 1.3, from: -15, to: -6 },
-  { color: SAND_WET, drop: 1.36, from: -16.4, to: -15 },
-  { color: FOAM, drop: 1.42, from: -17.2, to: -16.4 },
-  { color: SEA, drop: 1.5, from: -21, to: -17.2 },
-  { color: SEA_DEEP, drop: 1.54, from: -21, to: -19.2 },
+  { color: SEA_DEEP, drop: 1.54, from: 26, to: 80 },
+  { color: SEA, drop: 1.5, from: 15.5, to: 80 },
+  { color: FOAM, drop: 1.42, from: 14.5, to: 15.6 },
+  { color: SAND_WET, drop: 1.36, from: 13, to: 14.6 },
+  { color: SAND, drop: 1.3, from: 5.8, to: 13.1 },
+  { color: STREET, drop: 0.14, from: -12.5, to: -5.8 },
+  { color: TOWN, drop: 0.14, from: -23, to: -12.5 },
 ]
 
 /** Where the flat ground stops and the upright backdrop takes over. */
-const HORIZON_LATERAL = -21
+const HORIZON_LATERAL = -23
 
 const MAX_PALMS = 26
 const PALM_SPACING = 7.4
@@ -181,10 +189,10 @@ export class Backdrop {
     // swing is the only thing that shows a bend, since the camera and the
     // promenade both turn together and cancel each other out.
     this.layers = [
-      ridgeLayer(world, SIERRA_SNOW, 2.6, 4.4, 0.21, 0.05, -20.6),
-      ridgeLayer(world, SIERRA, 2.2, 3.4, 0.24, 0.07, -20.5),
-      ridgeLayer(world, HEADLAND, 1.3, 1.9, 0.44, 0.14, -20.3),
-      ridgeLayer(world, JUNGLE, 0.8, 1.0, 0.67, 0.26, -20.1),
+      ridgeLayer(world, SIERRA_SNOW, 2.8, 5.6, 0.21, 0.05, -22.6),
+      ridgeLayer(world, SIERRA, 2.3, 4.2, 0.24, 0.07, -22.5),
+      ridgeLayer(world, HEADLAND, 1.5, 2.3, 0.44, 0.14, -22.4),
+      ridgeLayer(world, JUNGLE, 1.0, 1.3, 0.67, 0.26, -22.3),
     ]
 
     this.bands = GROUND.map((spec) => {
@@ -202,7 +210,7 @@ export class Backdrop {
     const top = viewHeight * 0.76
     const centre = camLeft + VIEW_WIDTH / 2
     this.sky.scale.set(VIEW_WIDTH * 9, top + 30, 1)
-    this.sky.position.set(centre, ground - 1.5 + (top + 30) / 2, HORIZON_LATERAL - 2)
+    this.sky.position.set(centre, ground - 0.14 + (top + 30) / 2, HORIZON_LATERAL - 2)
 
     for (const item of this.bands) {
       item.mesh.scale.set(VIEW_WIDTH * 9, item.to - item.from, 1)
@@ -223,7 +231,7 @@ export class Backdrop {
       const wx = px + lag
       const footY = ground - 1.28
       // Scattered back across the sand rather than all on one line.
-      const back = -8.5 - spread * 5.5
+      const back = 8 + spread * 5
 
       this.proxy.position.set(wx, footY + height / 2, back)
       this.proxy.scale.set(0.26, height, 1)
@@ -257,8 +265,8 @@ export class Backdrop {
       // frame that carries the bend.
       const anchor = worldX * (1 - layer.parallax)
       const start = anchor + Math.floor((worldX - RIDGE_SPAN / 2 - anchor) / RIDGE_SPAN) * RIDGE_SPAN
-      layer.near.position.set(start, ground - 1.5, worldZ + layer.depth)
-      layer.far.position.set(start + RIDGE_SPAN, ground - 1.5, worldZ + layer.depth)
+      layer.near.position.set(start, ground - 0.14, worldZ + layer.depth)
+      layer.far.position.set(start + RIDGE_SPAN, ground - 0.14, worldZ + layer.depth)
     }
   }
 }

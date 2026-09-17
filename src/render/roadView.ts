@@ -21,13 +21,10 @@ import {
   POST_COLOR,
   WALL,
   SURFACE_COLOR,
-  UMBRELLA,
-  UMBRELLA_POLE,
 } from './palette'
 
 const MAX_BOXES = 2600
 const MAX_RODS = 700
-const MAX_CONES = 120
 
 /** No piece of a surface is longer than this, so a corner never gets chorded. */
 const PIECE = 3
@@ -95,7 +92,6 @@ class Pool {
 export class RoadView {
   private boxes: Pool
   private rods: Pool
-  private cones: Pool
   private proxy = new Object3D()
   private point = { x: 0, z: 0 }
 
@@ -107,14 +103,12 @@ export class RoadView {
     this.boxes = new Pool(scene, new BoxGeometry(1, 1, 1), MAX_BOXES)
     // A rod lies along its own length once the proxy turns it a quarter turn.
     this.rods = new Pool(scene, new CylinderGeometry(1, 1, 1, 10), MAX_RODS)
-    this.cones = new Pool(scene, new CylinderGeometry(0.04, 1, 1, 10), MAX_CONES)
   }
 
   update(segments: Segment[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     this.boxes.reset()
     this.rods.reset()
-    this.cones.reset()
     this.props.reset()
 
     for (const segment of segments) {
@@ -141,9 +135,9 @@ export class RoadView {
 
     this.decorate(segments, camLeft, right)
     this.beach(segments, camLeft, right)
+    this.skyline(segments, camLeft, right)
     this.boxes.finish()
     this.rods.finish()
-    this.cones.finish()
     this.props.finish()
   }
 
@@ -283,11 +277,8 @@ export class RoadView {
         // Rocks and grass out on the sand, where the promenade stops.
         this.prop('rockSmall', s + 2.4, ground - 1.3, -9 - jitter * 3.5, jitter * 6.3)
       } else {
-        const height = 2.5
-        const shade = UMBRELLA[Math.floor(jitter * UMBRELLA.length) % UMBRELLA.length]
         this.place(this.boxes, s, ground + 0.05, lateral, 0.6, 0.1, 0.6, WALL)
-        this.rod(s, ground + height / 2, lateral, height, 0.045, Math.PI / 2, UMBRELLA_POLE)
-        this.cone(s, ground + height + 0.22, lateral, 0.62, 2.1, shade)
+        this.prop('parasol', s, ground + 0.1, lateral, jitter * 6.3)
       }
     }
   }
@@ -296,6 +287,32 @@ export class RoadView {
   private prop(name: PropName, s: number, y: number, lateral: number, spin = 0): void {
     this.path.place(s, lateral, this.point)
     this.props.place(name, this.point.x, y, this.point.z, this.path.headingAt(s), spin)
+  }
+
+  /** The town behind the promenade. This is the frame the rest sits inside. */
+  private skyline(all: Segment[], camLeft: number, right: number): void {
+    const spacing = 7
+    const first = Math.ceil((camLeft - 30) / spacing) * spacing
+    for (let x = first; x < right + 30; x += spacing) {
+      const ground = this.floorHeight(all, x)
+      if (ground === null) continue
+
+      // One street wall. A second row sits above the top of the frame under
+      // this camera, so it only adds a cropped band and nothing readable.
+      const pick = Math.abs(Math.sin(x * 5.113) * 18431.7) % 1
+      const jitter = Math.abs(Math.sin(x * 8.692) * 27713.1) % 1
+      if (pick < 0.05) continue
+
+      const kinds: PropName[] = ['blockE', 'blockC', 'blockWideA', 'blockL', 'blockA', 'blockH', 'blockJ', 'blockWideB']
+      const name = kinds[Math.floor(pick * kinds.length) % kinds.length]!
+      this.prop(
+        name,
+        x + jitter * 3,
+        ground - 0.14,
+        -14.5 - jitter * 3,
+        Math.round(jitter * 4) * 1.5708,
+      )
+    }
   }
 
   /** Loose ground cover on the sand, so the beach is not a flat expanse. */
@@ -309,7 +326,7 @@ export class RoadView {
       const ground = this.floorHeight(all, x)
       if (ground === null) continue
       const name: PropName = pick < 0.62 ? 'grass' : pick < 0.84 ? 'rockSmall' : 'rockLarge'
-      const side = jitter < 0.55 ? -8.5 - jitter * 5 : 8 + jitter * 9
+      const side = 7.2 + jitter * 6.5
       this.prop(name, x + jitter * 3, ground - 1.3, side, jitter * 6.3)
     }
   }
@@ -335,15 +352,6 @@ export class RoadView {
       if (top <= below && top > best) best = top
     }
     return best
-  }
-
-  /** A canopy: wide at the bottom, closed at the top. */
-  private cone(s: number, y: number, lateral: number, height: number, width: number, color: string): void {
-    this.path.place(s, lateral, this.point)
-    this.proxy.position.set(this.point.x, y, this.point.z)
-    this.proxy.scale.set(width / 2, height, width / 2)
-    this.proxy.rotation.set(Math.PI, -this.path.headingAt(s), 0)
-    this.cones.add(this.proxy, color)
   }
 
   /** A round bar. `rotation` is the angle its length makes with the road. */

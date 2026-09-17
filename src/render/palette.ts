@@ -24,6 +24,9 @@ export const SEA = '#1fbcc4'
 export const SEA_DEEP = '#0f93a4'
 export const FOAM = '#c6f2ec'
 export const SAND = '#ecd7a8'
+/** The street and the ground the town stands on, behind the promenade. */
+export const STREET = '#8e8c93'
+export const TOWN = '#b8ae97'
 export const SAND_WET = '#d8bd85'
 /** Palms along the promenade, between the water and the Sierra. */
 export const PALM_TRUNK = '#6b5335'
