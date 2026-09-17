@@ -109,15 +109,18 @@ const REACH: Joints = {
  * reusing it would put the leading foot on the ground.
  */
 const PUSH: Joints = {
-  hip: [0.05, -0.05],
-  shoulder: [0.14, 0.41],
-  head: [0.18, 0.61],
-  kneeBack: [-0.42, -0.36],
-  footBack: [-0.74, -0.66],
-  kneeFront: [0.23, -0.45],
-  footFront: [0.2, -0.79],
-  handBack: [-0.52, 0.3],
-  handFront: [0.7, 0.34],
+  // He stands up over the front foot and reaches the back one down to the
+  // road behind him. The old pose put that foot above deck height and out to
+  // the side, which is a kick at nothing rather than a push off the ground.
+  hip: [0.06, 0.03],
+  shoulder: [0.13, 0.52],
+  head: [0.17, 0.72],
+  kneeBack: [-0.26, -0.46],
+  footBack: [-0.58, -0.99],
+  kneeFront: [0.19, -0.36],
+  footFront: [0.17, -0.79],
+  handBack: [-0.46, 0.4],
+  handFront: [0.62, 0.44],
 }
 
 /** The same push with the roles swapped, for when the rig is riding switch. */

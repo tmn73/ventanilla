@@ -151,7 +151,9 @@ startLoop(
       flip: skater.flipAngle * skater.flipSign,
       rise,
       absorb: Math.max(skater.absorb, skater.crouch * 0.72),
-      push: Math.min(1, skater.pushTime / 0.22),
+      // A bell, not a step: the foot goes down to the road and comes back up
+      // onto the tail. Reading it straight off the timer snapped it down.
+      push: Math.sin(Math.max(0, 1 - skater.pushTime / 0.34) * Math.PI),
       switched: skater.reversed,
       stance: skater.stance,
       shove: skater.shoveAngle * skater.shoveSign,
