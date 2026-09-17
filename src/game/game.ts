@@ -48,7 +48,7 @@ export class Game {
     this.road.step(dt)
     this.road.ensureAhead(this.car.x)
     this.road.prune(this.car.x)
-    this.skater.step(dt, this.road, input, this.car.x)
+    this.skater.step(dt, this.road, input, this.car.x, this.car.speed)
 
     if (this.phase === 'running') {
       this.distance = this.skater.x - this.startX

@@ -1,6 +1,6 @@
 import * as C from './constants'
 import type { Input } from '../input'
-import { GRINDABLE, type Road, type Segment } from './road'
+import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
 
 const GRIND_NAME = ['5-0', '50-50', 'NOSEGRIND']
 const MANUAL_NAME = ['MANUAL', '', 'NOSE MANUAL']
@@ -61,7 +61,7 @@ export class Skater {
   }
 
   /** The car carries him forward. All he owns is the vertical. */
-  step(dt: number, road: Road, input: Input, carX: number): void {
+  step(dt: number, road: Road, input: Input, carX: number, carSpeed: number): void {
     this.prevX = this.x
     this.prevY = this.y
     this.trickAge += dt
@@ -77,18 +77,20 @@ export class Skater {
     this.x = carX
 
     if (this.support && !road.stillCarries(this.support, this.x)) {
+      // Rolling off the end of a ramp carries its rise into the air.
+      this.vy = slopeOf(this.support) * carSpeed
       this.support = null
       this.cutApplied = true
     }
 
-    if (this.support) this.ride(dt, this.support, input)
+    if (this.support) this.ride(dt, this.support, input, carSpeed)
     else this.fly(dt, road, input)
 
     if (!this.fell && road.blockedAt(this.x, this.y)) this.crash()
   }
 
-  private ride(dt: number, seg: Segment, input: Input): void {
-    this.y = seg.y
+  private ride(dt: number, seg: Segment, input: Input, carSpeed: number): void {
+    this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.grindTime += dt
     this.airTime = 0
@@ -102,7 +104,8 @@ export class Skater {
     }
 
     if (input.jumpPressed) {
-      this.vy = C.JUMP_SPEED
+      // A ramp adds its own rise, so an uphill launch goes higher.
+      this.vy = C.JUMP_SPEED + Math.max(0, slopeOf(seg) * carSpeed)
       this.support = null
       this.grind = 0
       this.flipsThisJump = 0
@@ -153,7 +156,7 @@ export class Skater {
 
   private land(seg: Segment): void {
     const flips = this.flipsThisJump
-    this.y = seg.y
+    this.y = surfaceYAt(seg, this.x)
     this.vy = 0
     this.support = seg
     this.spin = 0

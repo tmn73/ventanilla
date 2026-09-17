@@ -8,10 +8,20 @@ import {
   Scene,
 } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
-import type { Obstacle, Segment, SurfaceKind } from '../game/road'
-import { EDGE_COLOR, FROND, JOINT, LAMP_GLOW, POST_COLOR, PROP_BODY, SIGN_FACE, SURFACE_COLOR, WHEEL_COLOR } from './palette'
+import { surfaceYAt, type Obstacle, type Segment, type SurfaceKind } from '../game/road'
+import {
+  EDGE_COLOR,
+  FROND,
+  JOINT,
+  LAMP_GLOW,
+  POST_COLOR,
+  PROP_BODY,
+  SIGN_FACE,
+  SURFACE_COLOR,
+  WHEEL_COLOR,
+} from './palette'
 
-const MAX_SLABS = 400
+const MAX_SLABS = 500
 const MAX_POSTS = 700
 const MAX_WHEELS = 40
 const MAX_PROPS = 220
@@ -32,14 +42,11 @@ const DEPTH: Record<SurfaceKind, number> = {
   wire: 0.6,
 }
 
-/** Uprights that turn a floating slab into a thing standing beside a road. */
 interface PostSpec {
   spacing: number
   width: number
   color: string
-  /** Drawn from the surface down to this height. */
   foot: number
-  /** A bar across the top, as power pylons have. */
   crossarm: number
 }
 
@@ -72,6 +79,7 @@ export class RoadView {
     this.bodies = slabMesh(scene, MAX_SLABS)
     this.edges = slabMesh(scene, MAX_SLABS)
     this.posts = slabMesh(scene, MAX_POSTS)
+    this.props = slabMesh(scene, MAX_PROPS)
     this.wheels = new InstancedMesh(
       new CircleGeometry(0.5, 12),
       new MeshBasicMaterial({ color: WHEEL_COLOR }),
@@ -79,10 +87,9 @@ export class RoadView {
     )
     this.wheels.frustumCulled = false
     scene.add(this.wheels)
-    this.props = slabMesh(scene, MAX_PROPS)
   }
 
-  update(segments: Segment[], obstacles: Obstacle[], camLeft: number, pulse: number): void {
+  update(segments: Segment[], obstacles: Obstacle[], camLeft: number): void {
     const right = camLeft + VIEW_WIDTH
     let slabs = 0
     let posts = 0
@@ -90,44 +97,55 @@ export class RoadView {
 
     for (const segment of segments) {
       if (segment.x1 < camLeft - 4 || segment.x0 > right + 4) continue
-      if (slabs >= MAX_SLABS) break
+      if (slabs + 2 > MAX_SLABS) break
 
-      const width = segment.x1 - segment.x0
-      const centre = (segment.x0 + segment.x1) / 2
+      const run = segment.x1 - segment.x0
+      const rise = segment.y1 - segment.y0
+      const length = Math.hypot(run, rise)
+      const angle = Math.atan2(rise, run)
+      const cx = (segment.x0 + segment.x1) / 2
+      const cy = (segment.y0 + segment.y1) / 2
+      // Perpendicular pointing into the surface, so offsets follow the slope.
+      const nx = Math.sin(angle)
+      const ny = -Math.cos(angle)
       const depth = THICKNESS[segment.kind]
       const z = DEPTH[segment.kind]
 
-      this.place(this.bodies, slabs, centre, segment.y - depth / 2, z, width, depth, SURFACE_COLOR[segment.kind])
-      this.place(this.edges, slabs, centre, segment.y - EDGE_HEIGHT / 2, z + 0.05, width, EDGE_HEIGHT, EDGE_COLOR[segment.kind])
+      const along = (offset: number, w: number, h: number, color: string | undefined, dz = 0) => {
+        this.place(this.bodies, slabs, cx + nx * offset, cy + ny * offset, z + dz, w, h, color, angle)
+      }
+      const lit = (offset: number, w: number, h: number, color: string | undefined, dz = 0) => {
+        this.place(this.edges, slabs, cx + nx * offset, cy + ny * offset, z + dz, w, h, color, angle)
+      }
+
+      along(depth / 2, length, depth, SURFACE_COLOR[segment.kind])
+      lit(EDGE_HEIGHT / 2, length, EDGE_HEIGHT, EDGE_COLOR[segment.kind], 0.05)
       slabs++
 
-      if (segment.kind === 'rail' && slabs < MAX_SLABS) {
+      if (segment.kind === 'rail') {
         // The lower rib of a W beam, which is what makes a guardrail a guardrail.
-        this.place(this.bodies, slabs, centre, segment.y - 0.62, z - 0.05, width, 0.2, SURFACE_COLOR.rail)
-        this.place(this.edges, slabs, centre, segment.y - 0.62, z, width, 0.07, EDGE_COLOR.rail)
+        along(0.62, length, 0.2, SURFACE_COLOR.rail, -0.05)
+        lit(0.62, length, 0.07, EDGE_COLOR.rail)
         slabs++
-      }
-      if (segment.kind === 'wall' && slabs < MAX_SLABS) {
+      } else if (segment.kind === 'wall') {
         // A coping that overhangs, the way a real parapet does.
-        this.place(this.bodies, slabs, centre, segment.y - 0.13, z + 0.02, width + 0.5, 0.26, SURFACE_COLOR.wall)
-        this.place(this.edges, slabs, centre, segment.y, z + 0.06, width + 0.5, EDGE_HEIGHT, EDGE_COLOR.wall)
+        along(0.13, length + 0.5, 0.26, SURFACE_COLOR.wall, 0.02)
+        lit(0, length + 0.5, EDGE_HEIGHT, EDGE_COLOR.wall, 0.06)
         slabs++
-      }
-      if (segment.kind === 'wire' && slabs < MAX_SLABS) {
+        posts = this.addJoints(segment, camLeft, right, posts, angle, nx, ny)
+      } else if (segment.kind === 'wire') {
         // A second cable running below the first.
-        this.place(this.bodies, slabs, centre, segment.y - 0.55, z, width, 0.08, EDGE_COLOR.wire)
-        this.place(this.edges, slabs, centre, segment.y - 0.55, z, width, 0.05, EDGE_COLOR.wire)
+        along(0.55, length, 0.08, EDGE_COLOR.wire)
+        lit(0.55, length, 0.05, EDGE_COLOR.wire)
         slabs++
       }
-
-      if (segment.kind === 'wall') posts = this.addJoints(segment, camLeft, right, posts)
 
       const spec = POSTS[segment.kind]
       if (spec) posts = this.addPosts(segment, spec, camLeft, right, posts)
       if (segment.kind === 'vehicle') wheels = this.addWheels(segment, wheels)
     }
 
-    this.finish(this.props, this.drawObstacles(obstacles, camLeft, right, pulse))
+    this.finish(this.props, this.drawObstacles(obstacles, camLeft, right))
     this.finish(this.bodies, slabs)
     this.finish(this.edges, slabs)
     this.finish(this.posts, posts)
@@ -135,25 +153,55 @@ export class RoadView {
     this.wheels.instanceMatrix.needsUpdate = true
   }
 
-  private addPosts(segment: Segment, spec: PostSpec, camLeft: number, right: number, cursor: number): number {
+  private addPosts(
+    segment: Segment,
+    spec: PostSpec,
+    camLeft: number,
+    right: number,
+    cursor: number,
+  ): number {
     const first = Math.ceil((segment.x0 + 0.6) / spec.spacing) * spec.spacing
     for (let x = first; x < segment.x1 - 0.6; x += spec.spacing) {
       if (cursor >= MAX_POSTS) break
       if (x < camLeft - 2 || x > right + 2) continue
-      const height = segment.y - spec.foot
+      const top = surfaceYAt(segment, x)
+      const height = top - spec.foot
+      if (height <= 0.1) continue
       this.place(this.posts, cursor++, x, spec.foot + height / 2, -1.5, spec.width, height, spec.color)
       if (spec.crossarm > 0 && cursor < MAX_POSTS) {
-        this.place(this.posts, cursor++, x, segment.y + 0.5, -1.5, spec.crossarm, spec.width, spec.color)
+        this.place(this.posts, cursor++, x, top + 0.5, -1.5, spec.crossarm, spec.width, spec.color)
       }
     }
     return cursor
   }
 
+  /** Seams down the face of a parapet. Masonry, not a rectangle. */
+  private addJoints(
+    segment: Segment,
+    camLeft: number,
+    right: number,
+    cursor: number,
+    angle: number,
+    nx: number,
+    ny: number,
+  ): number {
+    const spacing = 2.4
+    const first = Math.ceil((segment.x0 + 0.8) / spacing) * spacing
+    for (let x = first; x < segment.x1 - 0.8; x += spacing) {
+      if (cursor >= MAX_POSTS) break
+      if (x < camLeft - 2 || x > right + 2) continue
+      const top = surfaceYAt(segment, x)
+      this.place(this.posts, cursor++, x + nx * 0.95, top + ny * 0.95, -0.5, 0.06, 1.4, JOINT, angle)
+    }
+    return cursor
+  }
+
   /**
-   * Each hazard gets a real silhouette. A lit lamp head, a reflective sign
-   * face, a crown of fronds. The shape says "you will hit this", not the hue.
+   * Each hazard gets a real silhouette. A lamp head on a curved arm, a
+   * reflective sign face, a crown of fronds. The shape says "you will hit
+   * this", not the hue.
    */
-  private drawObstacles(obstacles: Obstacle[], camLeft: number, right: number, pulse: number): number {
+  private drawObstacles(obstacles: Obstacle[], camLeft: number, right: number): number {
     let cursor = 0
     for (const item of obstacles) {
       if (item.x < camLeft - 4 || item.x > right + 4) continue
@@ -161,18 +209,15 @@ export class RoadView {
       const top = item.base + item.height
 
       if (item.kind === 'post') {
-        // Street lamp: a pole, an arm curving over the road, and a lit head.
         this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.16, item.height, PROP_BODY)
         this.place(this.props, cursor++, item.x - 0.22, top + 0.12, 0.5, 0.62, 0.13, PROP_BODY, -0.5)
         this.place(this.props, cursor++, item.x - 0.55, top + 0.3, 0.5, 0.42, 0.12, PROP_BODY, -0.12)
         this.place(this.props, cursor++, item.x - 0.72, top + 0.24, 0.55, 0.36, 0.17, LAMP_GLOW)
       } else if (item.kind === 'sign') {
-        // Road sign: a thin pole and a retroreflective face that catches light.
         this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.11, item.height, PROP_BODY)
         this.place(this.props, cursor++, item.x, top - 0.52, 0.55, 1.12, 0.92, SIGN_FACE)
         this.place(this.props, cursor++, item.x, top - 0.52, 0.58, 0.88, 0.68, PROP_BODY)
       } else {
-        // Palm: a leaning trunk under a crown of drooping fronds.
         this.place(this.props, cursor++, item.x, item.base + item.height / 2, 0.5, 0.2, item.height, PROP_BODY, 0.05)
         for (const angle of [2.5, 2.0, 1.571, 1.15, 0.65]) {
           if (cursor >= MAX_PROPS) break
@@ -191,29 +236,17 @@ export class RoadView {
         }
       }
     }
-    void pulse
-    return cursor
-  }
-
-  /** Seams down the face of a parapet. Masonry, not a rectangle. */
-  private addJoints(segment: Segment, camLeft: number, right: number, cursor: number): number {
-    const spacing = 2.4
-    const first = Math.ceil((segment.x0 + 0.8) / spacing) * spacing
-    for (let x = first; x < segment.x1 - 0.8; x += spacing) {
-      if (cursor >= MAX_POSTS) break
-      if (x < camLeft - 2 || x > right + 2) continue
-      this.place(this.posts, cursor++, x, segment.y - 0.95, -0.5, 0.06, 1.4, JOINT)
-    }
     return cursor
   }
 
   private addWheels(segment: Segment, cursor: number): number {
     const width = segment.x1 - segment.x0
-    const bottom = segment.y - THICKNESS.vehicle
+    const bottom = segment.y0 - THICKNESS.vehicle
     for (const fraction of [0.18, 0.8]) {
       if (cursor >= MAX_WHEELS) break
       this.proxy.position.set(segment.x0 + width * fraction, bottom + 0.16, 0.4)
       this.proxy.scale.set(0.9, 0.9, 1)
+      this.proxy.rotation.z = 0
       this.proxy.updateMatrix()
       this.wheels.setMatrixAt(cursor++, this.proxy.matrix)
     }

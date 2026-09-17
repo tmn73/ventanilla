@@ -1,7 +1,7 @@
 import { startLoop } from './core/loop'
 import { ANCHOR, FIXED_DT, SPARK_RATE, VIEW_WIDTH } from './game/constants'
 import { Game } from './game/game'
-import { GRINDABLE } from './game/road'
+import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
 import { Backdrop } from './render/backdrop'
 import { Hud } from './render/hud'
@@ -89,9 +89,14 @@ startLoop(
     const shakeX = Math.sin(now * 19.4) * 0.04 * jolt
 
     backdrop.update(camLeft, stage.viewHeight)
-    roadView.update(road.segments, road.obstacles, camLeft, 0.5 + 0.5 * Math.sin(now * 5.2))
-    // He jumps straight. Rotation is for the fall, and later for tricks.
-    const spin = game.phase === 'falling' ? skater.spin : 0
+    roadView.update(road.segments, road.obstacles, camLeft)
+    // He jumps straight. On a ramp he leans with it, and he tumbles when he falls.
+    const spin =
+      game.phase === 'falling'
+        ? skater.spin
+        : skater.support
+          ? Math.atan(slopeOf(skater.support))
+          : 0
     skaterView.update(x, y, spin, grounded, Math.sin(x * 1.7), skater.grind, skater.flipAngle)
     hud.update(game)
     danger.style.opacity = game.phase === 'falling' ? '0.85' : '0'
