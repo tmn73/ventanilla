@@ -325,7 +325,12 @@ export class Skater {
       this.grind = wanted
       // He has just landed and named the trick. A grind key he was already
       // holding is not a new choice, and must not overwrite that name.
-      if (!this.justLanded) {
+      // The frame he lands on ignores a key he was already holding, so a
+      // grind he did not ask for cannot overwrite the name of what he just
+      // did. Coming down sideways is the exception: there the held key is the
+      // whole intent, and it is the only way to aim a tailslide before the
+      // board is on the rail.
+      if (!this.justLanded || this.sideways) {
         const names = this.sideways ? SLIDE_NAME : GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
         this.trick = names[this.grind + 2] ?? ''
         this.trickAge = 0
