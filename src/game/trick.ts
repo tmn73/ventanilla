@@ -48,6 +48,12 @@ export interface Ask {
   label: string
   /** And how to do it, because a name you have forgotten is not a hint. */
   how: string
+  /**
+   * The modules this can be called on, when the general pool will not do. A
+   * double flip needs the hang time of a drop; a flip called over a stair set
+   * gets landed on the handrail that set comes with.
+   */
+  modules?: string[]
 }
 
 /**

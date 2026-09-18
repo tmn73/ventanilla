@@ -182,9 +182,10 @@ const draw = (alpha: number) => {
       flip: skater.flipAngle * skater.flipSign,
       rise,
       absorb: Math.max(skater.absorb, skater.crouch * 0.72),
-      // A bell, not a step: the foot goes down to the road and comes back up
-      // onto the tail. Reading it straight off the timer snapped it down.
-      push: Math.sin(Math.max(0, 1 - skater.pushTime / 0.34) * Math.PI),
+      // How far through the kick he is, from nought to one. The rig makes the
+      // bell out of it and also sweeps the foot along, which it cannot do from
+      // a number that rises and falls.
+      push: Math.max(0, 1 - skater.pushTime / 0.34),
       switched: skater.reversed,
       stance: skater.stance,
       shove: skater.shoveAngle * skater.shoveSign,
@@ -213,9 +214,19 @@ startLoop(advance, draw, FIXED_DT)
  * arrives, and the whole thing looks broken when nothing is wrong with it.
  * This cost most of a day to work out, so the way round it stays.
  */
+;(window as unknown as Record<string, unknown>).__shot = () => {
+  draw(0)
+  return stage.renderer.domElement.toDataURL('image/png')
+}
+
 ;(window as unknown as Record<string, unknown>).__run = (seconds: number) => {
   const ticks = Math.round(seconds / FIXED_DT)
   for (let i = 0; i < ticks; i++) advance(FIXED_DT)
   draw(0)
-  return { x: Number(game.skater.x.toFixed(1)), trick: game.skater.trick, landed: game.coach?.landed }
+  return {
+    x: Number(game.skater.x.toFixed(1)),
+    trick: game.skater.trick,
+    landed: game.coach?.landed,
+    push: Number((1 - game.skater.pushTime / 0.34).toFixed(2)),
+  }
 }

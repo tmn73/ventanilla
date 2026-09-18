@@ -56,7 +56,12 @@ export class Stage {
   private fill: AmbientLight
 
   constructor(canvas: HTMLCanvasElement) {
-    this.renderer = new WebGLRenderer({ canvas, antialias: true })
+    // The drawing buffer is normally thrown away as soon as it is on screen,
+    // and a hidden tab never puts it on screen: a screenshot of one is the
+    // last frame Chrome happened to composite, which is not the frame that was
+    // just drawn. Keeping the buffer is how a check reads what it asked for.
+    const keep = new URLSearchParams(location.search).has('shots')
+    this.renderer = new WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: keep })
     // The sky. There is no plane for it any more: a plane in front of a clear
     // colour is two colours with a seam between them, and that seam was the
     // pale band across the middle of the screen.

@@ -31,6 +31,24 @@ export function stanceOf(reversed: boolean, nose: boolean): string {
 const QUARTER = Math.PI / 2
 
 /**
+ * Squares a yaw back to a half turn at the end of a slide.
+ *
+ * Square across a rail sits exactly between the two halves, so rounding picks
+ * one of them by a floating point accident: a boardslide entered from regular
+ * came out switch every time, and the next landing on flat ground was named
+ * for a stance he never took.
+ */
+function unwind(yaw: number, from: number): number {
+  const down = Math.floor(yaw / Math.PI) * Math.PI
+  const up = down + Math.PI
+  const bias = Math.abs(down - from) <= Math.abs(up - from) ? down : up
+  const room = 1e-6
+  if (Math.abs(yaw - down) < Math.abs(up - yaw) - room) return down
+  if (Math.abs(up - yaw) < Math.abs(yaw - down) - room) return up
+  return bias
+}
+
+/**
  * Skate names it properly. Which way a spin goes is frontside or backside
  * depending on the stance, so goofy reverses both, and a trick started while
  * riding switch carries that word in front of everything else.
@@ -185,6 +203,18 @@ export class Skater {
 
   /** Where the yaw stood when he left the ground, so a trick names its own turn. */
   private takeoffYaw = 0
+  /**
+   * Where he was facing before he turned across the rail. Coming off, the
+   * board is square between two halves and the tie has to be broken by
+   * something: he unwinds the way he came in, and keeps his stance.
+   */
+  private slideFrom = 0
+  /**
+   * True while he is in the air because he popped. Rolling off the end of a
+   * rail is not a trick, and naming it one wiped the boardslide off the
+   * screen and replaced it with the word ollie.
+   */
+  private popped = false
   private flipping = false
   private flipsThisJump = 0
   private shoving = false
@@ -224,6 +254,8 @@ export class Skater {
     this.yaw = 0
     this.sideways = false
     this.takeoffYaw = 0
+    this.slideFrom = 0
+    this.popped = false
     this.flipping = false
     this.flipsThisJump = 0
     this.airTime = 0
@@ -260,8 +292,9 @@ export class Skater {
         // Rolling off the end of a ramp carries its rise into the air.
         this.vy = slopeOf(this.support) * this.vx
         this.support = null
+        this.popped = false
         if (this.sideways) {
-          this.yaw = Math.round(this.yaw / Math.PI) * Math.PI
+          this.yaw = unwind(this.yaw, this.slideFrom)
           this.takeoffYaw = this.yaw
           this.sideways = false
         }
@@ -353,8 +386,7 @@ export class Skater {
       // Coming out of a slide, the quarter turn back onto the road is part of
       // the pop. Making the player spin it again would bail every boardslide.
       if (this.sideways) {
-        const halves = Math.round(this.yaw / Math.PI)
-        this.yaw = halves * Math.PI
+        this.yaw = unwind(this.yaw, this.slideFrom)
         this.sideways = false
       }
       // How long he held it decides how high it goes, and a ramp adds its own
@@ -369,6 +401,7 @@ export class Skater {
       this.crouch = 0
       this.support = null
       this.grind = 0
+      this.popped = true
       this.balancing = false
       this.balance = 0
       this.balanceVel = 0
@@ -530,9 +563,11 @@ export class Skater {
 
     const wasReversed = Math.abs(Math.round(this.takeoffYaw / QUARTER)) % 4 === 2
     const quarters = Math.round((target - this.takeoffYaw) / QUARTER)
+    const entry = this.takeoffYaw
     this.yaw = target
     this.takeoffYaw = target
     this.sideways = slideable && Math.abs(quarters) % 2 === 1
+    if (this.sideways) this.slideFrom = entry
 
     // The harder he arrives, the deeper he soaks it up.
     this.absorb = Math.min(1, 0.35 + Math.abs(this.vy) / 11)
@@ -555,6 +590,14 @@ export class Skater {
     this.shoveAngle = 0
     this.shoving = false
     this.shovesThisJump = 0
+
+    // He rolled off one thing and onto another without popping and without
+    // turning. That is not a trick, so it says nothing and it leaves the last
+    // thing he did on the screen.
+    if (!this.popped && !this.sideways && quarters === 0 && flips === 0 && shoves === 0) {
+      this.airTime = 0
+      return
+    }
 
     const named = this.sideways
       ? nameSlide(quarters, this.stance, wasReversed, this.poppedNose)

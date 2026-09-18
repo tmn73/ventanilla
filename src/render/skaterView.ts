@@ -112,19 +112,41 @@ const PUSH: Joints = {
   // He stands up over the front foot and reaches the back one down to the
   // road behind him. The old pose put that foot above deck height and out to
   // the side, which is a kick at nothing rather than a push off the ground.
-  hip: [0.06, 0.03],
-  shoulder: [0.13, 0.52],
-  head: [0.17, 0.72],
-  kneeBack: [-0.26, -0.46],
-  footBack: [-0.58, -0.99],
-  kneeFront: [0.19, -0.36],
-  footFront: [0.17, -0.79],
-  handBack: [-0.46, 0.4],
-  handFront: [0.62, 0.44],
+  // He sinks over the front leg to reach the road. Standing tall and swinging
+  // a leg is a walk, and that is what it looked like.
+  hip: [0.07, -0.1],
+  shoulder: [0.14, 0.4],
+  head: [0.18, 0.6],
+  kneeBack: [-0.26, -0.5],
+  footBack: [-0.58, -0.95],
+  kneeFront: [0.25, -0.47],
+  footFront: [0.16, -0.79],
+  handBack: [-0.48, 0.28],
+  handFront: [0.6, 0.36],
 }
 
 /** The same push with the roles swapped, for when the rig is riding switch. */
 const PUSH_SWITCH: Joints = mirror(PUSH)
+
+/** Where the push foot is when it reaches ahead, and where it finishes. */
+const FOOT_AHEAD = 0.34
+const FOOT_BEHIND = -0.82
+/** Road height at the rig's own scale, so the foot plants on it. */
+const ROAD_Y = -0.95
+/**
+ * How far to the heel side the push foot steps, past the edge of the deck.
+ * Side on, a foot at road height still sits behind the board and reads as
+ * standing on the nose. It has to step off the board to be a push.
+ */
+const STEP_OUT = 0.26
+/** The shares of one kick spent reaching forward and driving back. */
+const REACH_DONE = 0.26
+const DRIVE_DONE = 0.76
+
+/** Smooth at both ends, so a foot starts and stops rather than jumping. */
+function ease(k: number): number {
+  return k * k * (3 - 2 * k)
+}
 
 const JOINT_KEYS = Object.keys(GRIND) as Array<keyof Joints>
 
@@ -354,7 +376,43 @@ export class SkaterView {
     // now at the front. Pushing with it would be mongo, which nobody does.
     const kick = switched ? PUSH_SWITCH : PUSH
     const ride = {} as Joints
-    for (const key of JOINT_KEYS) ride[key] = mix(GRIND[key], kick[key], push)
+    /** How far the pushing leg is off the board, nought to one. */
+    let stepOut = 0
+    // The body opens into the push, holds there while the foot drives, and
+    // closes again. A plain bell put him back on the board halfway through the
+    // stroke, with the foot still out on the road behind him.
+    const t = Math.min(1, Math.max(0, push))
+    const into = t < REACH_DONE ? ease(t / REACH_DONE) : t < DRIVE_DONE ? 1 : 1 - ease((t - DRIVE_DONE) / (1 - DRIVE_DONE))
+    for (const key of JOINT_KEYS) ride[key] = mix(GRIND[key], kick[key], into)
+
+    // And the foot travels. A push is three things and not one pose: it comes
+    // off the tail and reaches forward, it drives back along the road, and it
+    // swings home. Sweeping it straight from front to back skipped the two
+    // parts that make it read as a push at all.
+    if (t > 0 && t < 1) {
+      const stroke = switched ? -1 : 1
+      const deck = GRIND.footBack
+      let along: number
+      let height: number
+      if (t < REACH_DONE) {
+        const k = ease(t / REACH_DONE)
+        along = deck[0] + (FOOT_AHEAD - deck[0]) * k
+        height = deck[1] + (ROAD_Y - deck[1]) * k
+      } else if (t < DRIVE_DONE) {
+        const k = (t - REACH_DONE) / (DRIVE_DONE - REACH_DONE)
+        along = FOOT_AHEAD + (FOOT_BEHIND - FOOT_AHEAD) * k
+        height = ROAD_Y
+      } else {
+        const k = ease((t - DRIVE_DONE) / (1 - DRIVE_DONE))
+        along = FOOT_BEHIND + (deck[0] - FOOT_BEHIND) * k
+        // Lifted clear on the way home, or it drags through the road.
+        height = ROAD_Y + (deck[1] - ROAD_Y) * k + Math.sin(k * Math.PI) * 0.07
+      }
+      ride.footBack = [stroke * along, height]
+      ride.kneeBack = [stroke * (along * 0.45 + 0.02), height * 0.52 - 0.07]
+      // Out to the heel side, and back in as the foot comes home.
+      stepOut = Math.sin(Math.min(1, t / DRIVE_DONE) * Math.PI) ** 0.6 * grounded
+    }
 
     const pose = {} as Joints
     for (const key of JOINT_KEYS) pose[key] = mix(air[key], ride[key], grounded)
@@ -436,6 +494,11 @@ export class SkaterView {
 
     span(this.bones.thighBack!, pose.hip, pose.kneeBack, 0.13)
     span(this.bones.shinBack!, pose.kneeBack, pose.footBack, 0.11)
+    // The pushing leg swings out over the road. Regular, that is the side his
+    // back is on, which is the side the camera is on as well.
+    const out = stepOut * STEP_OUT * (stance > 0 ? 1 : -1)
+    this.bones.shinBack!.position.z = out
+    this.bones.thighBack!.position.z = out * 0.45
     span(this.bones.thighFront!, pose.hip, pose.kneeFront, 0.13)
     span(this.bones.shinFront!, pose.kneeFront, pose.footFront, 0.11)
     span(this.bones.torso!, pose.hip, pose.shoulder, 0.19)

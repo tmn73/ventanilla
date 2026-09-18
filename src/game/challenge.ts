@@ -163,10 +163,21 @@ const ON_A_RAIL: Ask[] = [
 ]
 
 /** Things to do with the board off the ground. */
+/** Enough of a fall for two revolutions of the deck. */
+const OFF_A_DROP = ['pit', 'drop', 'flatGap', 'skybridge']
+
 const IN_THE_AIR: Ask[] = [
   { flips: 1, flipSign: 1, label: 'kickflip', how: 'pop, then Left in the air' },
   { flips: 1, flipSign: -1, label: 'heelflip', how: 'pop, then Right in the air' },
-  { flips: 2, flipSign: 1, label: 'double kickflip', how: 'pop, then hold Left' },
+  {
+    flips: 2,
+    flipSign: 1,
+    label: 'double kickflip',
+    how: 'pop, then hold Left',
+    // One revolution takes four tenths of a second and a flat pop buys five
+    // and a half, so the second one only lands if he is falling as well.
+    modules: OFF_A_DROP,
+  },
   { shoves: 1, label: 'shove-it', how: 'pop, then Q' },
   { shoves: 2, label: '360 shove-it', how: 'pop, then hold Q' },
   { halves: 1, label: '180', how: 'pop, then A or D until half round' },
@@ -181,7 +192,11 @@ const IN_THE_AIR: Ask[] = [
 ]
 
 const RAILS = ['railSpot', 'ledgeSpot', 'kinkedRail', 'stepUp', 'plaza']
-const AIRS = ['stairs', 'doubleSet', 'flatGap', 'channel', 'funbox', 'bumpToBar', 'quarterPipe']
+/**
+ * Nothing here carries a rail. A flip called over a stair set was being landed
+ * on the handrail that set comes with, which is not a landing he asked for.
+ */
+const AIRS = ['flatGap', 'channel', 'hip', 'quarterPipe', 'rollingBumps', 'pit']
 
 /**
  * One spot and one thing to do on it, drawn at random.
@@ -194,8 +209,9 @@ export function rollLevel(rng: () => number): Level {
   const modules = onRail ? RAILS : AIRS
   const asks = onRail ? ON_A_RAIL : IN_THE_AIR
   const ask = asks[Math.floor(rng() * asks.length)]!
+  const pool = ask.modules ?? modules
   return {
-    module: modules[Math.floor(rng() * modules.length)]!,
+    module: pool[Math.floor(rng() * pool.length)]!,
     scale: 0.2 + rng() * 0.45,
     ask,
     hint: ask.label,
