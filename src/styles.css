@@ -317,3 +317,38 @@ body {
 #task em[data-shout='missed'] {
   color: var(--accent, #ff6b2c);
 }
+
+/* The mode is not a setting you set once, it is what you are doing, so it
+   lives on the screen and not in the menu. */
+#modes {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+#modes button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.34rem 0.85rem;
+  background: rgba(42, 45, 48, 0.16);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+#modes button[aria-pressed='true'] {
+  background: rgba(42, 45, 48, 0.82);
+  color: #f2efe9;
+}
+
+#modes #skip {
+  background: rgba(255, 107, 44, 0.18);
+  color: var(--accent, #ff6b2c);
+}

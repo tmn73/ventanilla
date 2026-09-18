@@ -67,8 +67,28 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
-  (learning) => game.setLearning(learning),
 )
+
+// Free, or being called tricks. The buttons sit on the screen because which
+// one you are in is the thing you are doing, not a preference.
+const modeButtons = {
+  free: document.getElementById('mode-free'),
+  learn: document.getElementById('mode-learn'),
+  skip: document.getElementById('skip'),
+}
+const applyMode = (learning: boolean) => {
+  modeButtons.free?.setAttribute('aria-pressed', String(!learning))
+  modeButtons.learn?.setAttribute('aria-pressed', String(learning))
+  if (modeButtons.skip) modeButtons.skip.hidden = !learning
+  game.setLearning(learning)
+}
+modeButtons.free?.addEventListener('click', () => applyMode(false))
+modeButtons.learn?.addEventListener('click', () => applyMode(true))
+// Stuck is not a state worth sitting in. The next one is along in a moment.
+modeButtons.skip?.addEventListener('click', () => game.coach?.skip())
+for (const button of Object.values(modeButtons)) {
+  button?.addEventListener('pointerdown', (event) => event.stopPropagation())
+}
 
 window.addEventListener('resize', () => {
   stage.resize()

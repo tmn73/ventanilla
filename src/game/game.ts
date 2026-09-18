@@ -1,6 +1,6 @@
 import * as C from './constants'
 import { Road, type Course } from './road'
-import { Coach, LEVELS } from './challenge'
+import { Coach } from './challenge'
 import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
 import type { Input } from '../input'
@@ -49,7 +49,7 @@ export class Game {
   /** Puts the run on one spot with one thing to do, or back on the street. */
   /** Puts the run on the lesson, or back on the street. */
   setLearning(on: boolean): void {
-    this.coach = on ? new Coach(LEVELS) : null
+    this.coach = on ? new Coach(() => this.rng()) : null
     this.start()
   }
 

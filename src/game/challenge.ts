@@ -33,8 +33,6 @@ const SHOUT = 1.6
  * run itself never breaks, which is the only reason it is worth riding.
  */
 export class Coach {
-  /** How far down the list he has got. */
-  index = 0
   /** How many spots he has landed, which is the only score there is. */
   landed = 0
   /** What just happened, for showing, and how long it has left on the screen. */
@@ -43,17 +41,23 @@ export class Coach {
 
   private spots: Spot[] = []
 
-  constructor(private levels: Level[]) {}
+  constructor(private rng: () => number) {}
 
   /** What he is being asked for right now, or nothing once the list is done. */
   get current(): Level | null {
     return this.spots.find((s) => s.outcome === 'open')?.level ?? null
   }
 
+  /** Gives up on the one in front of him. Another is along in a moment. */
+  skip(): void {
+    const open = this.spots.find((spot) => spot.outcome === 'open')
+    if (open) open.outcome = 'missed'
+  }
+
   /** Lays spots as he rides, so the road never runs out and never stops. */
   ensureAhead(road: Road, x: number): void {
     for (let guard = 0; guard < 8 && road.head < x + LOOKAHEAD; guard++) {
-      const level = this.levels[Math.min(this.index, this.levels.length - 1)]!
+      const level = rollLevel(this.rng)
       const laid = road.stage(level.module, level.scale, WALK_UP)
       this.spots.push({ ...laid, level, outcome: 'open' })
     }
@@ -73,9 +77,6 @@ export class Coach {
         if (satisfies(trick, spot.level.ask)) {
           spot.outcome = 'landed'
           this.landed++
-          // Only a landing moves him on. A miss leaves the list where it is,
-          // so the very next spot asks for the same thing again.
-          this.index++
           this.shout = 'landed'
           this.shoutFor = SHOUT
           continue
@@ -94,15 +95,52 @@ export class Coach {
   }
 }
 
-/**
- * The tutorial, in order. It opens loose: any boardslide counts, because the
- * first thing to learn is that the board goes across the rail at all.
- */
-export const LEVELS: Level[] = [
-  {
-    module: 'railSpot',
-    scale: 0.35,
-    ask: { slide: 'boardslide', label: 'boardslide' },
-    hint: 'Boardslide the rail',
-  },
+/** Things to do on something you can slide along. */
+const ON_A_RAIL: Ask[] = [
+  { slide: 'boardslide', label: 'boardslide' },
+  { slide: 'boardslide', side: 'frontside', label: 'frontside boardslide' },
+  { slide: 'boardslide', side: 'backside', label: 'backside boardslide' },
+  { slide: 'tailslide', label: 'tailslide' },
+  { slide: 'noseslide', label: 'noseslide' },
+  { slide: 'boardslide', stance: 'switch', label: 'switch boardslide' },
 ]
+
+/** Things to do with the board off the ground. */
+const IN_THE_AIR: Ask[] = [
+  { flips: 1, flipSign: 1, label: 'kickflip' },
+  { flips: 1, flipSign: -1, label: 'heelflip' },
+  { flips: 2, flipSign: 1, label: 'double kickflip' },
+  { shoves: 1, label: 'shove-it' },
+  { shoves: 2, label: '360 shove-it' },
+  { halves: 1, label: '180' },
+  { halves: 1, side: 'frontside', label: 'frontside 180' },
+  { halves: 1, side: 'backside', label: 'backside 180' },
+  { halves: 2, label: '360' },
+  { halves: 1, flips: 1, flipSign: 1, label: 'frontside flip' },
+  { flips: 1, shoves: 1, flipSign: 1, label: 'varial kickflip' },
+  { flips: 1, shoves: 2, flipSign: 1, label: '360 flip' },
+  { stance: 'nollie', label: 'nollie' },
+  { stance: 'nollie', flips: 1, flipSign: 1, label: 'nollie kickflip' },
+]
+
+const RAILS = ['railSpot', 'ledgeSpot', 'kinkedRail', 'stepUp', 'plaza']
+const AIRS = ['stairs', 'doubleSet', 'flatGap', 'channel', 'funbox', 'bumpToBar', 'quarterPipe']
+
+/**
+ * One spot and one thing to do on it, drawn at random.
+ *
+ * There is no ladder. A ladder means being stuck on step four, and the way out
+ * of being stuck is another spot in ten seconds, not a menu.
+ */
+export function rollLevel(rng: () => number): Level {
+  const onRail = rng() < 0.45
+  const modules = onRail ? RAILS : AIRS
+  const asks = onRail ? ON_A_RAIL : IN_THE_AIR
+  const ask = asks[Math.floor(rng() * asks.length)]!
+  return {
+    module: modules[Math.floor(rng() * modules.length)]!,
+    scale: 0.2 + rng() * 0.45,
+    ask,
+    hint: ask.label,
+  }
+}
