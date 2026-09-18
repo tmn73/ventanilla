@@ -131,8 +131,15 @@ const PUSH_SWITCH: Joints = mirror(PUSH)
 /** Where the push foot is when it reaches ahead, and where it finishes. */
 const FOOT_AHEAD = 0.34
 const FOOT_BEHIND = -0.82
-/** Road height at the rig's own scale, so the foot plants on it. */
-const ROAD_Y = -0.95
+/** How big a shoe is, and how far its middle sits under the ankle. */
+const SHOE_H = 0.085
+const SHOE_DROP = 0.035
+/**
+ * Where the ankle goes for the sole to sit on the road. Measured rather than
+ * guessed, and a hair low, because a foot sunk a millimetre into the road
+ * reads as planted and a foot a millimetre above it reads as a toe dipped in.
+ */
+const ROAD_Y = -FEET_TO_HIP + SHOE_DROP + SHOE_H / 2 - 0.012
 /**
  * How far to the heel side the push foot steps, past the edge of the deck.
  * Side on, a foot at road height still sits behind the board and reads as
@@ -140,8 +147,8 @@ const ROAD_Y = -0.95
  */
 const STEP_OUT = 0.26
 /** The shares of one kick spent reaching forward and driving back. */
-const REACH_DONE = 0.26
-const DRIVE_DONE = 0.76
+const REACH_DONE = 0.22
+const DRIVE_DONE = 0.84
 
 /** Smooth at both ends, so a foot starts and stops rather than jumping. */
 function ease(k: number): number {
@@ -292,6 +299,18 @@ export class SkaterView {
     // The arm nearest the nose is lighter, which is what tells you which way
     // he is travelling when the rest of him is one silhouette.
     this.bones.armFront = limb(this.body, lead, 0.17)
+
+    // Feet. Without them the leg ends in a point, and a leg reaching down to
+    // the road read as a toe dipped in it rather than a foot put on it.
+    for (const name of ['shoeBack', 'shoeFront']) {
+      const shoe = new Mesh(
+        new BoxGeometry(0.27, SHOE_H, 0.13),
+        new MeshLambertMaterial({ color: skin, flatShading: true }),
+      )
+      shoe.castShadow = true
+      this.body.add(shoe)
+      this.bones[name] = shoe
+    }
 
     const head = new Mesh(
       new BoxGeometry(0.3, 0.3, 0.27),
@@ -499,6 +518,8 @@ export class SkaterView {
     const out = stepOut * STEP_OUT * (stance > 0 ? 1 : -1)
     this.bones.shinBack!.position.z = out
     this.bones.thighBack!.position.z = out * 0.45
+    this.bones.shoeBack!.position.set(pose.footBack[0] + 0.02, pose.footBack[1] - SHOE_DROP, out)
+    this.bones.shoeFront!.position.set(pose.footFront[0] + 0.02, pose.footFront[1] - SHOE_DROP, 0)
     span(this.bones.thighFront!, pose.hip, pose.kneeFront, 0.13)
     span(this.bones.shinFront!, pose.kneeFront, pose.footFront, 0.11)
     span(this.bones.torso!, pose.hip, pose.shoulder, 0.19)

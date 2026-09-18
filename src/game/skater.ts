@@ -325,7 +325,7 @@ export class Skater {
       if (input.pushing && this.pushCooldown <= 0) {
         this.vx += C.PUSH_IMPULSE
         this.pushCooldown = C.PUSH_COOLDOWN
-        this.pushTime = 0.34
+        this.pushTime = C.PUSH_STROKE
       }
       if (input.braking) this.vx -= C.BRAKE_ACCEL * dt
     }

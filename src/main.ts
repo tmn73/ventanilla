@@ -1,6 +1,6 @@
 import { Group } from 'three'
 import { startLoop } from './core/loop'
-import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, SPARK_RATE } from './game/constants'
+import { ANCHOR, FIXED_DT, JUMP_SPEED, LANE_Y, PUSH_STROKE, SPARK_RATE } from './game/constants'
 import { Game } from './game/game'
 import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
@@ -185,7 +185,7 @@ const draw = (alpha: number) => {
       // How far through the kick he is, from nought to one. The rig makes the
       // bell out of it and also sweeps the foot along, which it cannot do from
       // a number that rises and falls.
-      push: Math.max(0, 1 - skater.pushTime / 0.34),
+      push: Math.max(0, 1 - skater.pushTime / PUSH_STROKE),
       switched: skater.reversed,
       stance: skater.stance,
       shove: skater.shoveAngle * skater.shoveSign,
@@ -194,7 +194,12 @@ const draw = (alpha: number) => {
     })
     hud.setStance(skater.stanceWord)
     const coach = game.coach
-    hud.setTask(coach?.current?.hint ?? '', coach?.current?.ask.how ?? '', coach?.shout ?? '')
+    hud.setTask(
+      coach?.current?.hint ?? '',
+      coach?.current?.ask.how ?? '',
+      coach?.shout ?? '',
+      coach?.shoutLabel ?? '',
+    )
     hud.update(skater)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it
@@ -227,6 +232,6 @@ startLoop(advance, draw, FIXED_DT)
     x: Number(game.skater.x.toFixed(1)),
     trick: game.skater.trick,
     landed: game.coach?.landed,
-    push: Number((1 - game.skater.pushTime / 0.34).toFixed(2)),
+    push: Number((1 - game.skater.pushTime / PUSH_STROKE).toFixed(2)),
   }
 }

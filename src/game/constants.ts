@@ -38,6 +38,11 @@ export const MAX_SPEED = 17
 /** One push is an impulse, not a throttle, so it reads as a kick. */
 export const PUSH_IMPULSE = 2.4
 export const PUSH_COOLDOWN = 0.46
+/**
+ * How long one kick takes. The foot is on the road for most of it, so a short
+ * stroke reads as a toe dipped in and taken straight back out.
+ */
+export const PUSH_STROKE = 0.42
 export const BRAKE_ACCEL = 7
 /** Rolling friction, which is why you have to keep pushing. */
 export const DRAG_BASE = 0.7

@@ -149,3 +149,19 @@ test('a slide counts when he settles on the end, not when he touches down', () =
   coach.step(1 / 120, rider(where.from + 1, sliding, true))
   expect(coach.landed).toBe(1)
 })
+
+test('the mark names the trick it settled, not the one coming up', () => {
+  const { coach, road } = laid()
+  const asked = coach.current!
+  const where = coach.target!
+  const done = trick({ at: where.from, ...askedAsTrick(asked.ask) })
+
+  coach.step(1 / 120, rider(where.from, done))
+  coach.ensureAhead(road, where.to)
+
+  // The next call is already up, because the run never stops. The mark has to
+  // stay on the one he just did, or it reads as having landed the next one.
+  expect(coach.shout).toBe('landed')
+  expect(coach.shoutLabel).toBe(asked.ask.label)
+  expect(coach.current?.ask.label).not.toBe('')
+})

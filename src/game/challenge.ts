@@ -45,6 +45,12 @@ export class Coach {
   landed = 0
   /** What just happened, for showing, and how long it has left on the screen. */
   shout: 'landed' | 'missed' | '' = ''
+  /**
+   * And which trick it happened on. The mark has to be shown against the thing
+   * it settled: on its own it landed next to the trick he had yet to do, which
+   * says he has already done it.
+   */
+  shoutLabel = ''
   shoutFor = 0
 
   private spots: Spot[] = []
@@ -106,7 +112,10 @@ export class Coach {
   step(dt: number, skater: Skater): void {
     if (this.shoutFor > 0) {
       this.shoutFor -= dt
-      if (this.shoutFor <= 0) this.shout = ''
+      if (this.shoutFor <= 0) {
+        this.shout = ''
+        this.shoutLabel = ''
+      }
     }
 
     // Only the one in front of him. Looking at all of them let a trick landed
@@ -133,6 +142,7 @@ export class Coach {
         // Landed, so the next one is something else.
         this.next = rollLevel(this.rng)
         this.shout = 'landed'
+        this.shoutLabel = spot.level.ask.label
         this.shoutFor = SHOUT
         return
       }
@@ -143,6 +153,7 @@ export class Coach {
       // round again, and again, until he lands it or gives up on it.
       spot.outcome = 'missed'
       this.shout = 'missed'
+      this.shoutLabel = spot.level.ask.label
       this.shoutFor = SHOUT
     }
 

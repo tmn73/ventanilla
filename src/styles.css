@@ -301,9 +301,18 @@ body {
   letter-spacing: 0.01em;
 }
 
+/* What just happened, over what has to happen next. The mark used to sit on
+   the line of the next trick, which read as having already landed it. */
+#task-done {
+  font-size: 0.86rem;
+  font-weight: 700;
+  opacity: 0.85;
+  line-height: 1.2;
+}
+
 #task em {
   font-style: normal;
-  margin-left: 0.55rem;
+  margin-left: 0.4rem;
   font-size: 1.25em;
   font-weight: 700;
   line-height: 1;
