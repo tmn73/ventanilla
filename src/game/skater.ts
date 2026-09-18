@@ -394,6 +394,9 @@ export class Skater {
       // The input says which end of the board he popped in screen terms. Turn
       // the board round and that same end is the other one, which is the whole
       // difference between an ollie, a nollie, a switch ollie and a fakie.
+      // The kick is over the moment he pops. Both at once put the back foot
+      // out on the road with the board in the air, which is a no comply.
+      this.pushTime = 0
       this.poppedNose = input.popLeading !== this.reversed
       const end = this.poppedNose ? C.NOLLIE_KEEP : 1
       const charge = C.POP_MIN + (1 - C.POP_MIN) * this.crouch

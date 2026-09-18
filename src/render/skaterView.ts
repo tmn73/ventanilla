@@ -141,21 +141,22 @@ const MAX_SINK = 0.3
 /** Where the push foot is when it reaches ahead, and where it finishes. */
 const FOOT_AHEAD = 0.4
 const FOOT_BEHIND = -0.44
-/** How big a shoe is, and how far its middle sits under the ankle. */
-const SHOE_H = 0.085
-const SHOE_DROP = 0.035
-/**
- * Where the ankle goes for the sole to sit on the road. Measured rather than
- * guessed, and a hair low, because a foot sunk a millimetre into the road
- * reads as planted and a foot a millimetre above it reads as a toe dipped in.
- */
-const ROAD_Y = -FEET_TO_HIP + SHOE_DROP + SHOE_H / 2 - 0.012
+/** Where the top of the deck sits under a foot standing on it. */
+export const DECK_TOP = GRIND.footBack[1] - 0.09 + DECK_THICK / 2
+export const DECK_REACH = DECK_HALF
+export const DECK_SIDE = DECK_BREADTH / 2
+/** Half the thickness of a leg. It is the leg that fouls the board, not a point. */
+export const LIMB_HALF = 0.085
+/** How far over the deck the foot swings on its way home. */
+const CLEAR = 0.1
+/** Where the ankle goes for the foot to be on the road. Measured, not guessed. */
+const ROAD_Y = -FEET_TO_HIP + 0.05
 /**
  * How far to the heel side the push foot steps, past the edge of the deck.
  * Side on, a foot at road height still sits behind the board and reads as
  * standing on the nose. It has to step off the board to be a push.
  */
-const STEP_OUT = 0.26
+export const STEP_OUT = 0.3
 /** The shares of one kick spent reaching forward and driving back. */
 const REACH_DONE = 0.22
 const DRIVE_DONE = 0.84
@@ -256,6 +257,47 @@ export interface Rider {
   sideways: boolean
 }
 
+/**
+ * Where the push foot is, a share of the way through one kick.
+ *
+ * `along` is measured from the hips towards the nose, `height` from the hips
+ * down, and `out` is how far to the heel side it has stepped, nought to one.
+ * It is out here on its own because the one thing it must never do is go
+ * through the board, and that is a thing a test can hold it to.
+ */
+export function pushFoot(t: number): { along: number; height: number; out: number } {
+  const deck = GRIND.footBack
+  if (t < REACH_DONE) {
+    const k = ease(t / REACH_DONE)
+    return {
+      along: deck[0] + (FOOT_AHEAD - deck[0]) * k,
+      height: deck[1] + (ROAD_Y - deck[1]) * k,
+      // Out before down. A leg that descends first goes through the deck on
+      // its way past, and it is the leg that fouls it, not the foot.
+      out: ease(Math.min(1, (t / REACH_DONE) * 2)),
+    }
+  }
+  if (t < DRIVE_DONE) {
+    const k = (t - REACH_DONE) / (DRIVE_DONE - REACH_DONE)
+    return {
+      along: FOOT_AHEAD + (FOOT_BEHIND - FOOT_AHEAD) * k,
+      height: ROAD_Y,
+      out: 1,
+    }
+  }
+  const k = (t - DRIVE_DONE) / (1 - DRIVE_DONE)
+  // Up first, then forward. Coming home at road height dragged the foot
+  // straight through the tail of the board, and it only comes back in over
+  // the deck once it is above it.
+  const up = ease(Math.min(1, k * 2.2))
+  const swing = ease(Math.max(0, (k - 0.3) / 0.7))
+  return {
+    along: FOOT_BEHIND + (deck[0] - FOOT_BEHIND) * swing,
+    height: ROAD_Y + (deck[1] + CLEAR - ROAD_Y) * up - CLEAR * swing,
+    out: 1 - ease(Math.max(0, (k - 0.5) / 0.5)),
+  }
+}
+
 export class SkaterView {
   private root = new Group()
   /** The road's heading, then the ramp lean, then the rider's own facing. */
@@ -330,18 +372,6 @@ export class SkaterView {
     // The arm nearest the nose is lighter, which is what tells you which way
     // he is travelling when the rest of him is one silhouette.
     this.bones.armFront = limb(this.body, lead, 0.17)
-
-    // Feet. Without them the leg ends in a point, and a leg reaching down to
-    // the road read as a toe dipped in it rather than a foot put on it.
-    for (const name of ['shoeBack', 'shoeFront']) {
-      const shoe = new Mesh(
-        new BoxGeometry(0.27, SHOE_H, 0.13),
-        new MeshLambertMaterial({ color: skin, flatShading: true }),
-      )
-      shoe.castShadow = true
-      this.body.add(shoe)
-      this.bones[name] = shoe
-    }
 
     const head = new Mesh(
       new BoxGeometry(0.3, 0.3, 0.27),
@@ -443,26 +473,9 @@ export class SkaterView {
     // parts that make it read as a push at all.
     if (t > 0 && t < 1) {
       const stroke = switched ? -1 : 1
-      const deck = GRIND.footBack
-      let along: number
-      let height: number
-      if (t < REACH_DONE) {
-        const k = ease(t / REACH_DONE)
-        along = deck[0] + (FOOT_AHEAD - deck[0]) * k
-        height = deck[1] + (ROAD_Y - deck[1]) * k
-      } else if (t < DRIVE_DONE) {
-        const k = (t - REACH_DONE) / (DRIVE_DONE - REACH_DONE)
-        along = FOOT_AHEAD + (FOOT_BEHIND - FOOT_AHEAD) * k
-        height = ROAD_Y
-      } else {
-        const k = ease((t - DRIVE_DONE) / (1 - DRIVE_DONE))
-        along = FOOT_BEHIND + (deck[0] - FOOT_BEHIND) * k
-        // Lifted clear on the way home, or it drags through the road.
-        height = ROAD_Y + (deck[1] - ROAD_Y) * k + Math.sin(k * Math.PI) * 0.07
-      }
-      foot = [stroke * along, height]
-      // Out to the heel side, and back in as the foot comes home.
-      stepOut = Math.sin(Math.min(1, t / DRIVE_DONE) * Math.PI) ** 0.6 * grounded
+      const step = pushFoot(t)
+      foot = [stroke * step.along, step.height]
+      stepOut = step.out * grounded
     }
 
     const pose = {} as Joints
@@ -472,17 +485,19 @@ export class SkaterView {
     // knee rather than by stretching the leg. He does not lower a foot to the
     // road, he lowers himself onto it, and everything above the hip goes down
     // with him.
-    if (foot) {
+    if (foot && grounded > 0) {
       const reach = Math.abs(foot[0] - pose.hip[0])
       const span = Math.sqrt(Math.max(0, LEG * LEG - reach * reach))
       const sink = Math.min(MAX_SINK, Math.max(0, pose.hip[1] - (foot[1] + span))) * grounded
-      // Whatever it still cannot reach, it stops short of rather than stretches.
-      const ankle: Point = [foot[0], Math.max(foot[1], pose.hip[1] - sink - span)]
       for (const key of ['hip', 'shoulder', 'head', 'handBack', 'handFront'] as const) {
         pose[key] = [pose[key][0], pose[key][1] - sink]
       }
-      pose.footBack = ankle
-      pose.kneeBack = knee(pose.hip, ankle, switched ? -1 : 1)
+      // Whatever it still cannot reach, it stops short of rather than stretches.
+      const ankle: Point = [foot[0], Math.max(foot[1], pose.hip[1] - span)]
+      // In the air the kick is over, whatever the timer says: the leg belongs
+      // to the jump, not to a foot still reaching for a road he has left.
+      pose.footBack = mix(air.footBack, ankle, grounded)
+      pose.kneeBack = knee(pose.hip, pose.footBack, switched ? -1 : 1)
       pose.kneeFront = knee(pose.hip, pose.footFront, switched ? -1 : 1)
     }
 
@@ -568,8 +583,6 @@ export class SkaterView {
     const out = stepOut * STEP_OUT * (stance > 0 ? 1 : -1)
     this.bones.shinBack!.position.z = out
     this.bones.thighBack!.position.z = out * 0.45
-    this.bones.shoeBack!.position.set(pose.footBack[0] + 0.02, pose.footBack[1] - SHOE_DROP, out)
-    this.bones.shoeFront!.position.set(pose.footFront[0] + 0.02, pose.footFront[1] - SHOE_DROP, 0)
     span(this.bones.thighFront!, pose.hip, pose.kneeFront, 0.13)
     span(this.bones.shinFront!, pose.kneeFront, pose.footFront, 0.11)
     span(this.bones.torso!, pose.hip, pose.shoulder, 0.19)
