@@ -311,8 +311,12 @@ export class Skater {
     // away here: a flick latched a grind, and the latch had to be kept off the
     // pavement. Nothing is latched now, so a manual is simply held.
     const held = input.pressedEnd
-    const wanted =
+    const asked =
       this.sideways && held !== 0 ? ((held === 1) !== this.reversed ? 1 : -1) : input.grind
+    // Up and down are push and brake first. They only pick the outer two
+    // grinds on something there is to grind, or holding a push on the flat
+    // would put him into a nose manual he never asked for.
+    const wanted = rolling && Math.abs(asked) > 1 ? 0 : asked
     if (wanted !== this.grind) {
       this.grind = wanted
       // He has just landed and named the trick. A grind key he was already

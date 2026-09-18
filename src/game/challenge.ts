@@ -18,12 +18,18 @@ interface Spot {
   outcome: 'open' | 'landed' | 'missed'
 }
 
-/** How far ahead the road is built, and how long the walk up to a spot is. */
+/**
+ * How far ahead the road is built. Short while a spot is still open, because
+ * everything paved now is road he has to cross before the next spot can be
+ * laid: at a hundred and fifty metres a missed rail put the retry twenty
+ * seconds away, which reads as never having been offered one.
+ */
 const LOOKAHEAD = 150
-const WALK_UP = 34
+const HOLDING_REACH = 38
+const WALK_UP = 24
 const OVERRUN = 12
 /** Pavement laid while the spot in front of him is still undecided. */
-const HOLD = 18
+const HOLD = 10
 /** How long the result of a spot stays on the screen once it is settled. */
 const SHOUT = 1.6
 
@@ -59,9 +65,15 @@ export class Coach {
     this.next = rollLevel(rng)
   }
 
-  /** What he is being asked for right now, or nothing once the list is done. */
+  /** What he is being asked for right now. */
   get current(): Level | null {
     return this.spots.find((s) => s.outcome === 'open')?.level ?? null
+  }
+
+  /** Where that spot is, for anything that needs to point at it. */
+  get target(): { from: number; to: number } | null {
+    const open = this.spots.find((spot) => spot.outcome === 'open')
+    return open ? { from: open.from, to: open.to } : null
   }
 
   /** Gives up on the one in front of him. Another is along in a moment. */
@@ -78,8 +90,11 @@ export class Coach {
    * depends on whether he lands this, so it cannot be built yet.
    */
   ensureAhead(road: Road, x: number): void {
-    for (let guard = 0; guard < 10 && road.head < x + LOOKAHEAD; guard++) {
-      if (this.spots.some((spot) => spot.outcome === 'open')) {
+    for (let guard = 0; guard < 10; guard++) {
+      const open = this.spots.some((spot) => spot.outcome === 'open')
+      const reach = open ? HOLDING_REACH : LOOKAHEAD
+      if (road.head >= x + reach) return
+      if (open) {
         road.pave(HOLD)
         continue
       }
