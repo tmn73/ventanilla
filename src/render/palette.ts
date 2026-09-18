@@ -81,3 +81,6 @@ export const LAMP_GLOW = 0xfff1d6
 export const SKY_TOP = '#dde5ea'
 /** And what it deepens to overhead. */
 export const SKY_HIGH = '#b4c0c9'
+
+/** The joints between paving slabs. They are how fast the road is going. */
+export const JOINT_COLOR = '#a8aeb2'

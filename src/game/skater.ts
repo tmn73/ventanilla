@@ -316,7 +316,11 @@ export class Skater {
     // Up and down are push and brake first. They only pick the outer two
     // grinds on something there is to grind, or holding a push on the flat
     // would put him into a nose manual he never asked for.
-    const wanted = rolling && Math.abs(asked) > 1 ? 0 : asked
+    const clamped = rolling && Math.abs(asked) > 1 ? 0 : asked
+    // Letting go mid slide does not put him on a different one. The board is
+    // already across the rail on one end; changing that takes weighting the
+    // other end, not simply stopping.
+    const wanted = this.sideways && clamped === 0 ? this.grind : clamped
     if (wanted !== this.grind) {
       this.grind = wanted
       // He has just landed and named the trick. A grind key he was already
@@ -325,6 +329,13 @@ export class Skater {
         const names = this.sideways ? SLIDE_NAME : GRINDABLE[seg.kind] ? GRIND_NAME : MANUAL_NAME
         this.trick = names[this.grind + 2] ?? ''
         this.trickAge = 0
+      }
+      // A slide is not decided when he touches down, it is decided while he is
+      // on it. Keeping the landing in step with what he is actually doing is
+      // what lets a tailslide asked for be a tailslide done.
+      if (this.sideways && this.landed) {
+        this.landed.slide = SLIDE_KIND[this.grind + 2]!
+        this.landed.name = this.trick
       }
     }
     this.justLanded = false

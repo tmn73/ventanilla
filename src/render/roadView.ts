@@ -14,9 +14,9 @@ import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
 import { makeConcrete } from './concrete'
-import { POST_COLOR, SURFACE_COLOR } from './palette'
+import { JOINT_COLOR, POST_COLOR, SURFACE_COLOR } from './palette'
 
-const MAX_BOXES = 1400
+const MAX_BOXES = 2400
 const MAX_RODS = 500
 
 /** No piece of a surface is longer than this, so a corner never gets chorded. */
@@ -40,6 +40,10 @@ const BREADTH: Record<SurfaceKind, number> = {
   hubba: 1.7,
   rail: 0.11,
 }
+
+/** How far apart the paving joints are, and how wide each one is. */
+const JOINT_SPACING = 4
+const JOINT_WIDTH = 0.09
 
 const RAIL_RADIUS = 0.055
 const RAIL_POST_SPACING = 2.4
@@ -124,10 +128,40 @@ export class RoadView {
       const depth = THICKNESS[segment.kind]
 
       this.slab(segment, depth, BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
+      if (segment.kind === 'flat') this.joints(segment, camLeft, right)
     }
 
     this.boxes.finish()
     this.rods.finish()
+  }
+
+  /**
+   * Paving joints across the pavement, at fixed places in the world.
+   *
+   * Without them the road is a blank sheet: there is no telling how fast it is
+   * going under you and no telling how far off the next thing is. They are
+   * fixed to the world rather than to the segment, so they pass at the speed
+   * he is actually travelling.
+   */
+  private joints(segment: Segment, camLeft: number, right: number): void {
+    const from = Math.max(segment.x0, camLeft - 8)
+    const to = Math.min(segment.x1, right + 8)
+    const first = Math.ceil(from / JOINT_SPACING) * JOINT_SPACING
+
+    for (let x = first; x <= to; x += JOINT_SPACING) {
+      const slope = Math.atan2(segment.y1 - segment.y0, segment.x1 - segment.x0)
+      this.place(
+        this.boxes,
+        x,
+        surfaceYAt(segment, x) + 0.01,
+        0,
+        JOINT_WIDTH,
+        0.02,
+        BREADTH.flat,
+        JOINT_COLOR,
+        slope,
+      )
+    }
   }
 
   /** A surface, cut into pieces short enough to follow the bend under it. */

@@ -25,8 +25,8 @@ interface Spot {
  * seconds away, which reads as never having been offered one.
  */
 const LOOKAHEAD = 150
-const HOLDING_REACH = 38
-const WALK_UP = 24
+const HOLDING_REACH = 30
+const WALK_UP = 16
 const OVERRUN = 12
 /** Pavement laid while the spot in front of him is still undecided. */
 const HOLD = 10
@@ -118,8 +118,13 @@ export class Coach {
     // A landing is considered once, whatever comes of it. The skater keeps
     // reporting the last one until he lands again, and reading it twice is
     // what made a miss count as the next spot's success.
-    const trick = skater.landed !== this.spent ? skater.landed : null
-    if (trick) this.spent = trick
+    //
+    // While he is sliding it is looked at again every step, because a slide is
+    // not decided when he touches down: he lands across the rail and then puts
+    // his weight on an end, and that is the trick.
+    const again = skater.sideways && skater.landed === this.spent
+    const trick = skater.landed !== this.spent || again ? skater.landed : null
+    if (trick && !again) this.spent = trick
 
     if (trick && trick.at >= spot.from - 4 && trick.at <= spot.to + OVERRUN) {
       if (satisfies(trick, spot.level.ask)) {

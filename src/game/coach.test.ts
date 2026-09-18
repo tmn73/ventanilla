@@ -6,7 +6,8 @@ import type { Skater } from './skater'
 import type { Trick } from './trick'
 
 /** Just enough of a skater for the coach: where he is and what he last landed. */
-const rider = (x: number, landed: Trick | null = null) => ({ x, landed }) as unknown as Skater
+const rider = (x: number, landed: Trick | null = null, sideways = false) =>
+  ({ x, landed, sideways }) as unknown as Skater
 
 const trick = (over: Partial<Trick> = {}): Trick => ({
   name: 'x',
@@ -119,5 +120,32 @@ test('the retry comes back quickly, not eventually', () => {
   }
 
   expect(gaps.length).toBeGreaterThan(3)
-  for (const gap of gaps) expect(gap).toBeLessThan(70)
+  for (const gap of gaps) expect(gap).toBeLessThan(52)
+})
+
+test('a slide counts when he settles on the end, not when he touches down', () => {
+  // He lands across the rail first and puts his weight on an end after. The
+  // trick he is doing is the one at the end of that, not the one at the start.
+  const rng = mulberry32(seedFrom('slide'))
+  const road = new Road(() => rng())
+  road.reset(0)
+  const coach = new Coach(() => rng())
+  coach.ensureAhead(road, 0)
+
+  // Walk the calls on until one of them asks for a tailslide.
+  for (let guard = 0; guard < 40 && coach.current?.ask.slide !== 'tailslide'; guard++) {
+    coach.skip()
+    coach.ensureAhead(road, road.head)
+  }
+  const where = coach.target
+  if (!where || coach.current?.ask.slide !== 'tailslide') return
+
+  const sliding = trick({ at: where.from, slide: 'boardslide' })
+  coach.step(1 / 120, rider(where.from, sliding, true))
+  expect(coach.landed).toBe(0)
+
+  // Same landing, same object, now weighted onto the tail.
+  sliding.slide = 'tailslide'
+  coach.step(1 / 120, rider(where.from + 1, sliding, true))
+  expect(coach.landed).toBe(1)
 })
