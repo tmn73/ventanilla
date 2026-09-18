@@ -38,7 +38,7 @@ stage.scene.add(frame)
 
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
-const backdrop = new Backdrop(stage.camera, 'assets/skyline.jpg')
+const backdrop = new Backdrop(stage.camera)
 // Children of a camera only render when the camera is itself in the scene.
 stage.scene.add(stage.camera)
 const skaterView = new SkaterView(stage.scene)

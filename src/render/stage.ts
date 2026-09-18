@@ -16,7 +16,7 @@ import { VIEW_WIDTH } from '../game/constants'
 import { SKY_TOP } from './palette'
 
 /** Where the pavement sits in the window, measured from the bottom. */
-const HORIZON = 0.34
+const HORIZON = 0.3
 
 /**
  * A small three quarter offset. Enough to show the top of a ledge and which
@@ -30,8 +30,8 @@ const SUN_COLOUR = 0xfffaf2
  * view; high looks down enough to see the board lying across a rail, which is
  * the only way a noseslide and a tailslide tell themselves apart.
  */
-const PITCH_LOW = 14
-const PITCH_HIGH = 52
+const PITCH_LOW = 8
+const PITCH_HIGH = 40
 /** The eye keeps its distance as it rises, so the scale never changes with it. */
 const EYE_REACH = Math.hypot(EYE.y, EYE.z)
 const SUN = new Vector3(-16, 26, 20)

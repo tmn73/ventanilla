@@ -11,7 +11,7 @@ export const WORLD_FLOOR = -22
 export const DEATH_Y = 0
 
 /** How much road the window shows at once, in metres. */
-export const VIEW_WIDTH = 34
+export const VIEW_WIDTH = 26
 /** Where the skater sits in the window. He never leaves this column. */
 export const ANCHOR = 0.3
 

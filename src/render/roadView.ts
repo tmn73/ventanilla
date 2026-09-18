@@ -10,7 +10,7 @@ import {
   Scene,
   type Texture,
 } from 'three'
-import { VIEW_WIDTH, WORLD_FLOOR } from '../game/constants'
+import { VIEW_WIDTH } from '../game/constants'
 import { surfaceYAt, type Segment, type SurfaceKind } from '../game/road'
 import type { Path } from './path'
 import { makeConcrete } from './concrete'
@@ -26,7 +26,7 @@ const OVERLAP = 1.06
 
 /** How far each surface hangs below its ridable top edge, and how wide it runs. */
 const THICKNESS: Record<SurfaceKind, number> = {
-  flat: 1.5,
+  flat: 0.85,
   step: 1.0,
   ledge: 0.58,
   hubba: 0.62,
@@ -118,10 +118,10 @@ export class RoadView {
 
       // The pavement is one solid mass from the surface down to the ground,
       // rather than a slab on legs. Nothing sits under it and nothing edges it.
-      const depth =
-        segment.kind === 'flat'
-          ? Math.min(9, Math.max(1.2, surfaceYAt(segment, segment.x0) - WORLD_FLOOR))
-          : THICKNESS[segment.kind]
+      // A slab, not a cliff. Reaching to the world floor made the pavement's
+      // own side two thirds of the picture: a featureless mass under a thin
+      // strip of anything worth looking at.
+      const depth = THICKNESS[segment.kind]
 
       this.slab(segment, depth, BREADTH[segment.kind], SURFACE_COLOR[segment.kind])
     }

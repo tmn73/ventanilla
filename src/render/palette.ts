@@ -5,7 +5,7 @@ import { Color } from 'three'
  * and nothing else, so the question "can I get on that" is answered by colour
  * alone and never depends on the angle or the light.
  */
-export const SKY = '#dfe3e4'
+export const SKY = '#e7e2d8'
 export const GROUND = '#c9c6bf'
 export const WATER = '#aebcbb'
 
@@ -13,11 +13,11 @@ export const PAVING = '#b3ac9f'
 
 /** Ridable. The accent, and the one dark for metal. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#bcb9b2',
-  step: '#b3b0a9',
+  flat: '#9ea29f',
+  step: '#8f9390',
   ledge: '#e2603c',
-  hubba: '#d4562f',
-  rail: '#3a4045',
+  hubba: '#c9502a',
+  rail: '#2b3036',
 }
 
 /** The sunlit top of each, which is the edge you actually aim at. */
@@ -35,7 +35,7 @@ export const CONTACT = '#8f8879'
 export const POST_COLOR: Record<string, string> = { rail: '#4a5157' }
 
 export const SPARK_COLOR = '#ffffff'
-export const SKATER = '#24282b'
+export const SKATER = '#1b1f22'
 /**
  * The rider is one dark shape, and mirrored he was the same shape. These two
  * break the symmetry on the axis that matters: the face says which way he
@@ -78,5 +78,6 @@ export const LAMP_GLOW = 0xfff1d6
  * be seen: the backdrop covers the lower half of the window and this covers
  * the rest, and two different greys there would read as a band.
  */
-export const SKY_TOP = '#c0c2bf'
-
+export const SKY_TOP = '#ece7dd'
+/** And what it deepens to overhead. */
+export const SKY_HIGH = '#cfd4d6'

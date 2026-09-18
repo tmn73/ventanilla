@@ -153,7 +153,7 @@ export function mountHelp(
       saved = null
     }
     const start = Number(saved)
-    applyPitch(Number.isFinite(start) && saved !== null ? start : 0.3, false)
+    applyPitch(Number.isFinite(start) && saved !== null ? start : 0.34, false)
 
     pitch.addEventListener('pointerdown', (event) => event.stopPropagation())
     pitch.addEventListener('input', () => applyPitch(Number(pitch.value), true))
