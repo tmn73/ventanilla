@@ -4,13 +4,17 @@ import { GROUND } from './palette'
 /** How far under the pavement it lies. */
 const DROP = 1.1
 /**
- * How far it reaches behind the road and in front of it. Behind is short on
- * purpose: an orthographic camera has no horizon, so a ground plane running
- * away from you simply climbs the screen forever and swallows the sky. The far
- * edge is the horizon here, and it is put where one should be.
+ * Where the strip begins and ends, both behind the road. It never comes toward
+ * the camera, and that is not a taste: in front of the road it sat over every
+ * module that drops below the pavement, so a stair set or a hole was hidden
+ * until the rider was already in it.
+ *
+ * Short on purpose too. An orthographic camera has no horizon, so a plane
+ * running away from you climbs the screen forever and swallows the sky. The
+ * far edge is the horizon here, and it is put where one belongs.
  */
-const BEHIND = 15
-const TOWARD = 60
+const FAR = -13
+const NEAR = -6.5
 
 /**
  * The ground the promenade is built on.
@@ -36,7 +40,7 @@ export class Ground {
   }
 
   update(centre: number, roadY: number): void {
-    this.mesh.scale.set(1200, BEHIND + TOWARD, 1)
-    this.mesh.position.set(centre, roadY - DROP, (TOWARD - BEHIND) / 2)
+    this.mesh.scale.set(1200, NEAR - FAR, 1)
+    this.mesh.position.set(centre, roadY - DROP, (FAR + NEAR) / 2)
   }
 }
