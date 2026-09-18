@@ -11,7 +11,7 @@ import { Particles } from './render/particles'
 import { Path } from './render/path'
 import { RoadView } from './render/roadView'
 import { SkaterView } from './render/skaterView'
-import { Skyline } from './render/skyline'
+import { Backdrop } from './render/backdrop'
 import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
@@ -38,7 +38,7 @@ stage.scene.add(frame)
 
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
-const skyline = new Skyline(stage.camera)
+const backdrop = new Backdrop(stage.camera, 'assets/skyline.jpg')
 // Children of a camera only render when the camera is itself in the scene.
 stage.scene.add(stage.camera)
 const skaterView = new SkaterView(stage.scene)
@@ -145,7 +145,7 @@ startLoop(
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
     roadView.update(road.segments, camLeft, stage.visibleWidth)
-    skyline.update(x, stage.visibleWidth, stage.viewHeight)
+    backdrop.update(stage.visibleWidth, stage.viewHeight)
     skaterView.update({
       x: feet.x,
       y,

@@ -73,9 +73,10 @@ export const TRAIL_COLOR = { took: '#e2603c', missed: '#7b8590' }
 export const LAMP_LIGHT = 0xffd9a8
 export const LAMP_GLOW = 0xfff1d6
 
-/** What the sky starts as. Each time of day names its own in main. */
-export const SKY_TOP = '#cdd6db'
+/**
+ * The sky. Sampled from the photograph's own sky so the join above it cannot
+ * be seen: the backdrop covers the lower half of the window and this covers
+ * the rest, and two different greys there would read as a band.
+ */
+export const SKY_TOP = '#c0c2bf'
 
-/** The city on the horizon. Further off is paler, which is all distance does. */
-export const CITY_FAR = '#aab5be'
-export const CITY_NEAR = '#8b98a3'
