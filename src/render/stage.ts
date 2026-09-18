@@ -12,12 +12,6 @@ import {
   WebGLRenderer,
 } from 'three'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
-import { Vector2 } from 'three'
-import { Color } from 'three'
 import { VIEW_WIDTH } from '../game/constants'
 import { SKY_TOP } from './palette'
 
@@ -30,10 +24,7 @@ const HORIZON = 0.34
  * side-scroller.
  */
 const EYE = new Vector3(6, 9.5, 32)
-/** What is left of the one big light once the day has gone. */
-const MOON = 0.34
 const SUN_COLOUR = 0xfffaf2
-const MOON_COLOUR = 0x8fa6c8
 /**
  * How high the eye sits, as an angle above the road. Low is the flattest side
  * view; high looks down enough to see the board lying across a rail, which is
@@ -61,12 +52,6 @@ export class Stage {
   private eye = new Vector3()
   private point = new Vector3()
   private sky: Texture | null = null
-  private environmentMap: Texture | null = null
-  private night = 0
-  private skyTint = new Color()
-  private moonTint = new Color(MOON_COLOUR)
-  private composer: EffectComposer
-  private bloom: UnrealBloomPass
   private sun: DirectionalLight
   private fill: AmbientLight
 
@@ -103,17 +88,6 @@ export class Stage {
     // The sky does the filling now, so this is only a floor under the shadows.
     this.fill = new AmbientLight(0xdfe4e6, 0.12)
     this.scene.add(this.fill)
-    // A lamp only reads as a light when it spills past its own edges, and
-    // that is what this does. It is the difference between a bright box and a
-    // bulb, and at night it is most of the look.
-    this.composer = new EffectComposer(this.renderer)
-    this.composer.addPass(new RenderPass(this.scene, this.camera))
-    this.bloom = new UnrealBloomPass(new Vector2(1, 1), 0, 0.5, 0.92)
-    this.composer.addPass(this.bloom)
-    // The last pass, and not optional. A composer renders into its own target
-    // and applies neither the tone mapping nor the colour space on the way
-    // out, so without this everything bright comes back blown.
-    this.composer.addPass(new OutputPass())
 
     this.resize()
     // A window resize is not the only thing that changes the canvas box.
@@ -157,8 +131,7 @@ export class Stage {
       // Released by hand: swapping skies otherwise leaves every previous one
       // sitting on the graphics card.
       this.scene.environment?.dispose()
-      this.environmentMap = environment
-      this.applyEnvironment()
+      this.scene.environment = environment
       pmrem.dispose()
 
       // Only the light is taken from it. Two things stopped the image itself
@@ -177,10 +150,6 @@ export class Stage {
    * a black sky, so at night it comes off entirely and the lamps are the only
    * light there is. Which is the point of a night.
    */
-  private applyEnvironment(): void {
-    this.scene.environment = this.night > 0.75 ? null : this.environmentMap
-    this.scene.environmentIntensity = 1 - this.night
-  }
 
   resize(): void {
     const canvas = this.renderer.domElement
@@ -188,8 +157,6 @@ export class Stage {
     const height = canvas.clientHeight || 1
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(width, height, false)
-    this.composer?.setSize(width, height)
-    this.bloom?.resolution.set(width, height)
 
     this.visibleWidth = VIEW_WIDTH * this.zoom
     this.viewHeight = this.visibleWidth * (height / width)
@@ -218,32 +185,12 @@ export class Stage {
     this.sun.target.position.copy(this.target)
     this.sun.target.updateMatrixWorld()
 
-    this.composer.render()
+    this.renderer.render(this.scene, this.camera)
   }
 
   /**
    * How dark the day is. The sun goes out, the fill goes with it, and the
    * glow comes up, because a bulb only looks bright against something dark.
    */
-  /** The colour behind everything, given rather than mixed. */
-  setSkyColour(hex: string): void {
-    this.renderer.setClearColor(this.skyTint.set(hex), 1)
-  }
 
-  setNight(amount: number): void {
-    this.night = amount
-
-    // Never nothing. A street with no light at all between the lamps is not
-    // dark, it is blank: you cannot see the road you are riding on. This is
-    // the moon, cool and weak, and it only has to separate ground from void.
-    this.sun.intensity = 1.15 * (1 - amount) ** 2 + amount * MOON
-    this.sun.color.set(SUN_COLOUR).lerp(this.moonTint, amount)
-    this.applyEnvironment()
-    this.fill.intensity = 0.12 * (1 - amount) + amount * 0.135
-    // Only the lamp heads should bleed, so the threshold sits above anything
-    // the lamps put on the ground.
-    this.bloom.strength = amount * 0.55
-    this.bloom.threshold = 0.85
-    this.renderer.toneMappingExposure = 1 - amount * 0.18
-  }
 }

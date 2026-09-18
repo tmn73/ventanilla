@@ -9,7 +9,6 @@ export function mountHelp(
   onZoom: (zoom: number) => void,
   onPitch: (pitch: number) => void,
   onRewind: (held: boolean) => void,
-  onSky: (sky: string) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -184,37 +183,6 @@ export function mountHelp(
     })
   }
 
-  // Which sky, which is also which light. Remembered per browser.
-  const skies = ['day', 'sunset', 'dusk', 'night']
-  const skyButtons = skies.map((name) => document.getElementById(`sky-${name}`))
-  if (skyButtons.every(Boolean)) {
-    const applySky = (value: string, remember: boolean) => {
-      skyButtons.forEach((b, i) => b!.setAttribute('aria-pressed', String(skies[i] === value)))
-      onSky(value)
-      if (!remember) return
-      try {
-        localStorage.setItem('ventanilla.sky', value)
-      } catch {
-        // A private window refuses this. The choice still applies for now.
-      }
-    }
-
-    let saved: string | null = null
-    try {
-      saved = localStorage.getItem('ventanilla.sky')
-    } catch {
-      saved = null
-    }
-    applySky(saved && skies.includes(saved) ? saved : 'day', false)
-
-    skyButtons.forEach((button, i) => {
-      button!.addEventListener('pointerdown', (event) => event.stopPropagation())
-      button!.addEventListener('click', (event) => {
-        event.stopPropagation()
-        applySky(skies[i]!, true)
-      })
-    })
-  }
 
   const setOpen = (open: boolean) => {
     panel.hidden = !open

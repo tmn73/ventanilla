@@ -10,11 +10,14 @@ import type { Camera } from 'three'
 
 /**
  * How tall each layer stands on the screen, as a share of the window, and how
- * much of the camera's travel it takes. The far one is paler and slower.
+ * much of the camera's travel it takes. Daylight, so the far ones are paler
+ * and hazier: distance takes the contrast out of a city long before it takes
+ * the shape, which is the only reason three flat layers read as depth at all.
  */
 const LAYERS = [
-  { share: 0.46, drift: 0.05, shade: '#141d2c', windows: 0.1, sink: -0.05 },
-  { share: 0.32, drift: 0.13, shade: '#080d16', windows: 0.17, sink: -0.03 },
+  { share: 0.5, drift: 0.04, shade: '#a7b3bc', windows: 0, sink: -0.07 },
+  { share: 0.38, drift: 0.09, shade: '#8593a0', windows: 0, sink: -0.05 },
+  { share: 0.27, drift: 0.16, shade: '#5c6a76', windows: 0.05, sink: -0.02 },
 ]
 
 /**
@@ -50,7 +53,6 @@ export class Skyline {
       )
       mesh.frustumCulled = false
       mesh.renderOrder = -1
-      mesh.visible = false
       mesh.position.z = -150
       camera.add(mesh)
       this.layers.push({ mesh, drift: spec.drift, share: spec.share, sink: spec.sink })
@@ -80,11 +82,13 @@ export class Skyline {
         ctx.fillRect(x + w / 2 - 1.5, top - 16 - next() * 20, 3, 20)
       }
 
-      // Windows. Lit at random, in rows, and never right at the edges.
+      // Windows, as the darker grid on a pale face rather than lights in the
+      // dark. Only the nearest layer gets them; further off they are a texture
+      // nobody can resolve.
       for (let wy = top + 7; wy < height - 5; wy += 9) {
         for (let wx = x + 5; wx < x + w - 6; wx += 8) {
           if (next() > windowOdds) continue
-          ctx.fillStyle = next() < 0.18 ? '#fff0c4' : '#ffd88a'
+          ctx.fillStyle = 'rgba(40, 48, 56, 0.55)'
           ctx.fillRect(wx, wy, 3, 4)
         }
       }
@@ -96,15 +100,6 @@ export class Skyline {
     texture.wrapT = ClampToEdgeWrapping
     texture.repeat.set(3, 1)
     return texture
-  }
-
-  /** 0 hides it, 1 shows it whole. It belongs to the dark, so the night sets it. */
-  setNight(amount: number): void {
-    for (const layer of this.layers) {
-      const material = layer.mesh.material as MeshBasicMaterial
-      layer.mesh.visible = amount > 0.2
-      material.opacity = Math.min(1, Math.max(0, (amount - 0.2) / 0.5))
-    }
   }
 
   update(travelled: number, viewWidth: number, viewHeight: number): void {

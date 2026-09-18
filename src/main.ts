@@ -6,7 +6,6 @@ import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
 import { Hud } from './render/hud'
-import { Lamps } from './render/lamps'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
 import { Path } from './render/path'
@@ -17,17 +16,6 @@ import { Stage } from './render/stage'
 import { TouchTrail } from './render/touchTrail'
 
 /** Three skies from Poly Haven, public domain. See assets/README.md. */
-/**
- * Each sky carries its own colour rather than one mixed toward black. Mixing
- * happens in linear space, where a colour most of the way to black still comes
- * out halfway grey, and the sky stayed bright over a dark street.
- */
-const SKIES: Record<string, { file: string; colour: string; night: number }> = {
-  day: { file: 'assets/kloofendal_48d_partly_cloudy_puresky.hdr', colour: '#cdd6db', night: 0 },
-  sunset: { file: 'assets/industrial_sunset_puresky.hdr', colour: '#4a3c39', night: 0.5 },
-  dusk: { file: 'assets/evening_road_01_puresky.hdr', colour: '#1c2534', night: 0.85 },
-  night: { file: 'assets/moonless_golf.hdr', colour: '#0a101a', night: 1 },
-}
 
 const canvas = document.getElementById('view') as HTMLCanvasElement
 const trailCanvas = document.getElementById('trail') as HTMLCanvasElement
@@ -50,13 +38,15 @@ stage.scene.add(frame)
 
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
-const lamps = new Lamps(stage.scene, path)
 const skyline = new Skyline(stage.camera)
 // Children of a camera only render when the camera is itself in the scene.
 stage.scene.add(stage.camera)
 const skaterView = new SkaterView(stage.scene)
 const hud = new Hud()
 const trail = new TouchTrail(trailCanvas)
+
+// The sky is a fixed daylight now, so it is set once and never touched again.
+stage.setSky('assets/kloofendal_48d_partly_cloudy_puresky.hdr')
 
 // One interruption, one screen: the controls sheet is also the pause screen.
 let paused = false
@@ -76,14 +66,6 @@ mountHelp(
   (pitch) => stage.setPitch(pitch),
   (held) => {
     game.rewinding = held
-  },
-  (sky) => {
-    const choice = SKIES[sky] ?? SKIES.day!
-    stage.setSky(choice.file)
-    stage.setSkyColour(choice.colour)
-    stage.setNight(choice.night)
-    lamps.setNight(choice.night)
-    skyline.setNight(choice.night)
   },
 )
 
@@ -163,7 +145,6 @@ startLoop(
     const rise = skater.support ? 0 : Math.max(-1, Math.min(1, skater.vy / JUMP_SPEED))
 
     roadView.update(road.segments, camLeft, stage.visibleWidth)
-    lamps.update(camLeft, road)
     skyline.update(x, stage.visibleWidth, stage.viewHeight)
     skaterView.update({
       x: feet.x,

@@ -1,14 +1,10 @@
 # assets
 
-Three sky HDRIs from Poly Haven, all **CC0 1.0 Universal** (public domain, no
-attribution required). They are the "pure sky" variants, which carry no ground
-in the image, because the game draws its own.
+`kloofendal_48d_partly_cloudy_puresky.hdr` — Poly Haven, **CC0 1.0 Universal**
+(public domain, no attribution required). A sky with no ground in the image,
+because the game draws its own.
 
-- `kloofendal_48d_partly_cloudy_puresky.hdr` — bright day, broken cloud
-- `industrial_sunset_puresky.hdr` — low warm sun
-- `evening_road_01_puresky.hdr` — dusk
-- `moonless_golf.hdr` — night, no moon, which is why the lamps have work to do
-
-1k each, about 1.3 MB. They are used both as the sky behind everything and as
-the light that falls on it, which is the part that matters: a flat grey box
-lit by a real sky stops looking like a flat grey box.
+It is never seen. It is used only as `scene.environment`, which is the light
+that falls on everything: a grey box lit by one lamp looks like a grey box, and
+lit by a whole sky it picks up the colour of the day. The sky you do see is the
+renderer's clear colour with a city drawn over it.
