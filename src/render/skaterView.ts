@@ -128,9 +128,19 @@ const PUSH: Joints = {
 /** The same push with the roles swapped, for when the rig is riding switch. */
 const PUSH_SWITCH: Joints = mirror(PUSH)
 
+/**
+ * The bones, measured off the riding pose. A leg is not a rubber band: these
+ * are what it can span, and the hip has to come down for anything further.
+ */
+const THIGH = Math.hypot(0.24, 0.42)
+const SHIN = 0.37
+const LEG = THIGH + SHIN
+/** How deep he is willing to sink for it. Past this the foot stops short. */
+const MAX_SINK = 0.3
+
 /** Where the push foot is when it reaches ahead, and where it finishes. */
-const FOOT_AHEAD = 0.34
-const FOOT_BEHIND = -0.82
+const FOOT_AHEAD = 0.4
+const FOOT_BEHIND = -0.44
 /** How big a shoe is, and how far its middle sits under the ankle. */
 const SHOE_H = 0.085
 const SHOE_DROP = 0.035
@@ -153,6 +163,27 @@ const DRIVE_DONE = 0.84
 /** Smooth at both ends, so a foot starts and stops rather than jumping. */
 function ease(k: number): number {
   return k * k * (3 - 2 * k)
+}
+
+/**
+ * Where the knee goes, given where the hip and the foot are.
+ *
+ * The rig draws a bone as a box stretched between two joints, so a foot put
+ * somewhere the leg cannot reach does not bend the knee, it makes the leg
+ * longer. Reaching the road from the board needs a metre of leg out of eighty
+ * five centimetres of it, which is why pushing looked like a man growing a
+ * limb to touch the ground with his toe.
+ */
+function knee(hip: Point, foot: Point, bend: number): Point {
+  const dx = foot[0] - hip[0]
+  const dy = foot[1] - hip[1]
+  const gap = Math.min(Math.hypot(dx, dy), LEG - 0.002) || 0.001
+  // How far down the hip to foot line the knee sits, and how far off it.
+  const along = (gap * gap + THIGH * THIGH - SHIN * SHIN) / (2 * gap)
+  const off = Math.sqrt(Math.max(0, THIGH * THIGH - along * along))
+  const ux = dx / Math.hypot(dx, dy)
+  const uy = dy / Math.hypot(dx, dy)
+  return [hip[0] + ux * along - uy * off * bend, hip[1] + uy * along + ux * off * bend]
 }
 
 const JOINT_KEYS = Object.keys(GRIND) as Array<keyof Joints>
@@ -397,6 +428,8 @@ export class SkaterView {
     const ride = {} as Joints
     /** How far the pushing leg is off the board, nought to one. */
     let stepOut = 0
+    /** Where the push foot is going, once there is a push. */
+    let foot: Point | null = null
     // The body opens into the push, holds there while the foot drives, and
     // closes again. A plain bell put him back on the board halfway through the
     // stroke, with the foot still out on the road behind him.
@@ -427,14 +460,31 @@ export class SkaterView {
         // Lifted clear on the way home, or it drags through the road.
         height = ROAD_Y + (deck[1] - ROAD_Y) * k + Math.sin(k * Math.PI) * 0.07
       }
-      ride.footBack = [stroke * along, height]
-      ride.kneeBack = [stroke * (along * 0.45 + 0.02), height * 0.52 - 0.07]
+      foot = [stroke * along, height]
       // Out to the heel side, and back in as the foot comes home.
       stepOut = Math.sin(Math.min(1, t / DRIVE_DONE) * Math.PI) ** 0.6 * grounded
     }
 
     const pose = {} as Joints
     for (const key of JOINT_KEYS) pose[key] = mix(air[key], ride[key], grounded)
+
+    // Then the leg is made to reach it, by sinking the body and bending the
+    // knee rather than by stretching the leg. He does not lower a foot to the
+    // road, he lowers himself onto it, and everything above the hip goes down
+    // with him.
+    if (foot) {
+      const reach = Math.abs(foot[0] - pose.hip[0])
+      const span = Math.sqrt(Math.max(0, LEG * LEG - reach * reach))
+      const sink = Math.min(MAX_SINK, Math.max(0, pose.hip[1] - (foot[1] + span))) * grounded
+      // Whatever it still cannot reach, it stops short of rather than stretches.
+      const ankle: Point = [foot[0], Math.max(foot[1], pose.hip[1] - sink - span)]
+      for (const key of ['hip', 'shoulder', 'head', 'handBack', 'handFront'] as const) {
+        pose[key] = [pose[key][0], pose[key][1] - sink]
+      }
+      pose.footBack = ankle
+      pose.kneeBack = knee(pose.hip, ankle, switched ? -1 : 1)
+      pose.kneeFront = knee(pose.hip, pose.footFront, switched ? -1 : 1)
+    }
 
     // Stance only swaps which shoulder leads. Mirroring the whole pose would
     // put the leading foot on the ground, which is the mongo it was meant to
