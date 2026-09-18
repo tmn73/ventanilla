@@ -6,15 +6,15 @@ import { Color } from 'three'
  * alone and never depends on the angle or the light.
  */
 export const SKY = '#e7e2d8'
-export const GROUND = '#c9c6bf'
+export const GROUND = '#c2bcae'
 export const WATER = '#aebcbb'
 
 export const PAVING = '#b3ac9f'
 
 /** Ridable. The accent, and the one dark for metal. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#9ea29f',
-  step: '#8f9390',
+  flat: '#83888c',
+  step: '#767b7f',
   ledge: '#e2603c',
   hubba: '#c9502a',
   rail: '#2b3036',
@@ -78,6 +78,6 @@ export const LAMP_GLOW = 0xfff1d6
  * be seen: the backdrop covers the lower half of the window and this covers
  * the rest, and two different greys there would read as a band.
  */
-export const SKY_TOP = '#ece7dd'
+export const SKY_TOP = '#dee4e8'
 /** And what it deepens to overhead. */
-export const SKY_HIGH = '#cfd4d6'
+export const SKY_HIGH = '#b4c0c9'
