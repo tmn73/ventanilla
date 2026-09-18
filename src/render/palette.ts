@@ -75,3 +75,7 @@ export const LAMP_GLOW = 0xfff1d6
 
 /** What the sky starts as. Each time of day names its own in main. */
 export const SKY_TOP = '#cdd6db'
+
+/** The city on the horizon. Further off is paler, which is all distance does. */
+export const CITY_FAR = '#aab5be'
+export const CITY_NEAR = '#8b98a3'

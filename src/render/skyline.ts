@@ -15,9 +15,9 @@ import type { Camera } from 'three'
  * the shape, which is the only reason three flat layers read as depth at all.
  */
 const LAYERS = [
-  { share: 0.5, drift: 0.04, shade: '#a7b3bc', windows: 0, sink: -0.07 },
-  { share: 0.38, drift: 0.09, shade: '#8593a0', windows: 0, sink: -0.05 },
-  { share: 0.27, drift: 0.16, shade: '#5c6a76', windows: 0.05, sink: -0.02 },
+  { share: 0.5, drift: 0.04, shade: '#9dabb6', windows: 0, sink: -0.07 },
+  { share: 0.38, drift: 0.09, shade: '#7d8c99', windows: 0, sink: -0.05 },
+  { share: 0.27, drift: 0.16, shade: '#63727e', windows: 0.05, sink: -0.02 },
 ]
 
 /**
@@ -61,8 +61,8 @@ export class Skyline {
 
   /** One strip of city: blocks of different heights, with windows lit in some. */
   private draw(shade: string, windowOdds: number, next: () => number): CanvasTexture {
-    const width = 1024
-    const height = 256
+    const width = 2048
+    const height = 512
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
@@ -70,8 +70,8 @@ export class Skyline {
 
     let x = 0
     while (x < width) {
-      const w = 18 + next() * 54
-      const h = 40 + next() * (height - 70)
+      const w = 90 + next() * 190
+      const h = 90 + next() * (height - 150)
       const top = height - h
 
       ctx.fillStyle = shade
@@ -79,26 +79,37 @@ export class Skyline {
 
       // A mast on the tall ones, which is what makes a skyline a skyline.
       if (h > height * 0.62 && next() < 0.4) {
-        ctx.fillRect(x + w / 2 - 1.5, top - 16 - next() * 20, 3, 20)
+        ctx.fillRect(x + w / 2 - 4, top - 30 - next() * 40, 8, 40)
       }
 
       // Windows, as the darker grid on a pale face rather than lights in the
       // dark. Only the nearest layer gets them; further off they are a texture
       // nobody can resolve.
-      for (let wy = top + 7; wy < height - 5; wy += 9) {
-        for (let wx = x + 5; wx < x + w - 6; wx += 8) {
+      for (let wy = top + 26; wy < height - 20; wy += 34) {
+        for (let wx = x + 22; wx < x + w - 24; wx += 30) {
           if (next() > windowOdds) continue
-          ctx.fillStyle = 'rgba(40, 48, 56, 0.55)'
-          ctx.fillRect(wx, wy, 3, 4)
+          ctx.fillStyle = 'rgba(40, 48, 56, 0.35)'
+          ctx.fillRect(wx, wy, 12, 16)
         }
       }
-      x += w + 1 + next() * 5
+      x += w + 6 + next() * 26
     }
+
+    // Softened before it is used. A hard edge sliding across the pixel grid is
+    // what crawls, so the whole strip is blurred by a fraction of a pixel,
+    // which costs nothing at this size and kills it.
+    ctx.globalAlpha = 0.5
+    ctx.filter = 'blur(1.2px)'
+    ctx.drawImage(canvas, 0, 0)
+    ctx.filter = 'none'
+    ctx.globalAlpha = 1
 
     const texture = new CanvasTexture(canvas)
     texture.wrapS = RepeatWrapping
     texture.wrapT = ClampToEdgeWrapping
-    texture.repeat.set(3, 1)
+    texture.repeat.set(1.6, 1)
+    texture.anisotropy = 8
+    texture.generateMipmaps = true
     return texture
   }
 
@@ -110,7 +121,7 @@ export class Skyline {
       layer.mesh.position.set(0, height / 2 - viewHeight * layer.sink, -150)
       const map = (layer.mesh.material as MeshBasicMaterial).map
       // A fraction of the travel each, which is the only depth cue there is.
-      if (map) map.offset.x = (travelled * layer.drift * 0.02) % 1
+      if (map) map.offset.x = (travelled * layer.drift * 0.004) % 1
     }
   }
 }
