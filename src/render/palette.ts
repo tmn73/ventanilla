@@ -6,18 +6,18 @@ import { Color } from 'three'
  * alone and never depends on the angle or the light.
  */
 export const SKY = '#e7e2d8'
-export const GROUND = '#c2bcae'
+export const GROUND = '#aab2b8'
 export const WATER = '#aebcbb'
 
 export const PAVING = '#b3ac9f'
 
 /** Ridable. The accent, and the one dark for metal. */
 export const SURFACE_COLOR: Record<string, string> = {
-  flat: '#83888c',
-  step: '#767b7f',
-  ledge: '#e2603c',
-  hubba: '#c9502a',
-  rail: '#2b3036',
+  flat: '#c7ccd0',
+  step: '#b0b7bc',
+  ledge: '#ff6b2c',
+  hubba: '#e8541d',
+  rail: '#1d2226',
 }
 
 /** The sunlit top of each, which is the edge you actually aim at. */
@@ -35,7 +35,7 @@ export const CONTACT = '#8f8879'
 export const POST_COLOR: Record<string, string> = { rail: '#4a5157' }
 
 export const SPARK_COLOR = '#ffffff'
-export const SKATER = '#1b1f22'
+export const SKATER = '#15181b'
 /**
  * The rider is one dark shape, and mirrored he was the same shape. These two
  * break the symmetry on the axis that matters: the face says which way he
@@ -48,7 +48,7 @@ export const SKATER_LEAD = '#4c545c'
  * body is four pixels of almost the same grey and reads as nothing at all.
  */
 export const SKATER_CAP = '#ddd8cf'
-export const BOARD = '#e2603c'
+export const BOARD = '#ff6b2c'
 export const GRIP = '#1a1d1f'
 export const WHEEL_COLOR = '#6f7378'
 
@@ -78,6 +78,6 @@ export const LAMP_GLOW = 0xfff1d6
  * be seen: the backdrop covers the lower half of the window and this covers
  * the rest, and two different greys there would read as a band.
  */
-export const SKY_TOP = '#dee4e8'
+export const SKY_TOP = '#dde5ea'
 /** And what it deepens to overhead. */
 export const SKY_HIGH = '#b4c0c9'

@@ -5,7 +5,6 @@ import { Game } from './game/game'
 import { mountHelp } from './help'
 import { GRINDABLE, slopeOf } from './game/road'
 import { Input } from './input'
-import { Ground } from './render/ground'
 import { Hud } from './render/hud'
 import { SPARK_COLOR } from './render/palette'
 import { Particles } from './render/particles'
@@ -40,7 +39,6 @@ stage.scene.add(frame)
 const particles = new Particles(frame)
 const roadView = new RoadView(stage.scene, path)
 const backdrop = new Backdrop(stage.camera)
-const ground = new Ground(frame)
 // Children of a camera only render when the camera is itself in the scene.
 stage.scene.add(stage.camera)
 const skaterView = new SkaterView(stage.scene)
@@ -148,9 +146,6 @@ startLoop(
 
     roadView.update(road.segments, camLeft, stage.visibleWidth)
     backdrop.update(stage.visibleWidth, stage.viewHeight)
-    // It follows the pavement, which wanders far enough up and down that a
-    // plane at one height would surface through the road.
-    ground.update(camS, groundRef)
     skaterView.update({
       x: feet.x,
       y,
