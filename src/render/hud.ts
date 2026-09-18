@@ -9,13 +9,23 @@ export class Hud {
   private trick: HTMLElement
   private switchMark: HTMLElement
   private stance = ''
+  private task: HTMLElement
+  private hint: HTMLElement
+  private state: HTMLElement
+  private shownTask = ''
   private shown = -1
 
   constructor() {
     const speed = document.getElementById('speed')
     const trick = document.getElementById('trick')
     const mark = document.getElementById('switch')
-    if (!speed || !trick || !mark) throw new Error('missing readout')
+    const task = document.getElementById('task')
+    const hint = document.getElementById('task-hint')
+    const state = document.getElementById('task-state')
+    if (!speed || !trick || !mark || !task || !hint || !state) throw new Error('missing readout')
+    this.task = task
+    this.hint = hint
+    this.state = state
     this.speed = speed
     this.trick = trick
     this.switchMark = mark
@@ -27,6 +37,16 @@ export class Hud {
     this.stance = word
     this.switchMark.textContent = word
     this.switchMark.hidden = word === ''
+  }
+
+  /** What has to be done, and how it is going. Hidden when there is no task. */
+  setTask(hint: string, state: string): void {
+    const line = `${hint}|${state}`
+    if (line === this.shownTask) return
+    this.shownTask = line
+    this.task.hidden = hint === ''
+    this.hint.textContent = hint
+    this.state.textContent = state
   }
 
   update(skater: Skater): void {

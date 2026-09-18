@@ -293,3 +293,16 @@ body {
   color: var(--accent, #e2603c);
   background: rgba(42, 45, 48, 0.5);
 }
+
+/* The task, when there is one. It says the thing and then how it went. */
+#task {
+  margin-top: 0.6rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+#task em {
+  font-style: normal;
+  margin-left: 0.6rem;
+  color: var(--accent, #ff6b2c);
+}

@@ -9,6 +9,7 @@ export function mountHelp(
   onZoom: (zoom: number) => void,
   onPitch: (pitch: number) => void,
   onRewind: (held: boolean) => void,
+  onMode: (learning: boolean) => void,
 ): void {
   const toggle = document.getElementById('help-toggle')
   const panel = document.getElementById('help')
@@ -183,6 +184,27 @@ export function mountHelp(
     })
   }
 
+
+  // Free run, or one spot with one thing to do on it.
+  const free = document.getElementById('mode-free')
+  const learn = document.getElementById('mode-learn')
+  if (free && learn) {
+    const applyMode = (learning: boolean) => {
+      free.setAttribute('aria-pressed', String(!learning))
+      learn.setAttribute('aria-pressed', String(learning))
+      onMode(learning)
+    }
+    for (const [button, learning] of [
+      [free, false],
+      [learn, true],
+    ] as Array<[HTMLElement, boolean]>) {
+      button.addEventListener('pointerdown', (event) => event.stopPropagation())
+      button.addEventListener('click', (event) => {
+        event.stopPropagation()
+        applyMode(learning)
+      })
+    }
+  }
 
   const setOpen = (open: boolean) => {
     panel.hidden = !open

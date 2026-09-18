@@ -1,12 +1,21 @@
 import * as C from './constants'
 import type { Input } from '../input'
 import { GRINDABLE, slopeOf, surfaceYAt, type Road, type Segment } from './road'
+import type { Trick } from './trick'
 
 /** Indexed from -2, so a feeble and a smith sit either side of the three basics. */
 const GRIND_NAME = ['feeble', '5-0', '50-50', 'nosegrind', 'smith']
 const MANUAL_NAME = ['manual', 'manual', '', 'nose manual', 'nose manual']
 /** Sideways on the obstacle. The same three keys pick which end takes it. */
 const SLIDE_NAME = ['tailslide', 'tailslide', 'boardslide', 'noseslide', 'noseslide']
+/** The same five, as the value a challenge is matched against. */
+const SLIDE_KIND: Array<Trick['slide']> = [
+  'tailslide',
+  'tailslide',
+  'boardslide',
+  'noseslide',
+  'noseslide',
+]
 const FLIP_COUNT = ['', '', 'double', 'triple', 'quadruple']
 /**
  * Which stance a trick goes out under, from whether the board is turned round
@@ -168,6 +177,11 @@ export class Skater {
   stance: 1 | -1 = 1
   trick = ''
   trickAge = 99
+  /**
+   * The last landing, taken apart. The name is for reading; this is for
+   * deciding whether a challenge was met, which cannot be done from a name.
+   */
+  landed: Trick | null = null
 
   /** Where the yaw stood when he left the ground, so a trick names its own turn. */
   private takeoffYaw = 0
@@ -224,6 +238,7 @@ export class Skater {
     this.wobble = 0
     this.trick = ''
     this.trickAge = 99
+    this.landed = null
     this.pushCooldown = 0
     this.justLanded = false
   }
@@ -535,11 +550,25 @@ export class Skater {
           LABEL[seg.kind] ?? '',
           this.airTime > 0.82,
         )
-    this.trick = sketchy
-      ? `${named} sketchy`
-      : off < C.LANDING_PERFECT
-        ? `${named} perfect`
-        : named
+    const grade = sketchy ? 'sketchy' : off < C.LANDING_PERFECT ? 'perfect' : 'clean'
+    this.trick = grade === 'clean' ? named : `${named} ${grade}`
+
+    const halves = this.sideways ? 0 : Math.round(quarters / 2)
+    const turned = this.sideways ? quarters : halves
+    this.landed = {
+      name: this.trick,
+      halves,
+      flips,
+      flipSign: this.flipSign,
+      shoves,
+      shoveSign: this.shoveSign,
+      slide: this.sideways ? SLIDE_KIND[this.grind + 2]! : 'none',
+      side: turned === 0 ? '' : turned > 0 === this.stance > 0 ? 'frontside' : 'backside',
+      stance: stanceOf(wasReversed, this.poppedNose),
+      surface: seg.kind,
+      grade,
+      at: this.x,
+    }
     this.trickAge = 0
     this.airTime = 0
   }

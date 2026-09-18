@@ -67,6 +67,7 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
+  (learning) => game.setLevel(learning ? 0 : null),
 )
 
 window.addEventListener('resize', () => {
@@ -91,8 +92,7 @@ const feet = { x: 0, z: 0 }
 const overhead = { x: 0, y: 0 }
 const mix = (from: number, to: number, alpha: number) => from + (to - from) * alpha
 
-startLoop(
-  (dt) => {
+const advance = (dt: number) => {
     // Edges are still consumed while paused, so nothing fires on resume.
     // Touch reads the same drag differently on the ground and in the air, and
     // the same flick pops a different end depending on which way round he is.
@@ -101,8 +101,9 @@ startLoop(
     input.balancing = game.skater.balancing
     input.beginStep()
     if (!paused) game.step(dt, input)
-  },
-  (alpha) => {
+}
+
+const draw = (alpha: number) => {
     const now = performance.now() / 1000
     const frameDt = Math.min(now - lastFrame, 0.05)
     lastFrame = now
@@ -169,6 +170,11 @@ startLoop(
       sideways: skater.sideways,
     })
     hud.setStance(skater.stanceWord)
+    const task = game.challenge
+    hud.setTask(
+      task ? task.level.hint : '',
+      task ? (task.phase === 'won' ? 'landed' : task.attempts ? `try ${task.attempts + 1}` : '') : '',
+    )
     hud.update(skater)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it
@@ -176,6 +182,21 @@ startLoop(
     stage.project(feet.x, y + 2.3, feet.z, overhead)
     trail.balance(overhead, skater.balance, skater.balancing)
     stage.render(eye.x, camY, eye.z, camHeading)
-  },
-  FIXED_DT,
-)
+}
+
+startLoop(advance, draw, FIXED_DT)
+
+/**
+ * Runs the game on demand, for checking it without a visible window.
+ *
+ * requestAnimationFrame does not fire in a hidden tab, so a screenshot of one
+ * is always the first frame: the rider never leaves the start, no module ever
+ * arrives, and the whole thing looks broken when nothing is wrong with it.
+ * This cost most of a day to work out, so the way round it stays.
+ */
+;(window as unknown as Record<string, unknown>).__run = (seconds: number) => {
+  const ticks = Math.round(seconds / FIXED_DT)
+  for (let i = 0; i < ticks; i++) advance(FIXED_DT)
+  draw(0)
+  return { x: Number(game.skater.x.toFixed(1)), trick: game.skater.trick, phase: game.challenge?.phase }
+}

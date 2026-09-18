@@ -18,6 +18,7 @@
         <div class="speed"><span id="speed">0</span><span class="unit">km/h</span></div>
         <div id="switch" hidden>switch</div>
         <div id="trick"></div>
+        <div id="task" hidden><span id="task-hint"></span><em id="task-state"></em></div>
       </div>
     </div>
     <button id="rewind" type="button" aria-label="Wind the run back">&#8630;</button>
@@ -29,6 +30,14 @@
           <div class="stance-pick">
             <button id="stance-regular" type="button" aria-pressed="true">Regular</button>
             <button id="stance-goofy" type="button" aria-pressed="false">Goofy</button>
+          </div>
+        </div>
+
+        <div class="stance">
+          <span class="stance-label">Mode</span>
+          <div class="stance-pick">
+            <button id="mode-free" type="button" aria-pressed="true">Free run</button>
+            <button id="mode-learn" type="button" aria-pressed="false">Learn</button>
           </div>
         </div>
 

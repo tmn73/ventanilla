@@ -1,5 +1,6 @@
 import * as C from './constants'
 import { Road, type Course } from './road'
+import { Challenge, LEVELS } from './challenge'
 import { Skater } from './skater'
 import { mulberry32, seedFrom } from '../core/rng'
 import type { Input } from '../input'
@@ -45,15 +46,27 @@ export class Game {
     this.road = new Road(() => this.rng())
   }
 
+  /** Puts the run on one spot with one thing to do, or back on the street. */
+  setLevel(index: number | null): void {
+    this.challenge = index === null ? null : new Challenge(LEVELS[index] ?? LEVELS[0]!)
+    this.start()
+  }
+
   /** Which road to build. Takes effect on the next start. */
   course: Course = 'street'
+  /** Set while the run is one spot with one thing to do on it. */
+  challenge: Challenge | null = null
 
   start(): void {
     this.road.course = this.course
     this.seedLabel = this.fixedSeed ?? Math.random().toString(36).slice(2, 10)
     this.rng = mulberry32(seedFrom(this.seedLabel))
-    this.road.reset(0)
-    this.road.ensureAhead(0)
+    if (this.challenge) {
+      this.challenge.build(this.road)
+    } else {
+      this.road.reset(0)
+      this.road.ensureAhead(0)
+    }
     this.skater.reset(0)
     this.startX = 0
     this.distance = 0
@@ -73,9 +86,19 @@ export class Game {
       this.record(dt)
     }
 
-    this.road.ensureAhead(this.skater.x)
+    if (this.challenge?.step(this.skater)) {
+      // Back to the top. Unlimited, uncounted against him, and the road he is
+      // put back on is the same one, so the spot is learned rather than met.
+      this.skater.reset(0)
+      this.distance = 0
+      return
+    }
+
+    if (!this.challenge) this.road.ensureAhead(this.skater.x)
     // Kept back to the oldest moment he could be wound to, not to where he is.
-    this.road.prune(this.history[0]?.state.x as number | undefined ?? this.skater.x)
+    if (!this.challenge) {
+      this.road.prune((this.history[0]?.state.x as number | undefined) ?? this.skater.x)
+    }
 
     this.distance = this.skater.x - this.startX
   }
