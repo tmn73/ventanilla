@@ -303,6 +303,17 @@ body {
 
 #task em {
   font-style: normal;
-  margin-left: 0.6rem;
+  margin-left: 0.55rem;
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Landed is the one green in the game, so it cannot be mistaken for anything. */
+#task em[data-shout='landed'] {
+  color: #35c46a;
+}
+
+#task em[data-shout='missed'] {
   color: var(--accent, #ff6b2c);
 }

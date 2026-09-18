@@ -40,13 +40,16 @@ export class Hud {
   }
 
   /** What has to be done, and how it is going. Hidden when there is no task. */
-  setTask(hint: string, state: string): void {
-    const line = `${hint}|${state}`
+  setTask(hint: string, shout: string): void {
+    const line = `${hint}|${shout}`
     if (line === this.shownTask) return
     this.shownTask = line
-    this.task.hidden = hint === ''
+    this.task.hidden = hint === '' && shout === ''
     this.hint.textContent = hint
-    this.state.textContent = state
+    // A mark rather than a word: it is read at a glance and it is the same
+    // glance that is watching the road.
+    this.state.textContent = shout === 'landed' ? '\u2713' : shout === 'missed' ? '\u2715' : ''
+    this.state.dataset.shout = shout
   }
 
   update(skater: Skater): void {

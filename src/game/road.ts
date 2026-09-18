@@ -90,19 +90,21 @@ export class Road {
     this.headX = startX + 20
   }
 
+  /** How far the road has been built to. */
+  get head(): number {
+    return this.headX
+  }
+
   /**
-   * One named module, with a walk up to it and a long run out after it. A
-   * challenge needs to know exactly what it put in front of the rider, which
-   * the weighted mix cannot tell it.
+   * One named module, with a walk up to it. A lesson needs to know exactly
+   * what it put in front of the rider, which the weighted mix cannot tell it.
    */
-  stage(module: string, scale: number, at: number): { from: number; to: number } {
-    this.runUp(at - this.headX)
+  stage(module: string, scale: number, walkUp: number): { from: number; to: number } {
+    this.runUp(walkUp)
     const from = this.headX
     const build = (this as unknown as Record<string, (s: number) => void>)[module]
     if (typeof build === 'function') build.call(this, scale)
-    const to = this.headX
-    this.runUp(70)
-    return { from, to }
+    return { from, to: this.headX }
   }
 
   /** Modules laid end to end. Each one starts where the last one stopped. */

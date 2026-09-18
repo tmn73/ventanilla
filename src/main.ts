@@ -67,7 +67,7 @@ mountHelp(
   (held) => {
     game.rewinding = held
   },
-  (learning) => game.setLevel(learning ? 0 : null),
+  (learning) => game.setLearning(learning),
 )
 
 window.addEventListener('resize', () => {
@@ -170,11 +170,8 @@ const draw = (alpha: number) => {
       sideways: skater.sideways,
     })
     hud.setStance(skater.stanceWord)
-    const task = game.challenge
-    hud.setTask(
-      task ? task.level.hint : '',
-      task ? (task.phase === 'won' ? 'landed' : task.attempts ? `try ${task.attempts + 1}` : '') : '',
-    )
+    const coach = game.coach
+    hud.setTask(coach?.current?.hint ?? '', coach?.shout ?? '')
     hud.update(skater)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it
@@ -198,5 +195,5 @@ startLoop(advance, draw, FIXED_DT)
   const ticks = Math.round(seconds / FIXED_DT)
   for (let i = 0; i < ticks; i++) advance(FIXED_DT)
   draw(0)
-  return { x: Number(game.skater.x.toFixed(1)), trick: game.skater.trick, phase: game.challenge?.phase }
+  return { x: Number(game.skater.x.toFixed(1)), trick: game.skater.trick, landed: game.coach?.landed }
 }
