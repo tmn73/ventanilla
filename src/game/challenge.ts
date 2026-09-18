@@ -18,10 +18,12 @@ interface Spot {
   outcome: 'open' | 'landed' | 'missed'
 }
 
-/** How far ahead spots are laid, how far apart, and how far past one counts as missed. */
+/** How far ahead the road is built, and how long the walk up to a spot is. */
 const LOOKAHEAD = 150
-const WALK_UP = 26
+const WALK_UP = 34
 const OVERRUN = 12
+/** Pavement laid while the spot in front of him is still undecided. */
+const HOLD = 18
 /** How long the result of a spot stays on the screen once it is settled. */
 const SHOUT = 1.6
 
@@ -41,13 +43,21 @@ export class Coach {
 
   private spots: Spot[] = []
   /**
+   * What the next spot will be. It is decided when the last one is settled and
+   * not before: miss one and this still holds it, so the same thing comes
+   * round again and again until it is landed.
+   */
+  private next: Level
+  /**
    * The last landing already accounted for. Without it one trick settles the
    * spot it was done on and then the next one too, because the skater keeps
    * reporting it until he lands again.
    */
   private spent: unknown = null
 
-  constructor(private rng: () => number) {}
+  constructor(private rng: () => number) {
+    this.next = rollLevel(rng)
+  }
 
   /** What he is being asked for right now, or nothing once the list is done. */
   get current(): Level | null {
@@ -58,14 +68,23 @@ export class Coach {
   skip(): void {
     const open = this.spots.find((spot) => spot.outcome === 'open')
     if (open) open.outcome = 'missed'
+    // Given up on rather than missed, so it does not come round again.
+    this.next = rollLevel(this.rng)
   }
 
-  /** Lays spots as he rides, so the road never runs out and never stops. */
+  /**
+   * Lays road as he rides, and only lays the next spot once the one in front
+   * of him is settled. Until then it is plain pavement: what comes next
+   * depends on whether he lands this, so it cannot be built yet.
+   */
   ensureAhead(road: Road, x: number): void {
-    for (let guard = 0; guard < 8 && road.head < x + LOOKAHEAD; guard++) {
-      const level = rollLevel(this.rng)
-      const laid = road.stage(level.module, level.scale, WALK_UP)
-      this.spots.push({ ...laid, level, outcome: 'open' })
+    for (let guard = 0; guard < 10 && road.head < x + LOOKAHEAD; guard++) {
+      if (this.spots.some((spot) => spot.outcome === 'open')) {
+        road.pave(HOLD)
+        continue
+      }
+      const laid = road.stage(this.next.module, this.next.scale, WALK_UP)
+      this.spots.push({ ...laid, level: this.next, outcome: 'open' })
     }
   }
 
@@ -91,6 +110,8 @@ export class Coach {
       if (satisfies(trick, spot.level.ask)) {
         spot.outcome = 'landed'
         this.landed++
+        // Landed, so the next one is something else.
+        this.next = rollLevel(this.rng)
         this.shout = 'landed'
         this.shoutFor = SHOUT
         return
@@ -98,6 +119,8 @@ export class Coach {
     }
 
     if (skater.x > spot.to + OVERRUN) {
+      // Missed, so `next` is left alone: the same spot and the same trick come
+      // round again, and again, until he lands it or gives up on it.
       spot.outcome = 'missed'
       this.shout = 'missed'
       this.shoutFor = SHOUT

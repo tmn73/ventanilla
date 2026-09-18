@@ -95,6 +95,11 @@ export class Road {
     return this.headX
   }
 
+  /** Plain pavement, for when the next thing to ride is not decided yet. */
+  pave(length: number): void {
+    this.runUp(length)
+  }
+
   /**
    * One named module, with a walk up to it. A lesson needs to know exactly
    * what it put in front of the rider, which the weighted mix cannot tell it.

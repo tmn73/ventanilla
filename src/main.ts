@@ -89,6 +89,9 @@ for (const button of Object.values(modeButtons)) {
   button?.addEventListener('pointerdown', (event) => event.stopPropagation())
 }
 
+// Lines is what the game is now, so it is what it opens on.
+applyMode(true)
+
 window.addEventListener('resize', () => {
   stage.resize()
   trail.resize()
