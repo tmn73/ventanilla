@@ -46,6 +46,8 @@ export interface Ask {
   stance?: string
   /** What it says on the screen. */
   label: string
+  /** And how to do it, because a name you have forgotten is not a hint. */
+  how: string
 }
 
 /**

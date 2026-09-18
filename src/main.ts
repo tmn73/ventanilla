@@ -79,7 +79,6 @@ const modeButtons = {
 const applyMode = (learning: boolean) => {
   modeButtons.free?.setAttribute('aria-pressed', String(!learning))
   modeButtons.learn?.setAttribute('aria-pressed', String(learning))
-  if (modeButtons.skip) modeButtons.skip.hidden = !learning
   game.setLearning(learning)
 }
 modeButtons.free?.addEventListener('click', () => applyMode(false))
@@ -191,7 +190,7 @@ const draw = (alpha: number) => {
     })
     hud.setStance(skater.stanceWord)
     const coach = game.coach
-    hud.setTask(coach?.current?.hint ?? '', coach?.shout ?? '')
+    hud.setTask(coach?.current?.hint ?? '', coach?.current?.ask.how ?? '', coach?.shout ?? '')
     hud.update(skater)
     trail.update(input.strokes, now * 1000)
     // Drawn after the trail so the arc sits over it, and after the scene so it

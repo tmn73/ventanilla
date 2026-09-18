@@ -348,7 +348,27 @@ body {
   color: #f2efe9;
 }
 
-#modes #skip {
-  background: rgba(255, 107, 44, 0.18);
+#task #skip {
+  display: block;
+  margin-top: 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.24rem 0.7rem;
+  background: rgba(255, 107, 44, 0.16);
   color: var(--accent, #ff6b2c);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* How to do it, under the name of it. Forgetting the keys is not a mistake
+   worth being stuck on. */
+#task small {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  opacity: 0.6;
+  letter-spacing: 0.01em;
 }

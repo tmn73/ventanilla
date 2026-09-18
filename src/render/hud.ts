@@ -12,6 +12,7 @@ export class Hud {
   private task: HTMLElement
   private hint: HTMLElement
   private state: HTMLElement
+  private how: HTMLElement
   private shownTask = ''
   private shown = -1
 
@@ -22,10 +23,14 @@ export class Hud {
     const task = document.getElementById('task')
     const hint = document.getElementById('task-hint')
     const state = document.getElementById('task-state')
-    if (!speed || !trick || !mark || !task || !hint || !state) throw new Error('missing readout')
+    const how = document.getElementById('task-how')
+    if (!speed || !trick || !mark || !task || !hint || !state || !how) {
+      throw new Error('missing readout')
+    }
     this.task = task
     this.hint = hint
     this.state = state
+    this.how = how
     this.speed = speed
     this.trick = trick
     this.switchMark = mark
@@ -40,12 +45,13 @@ export class Hud {
   }
 
   /** What has to be done, and how it is going. Hidden when there is no task. */
-  setTask(hint: string, shout: string): void {
-    const line = `${hint}|${shout}`
+  setTask(hint: string, how: string, shout: string): void {
+    const line = `${hint}|${how}|${shout}`
     if (line === this.shownTask) return
     this.shownTask = line
     this.task.hidden = hint === '' && shout === ''
     this.hint.textContent = hint
+    this.how.textContent = how
     // A mark rather than a word: it is read at a glance and it is the same
     // glance that is watching the road.
     this.state.textContent = shout === 'landed' ? '\u2713' : shout === 'missed' ? '\u2715' : ''

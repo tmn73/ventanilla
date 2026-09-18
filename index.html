@@ -16,14 +16,17 @@
       <canvas id="trail"></canvas>
       <div id="modes">
         <button id="mode-free" type="button" aria-pressed="true">Free</button>
-        <button id="mode-learn" type="button" aria-pressed="false">S.K.A.T.E.</button>
-        <button id="skip" type="button" hidden>Skip</button>
+        <button id="mode-learn" type="button" aria-pressed="false">Lines</button>
       </div>
       <div id="hud">
         <div class="speed"><span id="speed">0</span><span class="unit">km/h</span></div>
         <div id="switch" hidden>switch</div>
         <div id="trick"></div>
-        <div id="task" hidden><span id="task-hint"></span><em id="task-state"></em></div>
+        <div id="task" hidden>
+          <span id="task-hint"></span><em id="task-state"></em>
+          <small id="task-how"></small>
+          <button id="skip" type="button">Skip</button>
+        </div>
       </div>
     </div>
     <button id="rewind" type="button" aria-label="Wind the run back">&#8630;</button>

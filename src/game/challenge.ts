@@ -40,6 +40,12 @@ export class Coach {
   shoutFor = 0
 
   private spots: Spot[] = []
+  /**
+   * The last landing already accounted for. Without it one trick settles the
+   * spot it was done on and then the next one too, because the skater keeps
+   * reporting it until he lands again.
+   */
+  private spent: unknown = null
 
   constructor(private rng: () => number) {}
 
@@ -69,58 +75,66 @@ export class Coach {
       if (this.shoutFor <= 0) this.shout = ''
     }
 
-    for (const spot of this.spots) {
-      if (spot.outcome !== 'open') continue
+    // Only the one in front of him. Looking at all of them let a trick landed
+    // on this spot settle the next one as well, and a wrong one settle the
+    // next one by luck.
+    const spot = this.spots.find((s) => s.outcome === 'open')
+    if (!spot) return
 
-      const trick = skater.landed
-      if (trick && trick.at >= spot.from - 4 && trick.at <= spot.to + OVERRUN) {
-        if (satisfies(trick, spot.level.ask)) {
-          spot.outcome = 'landed'
-          this.landed++
-          this.shout = 'landed'
-          this.shoutFor = SHOUT
-          continue
-        }
-      }
+    // A landing is considered once, whatever comes of it. The skater keeps
+    // reporting the last one until he lands again, and reading it twice is
+    // what made a miss count as the next spot's success.
+    const trick = skater.landed !== this.spent ? skater.landed : null
+    if (trick) this.spent = trick
 
-      if (skater.x > spot.to + OVERRUN) {
-        spot.outcome = 'missed'
-        this.shout = 'missed'
+    if (trick && trick.at >= spot.from - 4 && trick.at <= spot.to + OVERRUN) {
+      if (satisfies(trick, spot.level.ask)) {
+        spot.outcome = 'landed'
+        this.landed++
+        this.shout = 'landed'
         this.shoutFor = SHOUT
+        return
       }
+    }
+
+    if (skater.x > spot.to + OVERRUN) {
+      spot.outcome = 'missed'
+      this.shout = 'missed'
+      this.shoutFor = SHOUT
     }
 
     // Nothing behind him is looked at again.
     if (this.spots.length > 12) this.spots = this.spots.slice(-8)
   }
+
 }
 
 /** Things to do on something you can slide along. */
 const ON_A_RAIL: Ask[] = [
-  { slide: 'boardslide', label: 'boardslide' },
-  { slide: 'boardslide', side: 'frontside', label: 'frontside boardslide' },
-  { slide: 'boardslide', side: 'backside', label: 'backside boardslide' },
-  { slide: 'tailslide', label: 'tailslide' },
-  { slide: 'noseslide', label: 'noseslide' },
-  { slide: 'boardslide', stance: 'switch', label: 'switch boardslide' },
+  { slide: 'boardslide', label: 'boardslide', how: 'pop, quarter turn with A or D' },
+  { slide: 'boardslide', side: 'frontside', label: 'frontside boardslide', how: 'pop, quarter turn with D' },
+  { slide: 'boardslide', side: 'backside', label: 'backside boardslide', how: 'pop, quarter turn with A' },
+  { slide: 'tailslide', label: 'tailslide', how: 'quarter turn, then hold Left' },
+  { slide: 'noseslide', label: 'noseslide', how: 'quarter turn, then hold Right' },
+  { slide: 'boardslide', stance: 'switch', label: 'switch boardslide', how: 'land a 180 first, then boardslide' },
 ]
 
 /** Things to do with the board off the ground. */
 const IN_THE_AIR: Ask[] = [
-  { flips: 1, flipSign: 1, label: 'kickflip' },
-  { flips: 1, flipSign: -1, label: 'heelflip' },
-  { flips: 2, flipSign: 1, label: 'double kickflip' },
-  { shoves: 1, label: 'shove-it' },
-  { shoves: 2, label: '360 shove-it' },
-  { halves: 1, label: '180' },
-  { halves: 1, side: 'frontside', label: 'frontside 180' },
-  { halves: 1, side: 'backside', label: 'backside 180' },
-  { halves: 2, label: '360' },
-  { halves: 1, flips: 1, flipSign: 1, label: 'frontside flip' },
-  { flips: 1, shoves: 1, flipSign: 1, label: 'varial kickflip' },
-  { flips: 1, shoves: 2, flipSign: 1, label: '360 flip' },
-  { stance: 'nollie', label: 'nollie' },
-  { stance: 'nollie', flips: 1, flipSign: 1, label: 'nollie kickflip' },
+  { flips: 1, flipSign: 1, label: 'kickflip', how: 'pop, then Left in the air' },
+  { flips: 1, flipSign: -1, label: 'heelflip', how: 'pop, then Right in the air' },
+  { flips: 2, flipSign: 1, label: 'double kickflip', how: 'pop, then hold Left' },
+  { shoves: 1, label: 'shove-it', how: 'pop, then Q' },
+  { shoves: 2, label: '360 shove-it', how: 'pop, then hold Q' },
+  { halves: 1, label: '180', how: 'pop, then A or D until half round' },
+  { halves: 1, side: 'frontside', label: 'frontside 180', how: 'pop, then D until half round' },
+  { halves: 1, side: 'backside', label: 'backside 180', how: 'pop, then A until half round' },
+  { halves: 2, label: '360', how: 'pop, then hold A or D all the way round' },
+  { halves: 1, flips: 1, flipSign: 1, label: 'frontside flip', how: 'pop, Left, then D half round' },
+  { flips: 1, shoves: 1, flipSign: 1, label: 'varial kickflip', how: 'pop, then Left and Q' },
+  { flips: 1, shoves: 2, flipSign: 1, label: '360 flip', how: 'pop, then Left and hold Q' },
+  { stance: 'nollie', label: 'nollie', how: 'hold Shift with Space' },
+  { stance: 'nollie', flips: 1, flipSign: 1, label: 'nollie kickflip', how: 'Shift and Space, then Left' },
 ]
 
 const RAILS = ['railSpot', 'ledgeSpot', 'kinkedRail', 'stepUp', 'plaza']
